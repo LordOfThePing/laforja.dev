@@ -7,21 +7,26 @@ import { JWT_AUDIENCE } from '../auth.ts';
 import type { Db } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
 import { seed } from '../db/seed-data.ts';
+import { FakeMercadoPago } from './fake-mp.ts';
 
 export const TEST_SECRET = 'secreto-de-test';
+export const TEST_MP_WEBHOOK_SECRET = 'secreto-webhook-mp';
 
 export async function createTestApp() {
   const pg = drizzle(new PGlite(), { schema });
   await migrate(pg, { migrationsFolder: './drizzle' });
   const db = pg as unknown as Db;
   await seed(db);
+  const mp = new FakeMercadoPago();
   const app = createApp({
     db,
     authSecret: TEST_SECRET,
     frontendUrl: 'http://localhost:3000',
+    mp,
+    mpWebhookSecret: TEST_MP_WEBHOOK_SECRET,
     log: false,
   });
-  return { app, db };
+  return { app, db, mp };
 }
 
 export function makeToken(
