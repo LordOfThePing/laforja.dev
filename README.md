@@ -21,7 +21,8 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - ⏳ Auth.js con Google en la web — pendiente
 - ✅ Unlocks con cupo de 2/mes
 - ✅ Integración MP Preapproval + webhooks en la API (sin probar contra MP real)
-- ⏳ Docker Compose + Nginx en VPS — pendiente
+- ✅ Docker Compose (postgres + migrate + api + web)
+- ⏳ Deploy en VPS (Hetzner + Cloudflare Tunnel) — pendiente
 
 ## Stack
 
@@ -49,7 +50,7 @@ Necesitás un Postgres 16 accesible (ver `apps/api/.env.example`).
 cd apps/api
 bun install
 cp .env.example .env      # ajustá DATABASE_URL
-bun run db:push           # aplica el schema
+bun run db:migrate        # aplica las migraciones
 bun run db:seed           # carga categorías + herramientas de ejemplo
 bun run dev
 # → http://localhost:4000/health
@@ -58,6 +59,15 @@ bun run token:dev         # token para probar endpoints autenticados
 ```
 
 Tests (usan PGlite en memoria, no necesitan Postgres): `bun test`.
+
+## Cómo correr todo con Docker
+
+```bash
+cp .env.example .env      # completá los valores
+docker compose up -d --build --wait
+docker compose run --rm api bun run db:seed
+# web → http://localhost:3000 · api → http://localhost:4000/health
+```
 
 ## Documentos de referencia
 

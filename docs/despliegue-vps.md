@@ -6,55 +6,23 @@
 - **Docker Compose** con `web` + `api` + `postgres`
 - **Certbot** para HTTPS con Let's Encrypt (renovación auto)
 
-## docker-compose.yml (esquema)
+## docker-compose.yml
 
-```yaml
-services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: laforja
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: laforja
-    networks: [internal]
+El archivo real está en la raíz del repo (`docker-compose.yml`). Servicios:
 
-  api:
-    build: ./apps/api
-    restart: unless-stopped
-    depends_on: [postgres]
-    environment:
-      DATABASE_URL: postgres://laforja:${DB_PASSWORD}@postgres:5432/laforja
-      AUTH_SECRET: ${AUTH_SECRET}
-      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN}
-      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL}
-    ports:
-      - "127.0.0.1:4000:4000"
-    networks: [internal]
+| Servicio | Imagen | Qué hace |
+|---|---|---|
+| `postgres` | `postgres:16-alpine` | DB, volumen `pg_data`, healthcheck `pg_isready` |
+| `migrate` | `laforja-api` | one-shot: `bun run db:migrate` (migraciones de `apps/api/drizzle/` con drizzle-orm, sin drizzle-kit) |
+| `api` | `laforja-api` | Hono sobre Bun, `127.0.0.1:4000`; arranca solo si `migrate` terminó bien |
+| `web` | `apps/web/Dockerfile` | build con Bun, runtime Node 22 (`dist/server/entry.mjs`), `127.0.0.1:3000` |
 
-  web:
-    build: ./apps/web
-    restart: unless-stopped
-    depends_on: [api]
-    environment:
-      AUTH_SECRET: ${AUTH_SECRET}
-      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
-      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
-      API_URL: http://api:4000
-      PUBLIC_SITE_URL: ${FRONTEND_URL}
-    ports:
-      - "127.0.0.1:3000:3000"
-    networks: [internal]
+Variables: `.env` en la raíz, ver `.env.example`. Compose falla al arrancar si
+falta alguna obligatoria (`DB_PASSWORD`, `AUTH_SECRET`, `MP_ACCESS_TOKEN`,
+`MP_WEBHOOK_SECRET`, `FRONTEND_URL`).
 
-volumes:
-  pg_data:
-
-networks:
-  internal:
-```
+Los puertos quedan en `127.0.0.1`: al host solo llega el reverse proxy
+(Nginx hoy, Cloudflare Tunnel cuando se haga esa tarea).
 
 ## Nginx
 
@@ -113,9 +81,8 @@ sudo certbot --nginx -d academia.flynnpedroa.engineer
 ssh vps
 cd /opt/laforja
 git pull
-docker compose build
-docker compose up -d
-docker compose exec api bun run drizzle-kit push  # migraciones
+docker compose up -d --build --wait   # migrate corre solo antes de levantar api
+docker compose run --rm api bun run db:seed   # solo la primera vez / al cambiar el seed
 ```
 
-Automatizable después con GitHub Actions (SSH + `git pull` + `docker compose up -d`).
+Automatizable después con el Makefile de deploy (tarea pendiente) o GitHub Actions.
