@@ -58,11 +58,19 @@ env-diff: local-only ## Compara los nombres de variables de .env.production con 
 	@$(REMOTE) "grep -E '^[A-Z_]+=' $(REMOTE_DIR)/.env | cut -d= -f1 | sort" \
 		| diff "$${TMPDIR:-/tmp}/laforja-env-keys" - && echo "Mismas variables."
 
+local-only:
+ifeq ($(ON_VPS),1)
+	@echo "Este target se corre desde tu máquina, no desde el VPS"; exit 1
+endif
+
 # El VPS hace pull desde GitHub: deployar con commits locales sin pushear subiría otra cosa.
+# En el VPS no aplica: el propio deploy lo pone al día con origin.
 check-pushed:
+ifneq ($(ON_VPS),1)
 	@git fetch -q origin $(BRANCH)
 	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/$(BRANCH))" \
 		|| { echo "HEAD local no coincide con origin/$(BRANCH): pusheá (o pulleá) antes de deployar"; exit 1; }
+endif
 
 deploy: check-pushed ## Pull en el VPS + build + up (migrate corre solo antes de api)
 	$(REMOTE) "cd $(REMOTE_DIR) && git fetch origin $(BRANCH) && git checkout $(BRANCH) && git pull --ff-only origin $(BRANCH)"
