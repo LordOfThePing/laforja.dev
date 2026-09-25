@@ -1,8 +1,19 @@
 ---
-import { tools } from '~/data/tools';
+import { getSession } from 'auth-astro/server';
+import { type ToolPreview, listTools } from '~/lib/api';
 import ToolCard from './ToolCard.astro';
 
-const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category)))];
+const session = await getSession(Astro.request);
+let tools: ToolPreview[] = [];
+let failed = false;
+try {
+  tools = await listTools(session?.user);
+} catch (err) {
+  console.error('No se pudo cargar el catálogo desde la API', err);
+  failed = true;
+}
+
+const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category.name)))];
 ---
 
 <section id="herramientas" class="grid-section">
@@ -17,7 +28,7 @@ const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category))
         </p>
       </div>
 
-      <div class="grid-section__filters" role="tablist" aria-label="Filtrar por categoría">
+      {!failed && (<div class="grid-section__filters" role="tablist" aria-label="Filtrar por categoría">
         {categories.map((cat, i) => (
           <button
             class:list={['chip', { 'chip--active': i === 0 }]}
@@ -28,16 +39,22 @@ const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category))
             {cat}
           </button>
         ))}
-      </div>
+      </div>)}
     </header>
 
-    <div class="grid reveal" id="tool-grid">
-      {tools.map((t) => (
-        <div class="grid__cell" data-cat={t.category}>
-          <ToolCard tool={t} />
-        </div>
-      ))}
-    </div>
+    {failed ? (
+      <p class="grid-section__error" role="status">
+        No pudimos cargar el catálogo en este momento. Probá recargar en un rato.
+      </p>
+    ) : (
+      <div class="grid reveal" id="tool-grid">
+        {tools.map((t) => (
+          <div class="grid__cell" data-cat={t.category.name}>
+            <ToolCard tool={t} />
+          </div>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 
@@ -65,6 +82,13 @@ const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category))
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+  .grid-section__error {
+    padding: 28px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-lg);
+    color: var(--ink-dim);
+    text-align: center;
   }
   .chip {
     padding: 8px 14px;

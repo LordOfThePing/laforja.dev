@@ -1,16 +1,18 @@
 ---
-import type { Tool } from '~/data/tools';
-interface Props { tool: Tool; }
+import { type ToolPreview, formatDuration } from '~/lib/api';
+interface Props { tool: ToolPreview; }
 const { tool } = Astro.props;
-const locked = tool.tier === 'premium';
+const locked = tool.isLocked;
+const premium = tool.tier === 'premium';
+const duration = formatDuration(tool.durationSeconds);
 ---
 
 <article class:list={['card', { 'card--locked': locked }]}>
   <div class="card__shine" aria-hidden="true"></div>
 
   <header class="card__head">
-    <span class:list={['pill', locked ? 'pill--ember' : 'pill--spark']}>
-      {locked ? (
+    <span class:list={['pill', premium ? 'pill--ember' : 'pill--spark']}>
+      {premium ? (
         <>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M6 10V7a6 6 0 1 1 12 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Premium
@@ -22,7 +24,7 @@ const locked = tool.tier === 'premium';
         </>
       )}
     </span>
-    <span class="card__cat mono">{tool.category}</span>
+    <span class="card__cat mono">{tool.category.name}</span>
   </header>
 
   <h3 class="card__title">{tool.title}</h3>
@@ -32,7 +34,7 @@ const locked = tool.tier === 'premium';
     <div class="card__tags">
       {tool.tags.slice(0, 2).map((t) => <span class="card__tag mono">#{t}</span>)}
     </div>
-    <span class="card__duration mono">{tool.duration}</span>
+    {duration && <span class="card__duration mono">{duration}</span>}
   </footer>
 
   {locked && (
@@ -173,13 +175,13 @@ const locked = tool.tier === 'premium';
 
 <script>
   // hover shine: coord del cursor dentro de la card
-  document.querySelectorAll('.card').forEach((card) => {
+  document.querySelectorAll<HTMLElement>('.card').forEach((card) => {
     card.addEventListener('pointermove', (e) => {
       const rect = card.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
-      (card as HTMLElement).style.setProperty('--x', `${x}%`);
-      (card as HTMLElement).style.setProperty('--y', `${y}%`);
+      card.style.setProperty('--x', `${x}%`);
+      card.style.setProperty('--y', `${y}%`);
     });
   });
 </script>

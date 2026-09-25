@@ -1,39 +1,21 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { SignJWT } from 'jose';
-
-const API_AUDIENCE = 'laforja-api';
+import { MissingSecretError, signApiToken } from '~/lib/api-token';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ request }) => {
   const session = await getSession(request);
-  const user = session?.user;
 
-  if (!user?.googleId || !user.email) {
-    return jsonError('unauthorized', 401);
-  }
-
-  // Ver auth.config.ts: process.env en runtime, import.meta.env en `astro dev`.
-  const secret = process.env.AUTH_SECRET ?? import.meta.env.AUTH_SECRET;
-  if (!secret) {
-    console.error('AUTH_SECRET no está definida en apps/web');
+  let token: string | null;
+  try {
+    token = await signApiToken(session?.user);
+  } catch (err) {
+    if (!(err instanceof MissingSecretError)) throw err;
+    console.error(err.message);
     return jsonError('server_misconfigured', 500);
   }
-
-  const key = new TextEncoder().encode(secret);
-
-  const token = await new SignJWT({
-    email: user.email,
-    name: user.name ?? undefined,
-    picture: user.image ?? undefined,
-  })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setSubject(user.googleId)
-    .setAudience(API_AUDIENCE)
-    .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(key);
+  if (!token) return jsonError('unauthorized', 401);
 
   return new Response(JSON.stringify({ token }), {
     status: 200,
