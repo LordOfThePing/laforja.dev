@@ -4,7 +4,9 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-_(nada)_
+- **Agregar regla de `git fetch` previo en `CLAUDE.md` §2.1** — en curso
+  por @claude — para prevenir que dos agentes agarren la misma tarea con
+  copias desactualizadas del repo.
 
 ## Pendiente
 
