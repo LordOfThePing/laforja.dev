@@ -18,3 +18,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-25 — VPS Hetzner: usuario `deploy-laforja`, `/opt/laforja`, alias `laforja` — 1c8c581
 - 2026-09-25 — Fix de env de Auth.js en la imagen Docker de la web — 3790522
 - 2026-09-25 — Cloudflare Tunnel en el repo (cloudflared en compose + docs) — 1605aa5
+- 2026-09-25 — Makefile usable desde PowerShell/cmd en Windows — 411b9a9
