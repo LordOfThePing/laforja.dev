@@ -63,6 +63,22 @@ services:
       - "127.0.0.1:${WEB_PORT:-3000}:3000"
     networks: [internal]
 
+  # Único punto de entrada público: el ruteo por path (web vs api) se configura en el panel
+  # del tunnel. Va en un profile para que el stack local levante sin token.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks: [internal]
+
 volumes:
   pg_data:
 
