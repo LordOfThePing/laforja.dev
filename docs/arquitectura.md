@@ -12,11 +12,15 @@ Persistencia: Postgres 16 con Drizzle ORM.
 ## Diagrama
 
 ```
-[Usuario] → Nginx (TLS) ─┬─→ apps/web  (Astro SSR, :3000)
-                         │
-                         └─→ apps/api  (Hono, :4000) → Postgres (:5432)
-                                              ▲
-[Webhook MercadoPago] ────────────────────────┘
+[Usuario] ─────────────┐
+                       ▼
+               Cloudflare (TLS) ══ tunnel ══> cloudflared ─┬─→ apps/web  (Astro SSR, :3000)   /api/auth/*, resto
+                       ▲                                   │
+[Webhook MercadoPago] ─┘                                   └─→ apps/api  (Hono, :4000)        /api/*, /webhooks/*
+                                                                   │
+                                                                   └─→ Postgres (:5432)
+
+Todo lo que está a la derecha de `cloudflared` corre en el docker-compose del VPS.
 ```
 
 ## Decisiones y trade-offs

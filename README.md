@@ -31,7 +31,7 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - **ORM / DB**: Drizzle + Postgres 16
 - **Auth**: Auth.js v5 (solo Google) + JWT
 - **Pagos**: MercadoPago Preapproval + webhook
-- **Deploy**: Docker Compose en VPS detrás de Nginx
+- **Deploy**: Docker Compose en VPS (Hetzner) detrás de Cloudflare Tunnel
 
 ## Cómo correr el frontend (una vez tengas Bun instalado)
 
@@ -78,7 +78,7 @@ Deploy al VPS: `make help` y [despliegue-vps.md](docs/despliegue-vps.md#deploy-c
 | [arquitectura.md](docs/arquitectura.md) | Stack detallado, diagrama, decisiones |
 | [schema-datos.md](docs/schema-datos.md) | Modelo de datos (v1 + hooks para cursos futuros) |
 | [auth-y-pagos.md](docs/auth-y-pagos.md) | Flujo Google OAuth + MP Preapproval + webhooks |
-| [despliegue-vps.md](docs/despliegue-vps.md) | Docker Compose, Nginx, DNS, HTTPS |
+| [despliegue-vps.md](docs/despliegue-vps.md) | Docker Compose, Cloudflare Tunnel, Makefile de deploy |
 | [roadmap.md](docs/roadmap.md) | Fases v1 → v2 → v3 |
 | [diseño-brief.md](docs/diseño-brief.md) | Brief para `/design-shotgun` |
 

@@ -2,9 +2,10 @@
 
 ## Estructura
 
-- **Nginx** en el host (fuera de Docker) — TLS + reverse proxy
-- **Docker Compose** con `web` + `api` + `postgres`
-- **Certbot** para HTTPS con Let's Encrypt (renovación auto)
+- **Docker Compose** con `postgres` + `migrate` + `api` + `web` + `cloudflared`
+- **Cloudflare Tunnel** (`cloudflared` dentro del compose) como única entrada
+  pública: TLS lo termina Cloudflare, el VPS no abre puertos ni maneja
+  certificados. Mismo patrón que los otros proyectos del VPS.
 
 ## docker-compose.yml
 
@@ -16,68 +17,69 @@ El archivo real está en la raíz del repo (`docker-compose.yml`). Servicios:
 | `migrate` | `laforja-api` | one-shot: `bun run db:migrate` (migraciones de `apps/api/drizzle/` con drizzle-orm, sin drizzle-kit) |
 | `api` | `laforja-api` | Hono sobre Bun, `127.0.0.1:4000`; arranca solo si `migrate` terminó bien |
 | `web` | `apps/web/Dockerfile` | build con Bun, runtime Node 22 (`dist/server/entry.mjs`), `127.0.0.1:3000` |
+| `cloudflared` | `cloudflare/cloudflared` | solo con `COMPOSE_PROFILES=tunnel`; conecta el tunnel con `CLOUDFLARE_TUNNEL_TOKEN` |
 
 Variables: `.env` en la raíz, ver `.env.example`. Compose falla al arrancar si
 falta alguna obligatoria (`DB_PASSWORD`, `AUTH_SECRET`, `MP_ACCESS_TOKEN`,
 `MP_WEBHOOK_SECRET`, `FRONTEND_URL`).
 
-Los puertos quedan en `127.0.0.1`: al host solo llega el reverse proxy
-(Nginx hoy, Cloudflare Tunnel cuando se haga esa tarea).
+`web` y `api` publican en `127.0.0.1` (`WEB_PORT` / `API_PORT`) solo para
+debug con `curl` desde el VPS; el tráfico real entra por `cloudflared`, que les
+habla por la red interna de Docker.
 
-## Nginx
+## Cloudflare Tunnel
 
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name academia.flynnpedroa.engineer;
+### Crear el tunnel (una vez, en el panel de Cloudflare)
 
-    ssl_certificate     /etc/letsencrypt/live/academia.flynnpedroa.engineer/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/academia.flynnpedroa.engineer/privkey.pem;
+1. Zero Trust → Networks → Tunnels → **Create a tunnel** → tipo *Cloudflared*,
+   nombre `laforja`.
+2. Copiar el **token** del comando de instalación (lo que va después de
+   `--token`) y ponerlo en `.env.production`:
+   ```env
+   COMPOSE_PROFILES=tunnel
+   CLOUDFLARE_TUNNEL_TOKEN=eyJ...
+   ```
+   No hace falta instalar nada en el VPS: `cloudflared` corre en el compose.
+3. **Public hostnames**, en este orden (Cloudflare usa el primero que matchea):
 
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto https;
-    }
+   | Hostname | Path | Service |
+   |---|---|---|
+   | `academia.flynnpedroa.engineer` | `/api/auth/*` | `http://web:3000` |
+   | `academia.flynnpedroa.engineer` | `/api/*` | `http://api:4000` |
+   | `academia.flynnpedroa.engineer` | `/webhooks/*` | `http://api:4000` |
+   | `academia.flynnpedroa.engineer` | *(vacío)* | `http://web:3000` |
 
-    location /api/ {
-        proxy_pass http://127.0.0.1:4000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto https;
-    }
+   **`/api/auth/*` tiene que ir primero**: es Auth.js de la web, no la api. Si
+   cae en la api, el login con Google se rompe.
 
-    location /webhooks/ {
-        proxy_pass http://127.0.0.1:4000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-}
+   Cloudflare crea solo el registro DNS (CNAME al tunnel). Si había un registro
+   `A` para ese hostname apuntando al VPS, borrarlo.
 
-server {
-    listen 80;
-    server_name academia.flynnpedroa.engineer;
-    return 301 https://$host$request_uri;
-}
-```
+### Qué agrega Cloudflare en cada request
 
-## DNS
+- `cf-connecting-ip`: IP real del cliente. La api la usa para el rate limit del
+  webhook de MP.
+- `x-forwarded-proto: https`: Auth.js arma las URLs de callback con https
+  (`trustHost: true` en `apps/web/auth.config.ts`).
 
-- Registro `A` `academia.flynnpedroa.engineer` → IP del VPS
-- Cuando migres a `laforja.dev`:
-  1. Registro A del nuevo dominio → misma IP
-  2. Certificado con `certbot --nginx -d laforja.dev -d www.laforja.dev`
-  3. Cambiar `server_name` en Nginx
-  4. Redirect 301 desde el subdominio viejo al nuevo (opcional pero recomendado)
+### Google OAuth
 
-## HTTPS (primera vez)
+En Google Cloud Console → Credentials → el OAuth client de La Forja:
+- Authorized JavaScript origin: `https://academia.flynnpedroa.engineer`
+- Authorized redirect URI: `https://academia.flynnpedroa.engineer/api/auth/callback/google`
 
-```bash
-sudo certbot --nginx -d academia.flynnpedroa.engineer
-# la renovación auto ya queda configurada por el paquete
-```
+### Webhook de MercadoPago
+
+En el panel de MP → Webhooks: URL
+`https://academia.flynnpedroa.engineer/webhooks/mercadopago`, eventos
+*Planes y suscripciones*. La clave secreta que muestra MP va en
+`MP_WEBHOOK_SECRET`.
+
+### Migrar a `laforja.dev` (más adelante)
+
+Agregar los mismos public hostnames con `laforja.dev` en el mismo tunnel,
+actualizar `FRONTEND_URL`, el callback de Google y la URL del webhook de MP.
+Redirect 301 desde el dominio viejo con una Redirect Rule de Cloudflare.
 
 ## Deploy con el Makefile
 
