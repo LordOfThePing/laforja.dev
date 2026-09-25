@@ -20,6 +20,7 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - ✅ Validación de JWT en la API + `GET /api/me`
 - ✅ Auth.js con Google en la web
 - ✅ Web conectada a la API real (catálogo, detalle `/herramientas/:slug`, desbloqueo)
+- ✅ Dashboard (`/dashboard`) y flujo de suscripción en la web (`/suscripcion` → MP → `/dashboard/gracias`)
 - ✅ Unlocks con cupo de 2/mes
 - ✅ Integración MP Preapproval + webhooks en la API (sin probar contra MP real)
 - ✅ Docker Compose (postgres + migrate + api + web)

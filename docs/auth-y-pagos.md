@@ -36,8 +36,8 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 
 ### Creación
 
-1. Usuario en dashboard → "Suscribirme"
-2. Frontend → `POST /api/subscription/create`
+1. Usuario en `/suscripcion` (o desde `/dashboard`) → "Continuar a MercadoPago"
+2. El servidor de la web → `POST /api/subscription/create`
 3. Backend crea Preapproval con la API REST de MP (`POST /preapproval`, sin SDK):
    ```json
    {
@@ -58,7 +58,8 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
    ya tiene una suscripción activa)
 5. Frontend redirige al usuario a `initPoint`
 6. Usuario paga en MP
-7. MP redirige a `back_url` con `preapproval_id`
+7. MP redirige a `back_url` con `preapproval_id`. `/dashboard/gracias` se
+   refresca cada 5 s hasta que el webhook deja la suscripción en `active`
 
 El backend **no** guarda nada al crear: el usuario queda vinculado recién cuando
 llega el webhook `authorized`, vía `external_reference`.
@@ -88,8 +89,8 @@ pierde acceso durante la renovación.
 
 ### Cancelación
 
-1. Usuario en dashboard → "Cancelar suscripción"
-2. Frontend → `POST /api/subscription/cancel` (409 `no_active_subscription` si
+1. Usuario en `/dashboard` → "Cancelar suscripción" → "Sí, cancelar"
+2. El servidor de la web → `POST /api/subscription/cancel` (409 `no_active_subscription` si
    no tiene una `active` o `paused`)
 3. Backend → `PUT /preapproval/:id` con status `cancelled` y marca
    `subscription_status = 'cancelled'` en el acto (el webhook después confirma lo mismo)
