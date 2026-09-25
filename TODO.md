@@ -4,8 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Unlocks: `POST /api/tools/:slug/unlock` con cupo de 2/mes — en curso por @claude —
-  `isLocked` por usuario en `/api/tools` y `/api/tools/:slug` con auth opcional
 - **Login con Google en `apps/web` (Auth.js v5)** — en curso por @claude —
   firma el JWT del contrato de `docs/auth-y-pagos.md`, guarda sesión, expone
   el token para pegarle a la API. Sin conflicto con la tarea de unlocks
