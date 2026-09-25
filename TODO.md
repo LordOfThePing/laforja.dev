@@ -4,7 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Makefile corrible desde el VPS + alias `ssh laforja` con RemoteCommand — en curso por @claude
+_(nada)_
 
 ## Pendiente
 

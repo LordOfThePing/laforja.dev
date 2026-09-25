@@ -20,3 +20,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-25 — Cloudflare Tunnel en el repo (cloudflared en compose + docs) — 1605aa5
 - 2026-09-25 — Makefile usable desde PowerShell/cmd en Windows — 411b9a9
 - 2026-09-25 — Makefile en Windows: recetas simples fallaban con CreateProcess — a582e85
+- 2026-09-25 — Makefile corrible desde el VPS + alias `ssh laforja` con RemoteCommand — c4c0f6c, b29fb90
