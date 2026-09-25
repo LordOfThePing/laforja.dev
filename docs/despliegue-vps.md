@@ -84,14 +84,23 @@ sudo certbot --nginx -d academia.flynnpedroa.engineer
 El `Makefile` de la raíz maneja el VPS por SSH. Correrlo desde Git Bash
 (`make help` lista todo).
 
-### Requisitos (tarea "VPS Hetzner" del TODO)
+### VPS (ya configurado el 2026-09-25)
 
-- Alias SSH `laforja` en `~/.ssh/config` que entre como el usuario `deploy`
-  (se puede cambiar con `SSH_HOST=...`)
-- `deploy` en el grupo `docker`, dueño de `/opt/laforja` (idealmente `chmod 750`,
-  porque ahí vive el `.env` con secretos)
-- Acceso de lectura del VPS al repo de GitHub (deploy key), para `make setup`
-  y el `git pull` de `make deploy`
+Hetzner `91.98.23.236` (Ubuntu 24.04), compartido con otros proyectos
+(`crm`, `poligiros`, `vuelto`, `n8n`, …), cada uno con su usuario `deploy-*`.
+
+- Usuario **`deploy-laforja`**: grupo `docker`, sin sudo ni password, solo
+  entra por clave. Lo crea `scripts/vps-setup.sh` (idempotente), corrido como root:
+  ```bash
+  ssh hetzner 'bash -s' -- "\"$(cat ~/.ssh/id_ed25519.pub)\"" < scripts/vps-setup.sh
+  ```
+- **`/opt/laforja`**: dueño `deploy-laforja`, `750` (ahí vive el `.env`)
+- Alias SSH local **`laforja`** en `~/.ssh/config` → `deploy-laforja@91.98.23.236`
+  (el Makefile lo usa por default; se cambia con `SSH_HOST=...`)
+- El repo es público: el VPS clona por HTTPS, no hace falta deploy key
+- **Puertos del host ocupados** por otros proyectos: `3000`, `3100`, `5432`,
+  `5435`, `5678`, `8080`, `27017`. En el `.env.production` poner
+  `WEB_PORT=3200` (y `API_PORT` si hiciera falta); Postgres no se publica al host
 
 ### Primera vez
 
