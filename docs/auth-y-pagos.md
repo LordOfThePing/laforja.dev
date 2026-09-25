@@ -64,7 +64,7 @@
 |---|---|---|
 | `GET` | `/api/me` | Perfil + estado de suscripción + unlocks del mes |
 | `GET` | `/api/tools` | Lista pública (todas, con flag `is_locked`) |
-| `GET` | `/api/tools/:slug` | Detalle (400 si no puede verla) |
+| `GET` | `/api/tools/:slug` | Detalle. Si está bloqueada devuelve solo el preview con `isLocked: true` (sirve para SEO); 404 si no existe o no está publicada |
 | `POST` | `/api/tools/:slug/unlock` | Registra unlock, devuelve prompt + video |
 | `POST` | `/api/subscription/create` | Crea Preapproval, devuelve `init_point` |
 | `POST` | `/api/subscription/cancel` | Cancela suscripción |

@@ -15,8 +15,8 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 
 - ✅ Docs de referencia (arquitectura, schema, auth, pagos, deploy, roadmap, brief de diseño)
 - ✅ Bootstrap del frontend (`apps/web`, Astro 5 + React) con landing lista para iterar
-- ⏳ Backend (`apps/api`, Hono + Bun) — pendiente
-- ⏳ DB (Postgres + Drizzle) — pendiente
+- ✅ Bootstrap del backend (`apps/api`, Hono + Bun) con endpoints públicos de herramientas
+- ✅ Schema v1 en Drizzle + migración inicial + seed
 - ⏳ Auth.js con Google — pendiente
 - ⏳ Integración MP Preapproval + webhooks — pendiente
 - ⏳ Docker Compose + Nginx en VPS — pendiente
@@ -39,6 +39,22 @@ bun run dev
 # → http://localhost:3000
 ```
 
+## Cómo correr el backend
+
+Necesitás un Postgres 16 accesible (ver `apps/api/.env.example`).
+
+```bash
+cd apps/api
+bun install
+cp .env.example .env      # ajustá DATABASE_URL
+bun run db:push           # aplica el schema
+bun run db:seed           # carga categorías + herramientas de ejemplo
+bun run dev
+# → http://localhost:4000/health
+```
+
+Tests (usan PGlite en memoria, no necesitan Postgres): `bun test`.
+
 ## Documentos de referencia
 
 | Doc | Contenido |
@@ -55,6 +71,11 @@ bun run dev
 ```
 academy/
 ├── apps/
+│   ├── api/               # Hono + Bun + Drizzle (REST)
+│   │   ├── drizzle/        # migraciones generadas
+│   │   └── src/
+│   │       ├── db/         # schema, cliente, seed
+│   │       └── routes/
 │   └── web/               # Astro + React (landing, dashboard, auth)
 │       ├── src/
 │       │   ├── components/

@@ -24,14 +24,15 @@ Diseñado para v1 (herramientas + prompts) con hooks preparados para v2 (cursos/
 | `slug` | text unique | para URLs |
 | `title` | text | |
 | `short_description` | text | público, para preview + SEO |
-| `long_description` | text | visible al desbloquear |
-| `youtube_url` | text | |
+| `long_description` | text nullable | visible al desbloquear |
+| `youtube_url` | text nullable | |
 | `prompt_body` | text | el prompt en sí |
 | `tier` | enum | `free` / `premium` |
 | `category_id` | uuid fk → categories | |
 | `tags` | text[] | |
-| `cover_image_url` | text | |
-| `published_at` | timestamptz | |
+| `duration_seconds` | int nullable | duración del video, para las cards |
+| `cover_image_url` | text nullable | |
+| `published_at` | timestamptz nullable | `null` o futura = no publicada |
 | `created_at` | timestamptz | |
 
 ### `categories`
