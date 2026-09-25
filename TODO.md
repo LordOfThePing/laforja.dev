@@ -4,7 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-_(nada)_
+- Makefile usable desde PowerShell/cmd en Windows (forzar bash de Git) — en curso por @claude
 
 ## Pendiente
 
