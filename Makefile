@@ -1,5 +1,13 @@
-# Deploy de La Forja al VPS. Correr desde Git Bash (o cualquier shell POSIX).
-# `make help` lista los targets.
+# Deploy de La Forja al VPS. `make help` lista los targets.
+
+# Make para Windows usa cmd.exe si no hay sh.exe en el PATH, y las recetas
+# necesitan grep/awk/test. Forzamos el bash de Git for Windows (no el de
+# System32, que es WSL). Otra ruta: make GIT_BIN=...
+ifeq ($(OS),Windows_NT)
+GIT_BIN ?= C:/Program Files/Git/usr/bin
+SHELL := $(GIT_BIN)/bash.exe
+export PATH := $(GIT_BIN);$(PATH)
+endif
 
 SSH_HOST   ?= laforja
 REMOTE_DIR ?= /opt/laforja

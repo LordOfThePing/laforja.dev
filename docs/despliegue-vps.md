@@ -83,8 +83,10 @@ Redirect 301 desde el dominio viejo con una Redirect Rule de Cloudflare.
 
 ## Deploy con el Makefile
 
-El `Makefile` de la raíz maneja el VPS por SSH. Correrlo desde Git Bash
-(`make help` lista todo).
+El `Makefile` de la raíz maneja el VPS por SSH (`make help` lista todo). En
+Windows se puede correr desde PowerShell o cmd: las recetas usan el bash de Git
+for Windows (`C:/Program Files/Git/usr/bin`; si está en otro lado,
+`make GIT_BIN=... <target>`).
 
 ### VPS (ya configurado el 2026-09-25)
 
