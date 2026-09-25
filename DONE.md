@@ -6,3 +6,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 ---
 
 - 2026-09-25 — Bootstrap del workflow (`CLAUDE.md`, `TODO.md`, `DONE.md`)
+- 2026-09-25 — Bootstrap del backend `apps/api` (Hono + Bun + Drizzle, schema v1, endpoints públicos, seed) — 433c67d
