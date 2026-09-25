@@ -1,4 +1,5 @@
 # Deploy de La Forja al VPS. `make help` lista los targets.
+# Corre desde tu máquina (por SSH) o dentro del VPS en /opt/laforja (directo).
 
 # Make para Windows usa cmd.exe si no hay sh.exe en el PATH, y las recetas
 # necesitan grep/awk/test. Forzamos el bash de Git for Windows (no el de
@@ -21,11 +22,22 @@ BRANCH     ?= main
 ENV_FILE   ?= .env.production
 SERVICE    ?=
 
-REMOTE  := ssh $(SSH_HOST)
+ON_VPS ?= $(if $(filter $(REMOTE_DIR),$(CURDIR)),1)
+
+ifeq ($(ON_VPS),1)
+REMOTE     := sh -c
+REMOTE_TTY := sh -c
+else
+# El alias SSH abre una shell en /opt/laforja con RemoteCommand + RequestTTY;
+# ssh rechaza RemoteCommand junto con un comando (y scp/sftp), así que se anulan acá.
+SSH_OPTS   := -o RemoteCommand=none
+REMOTE     := ssh $(SSH_OPTS) -o RequestTTY=no $(SSH_HOST)
+REMOTE_TTY := ssh $(SSH_OPTS) -t $(SSH_HOST)
+endif
 RCOMPOSE = $(REMOTE) "cd $(REMOTE_DIR) && docker compose $(1)"
 
 .DEFAULT_GOAL := help
-.PHONY: help setup env-push env-diff check-pushed deploy up down restart ps logs \
+.PHONY: help setup env-push env-diff local-only check-pushed deploy up down restart ps logs \
         migrate seed psql shell dev-up dev-down dev-seed test
 
 help: ## Lista los targets
@@ -36,12 +48,12 @@ help: ## Lista los targets
 setup: ## Primera vez: clona el repo en el VPS
 	$(REMOTE) "test -d $(REMOTE_DIR)/.git || git clone --branch $(BRANCH) $(REPO_URL) $(REMOTE_DIR)"
 
-env-push: ## Sube .env.production (o ENV_FILE=...) al VPS como .env (permisos 600)
+env-push: local-only ## Sube .env.production (o ENV_FILE=...) al VPS como .env (permisos 600)
 	@test -f $(ENV_FILE) || { echo "Falta $(ENV_FILE) (copiá .env.example y completalo)"; exit 1; }
-	scp $(ENV_FILE) $(SSH_HOST):$(REMOTE_DIR)/.env.tmp
+	scp $(SSH_OPTS) $(ENV_FILE) $(SSH_HOST):$(REMOTE_DIR)/.env.tmp
 	$(REMOTE) "chmod 600 $(REMOTE_DIR)/.env.tmp && mv $(REMOTE_DIR)/.env.tmp $(REMOTE_DIR)/.env"
 
-env-diff: ## Compara los nombres de variables de .env.production con el .env del VPS (solo nombres)
+env-diff: local-only ## Compara los nombres de variables de .env.production con el .env del VPS (solo nombres)
 	@grep -E '^[A-Z_]+=' $(ENV_FILE) | cut -d= -f1 | sort > "$${TMPDIR:-/tmp}/laforja-env-keys"
 	@$(REMOTE) "grep -E '^[A-Z_]+=' $(REMOTE_DIR)/.env | cut -d= -f1 | sort" \
 		| diff "$${TMPDIR:-/tmp}/laforja-env-keys" - && echo "Mismas variables."
@@ -70,7 +82,7 @@ ps: ## Estado de los contenedores en el VPS
 	$(call RCOMPOSE,ps)
 
 logs: ## Sigue los logs: make logs [SERVICE=api]
-	$(REMOTE) -t "cd $(REMOTE_DIR) && docker compose logs -f --tail=200 $(SERVICE)"
+	$(REMOTE_TTY) "cd $(REMOTE_DIR) && docker compose logs -f --tail=200 $(SERVICE)"
 
 migrate: ## Corre las migraciones en el VPS
 	$(call RCOMPOSE,run --rm migrate)
@@ -79,11 +91,11 @@ seed: ## Corre el seed en el VPS (idempotente)
 	$(call RCOMPOSE,run --rm api bun run db:seed)
 
 psql: ## Consola psql en el Postgres del VPS
-	$(REMOTE) -t "cd $(REMOTE_DIR) && docker compose exec postgres psql -U laforja laforja"
+	$(REMOTE_TTY) "cd $(REMOTE_DIR) && docker compose exec postgres psql -U laforja laforja"
 
 shell: ## Shell en un contenedor: make shell SERVICE=api
 	@test -n "$(SERVICE)" || { echo "Indicá SERVICE=api|web|postgres"; exit 1; }
-	$(REMOTE) -t "cd $(REMOTE_DIR) && docker compose exec $(SERVICE) sh"
+	$(REMOTE_TTY) "cd $(REMOTE_DIR) && docker compose exec $(SERVICE) sh"
 
 # --- Local -------------------------------------------------------------------
 

@@ -88,6 +88,11 @@ Windows se puede correr desde PowerShell o cmd: las recetas usan el bash de Git
 for Windows (`C:/Program Files/Git/usr/bin`; si está en otro lado,
 `make GIT_BIN=... <target>`).
 
+También se puede correr **dentro del VPS**, parado en `/opt/laforja`
+(`ssh laforja` ya entra ahí): los mismos targets (`deploy`, `ps`, `logs`, …)
+corren directo sin SSH. `env-push` y `env-diff` solo tienen sentido desde tu
+máquina. Fuera de ese directorio se fuerza con `ON_VPS=1`.
+
 ### VPS (ya configurado el 2026-09-25)
 
 Hetzner `91.98.23.236` (Ubuntu 24.04), compartido con otros proyectos
@@ -100,7 +105,18 @@ Hetzner `91.98.23.236` (Ubuntu 24.04), compartido con otros proyectos
   ```
 - **`/opt/laforja`**: dueño `deploy-laforja`, `750` (ahí vive el `.env`)
 - Alias SSH local **`laforja`** en `~/.ssh/config` → `deploy-laforja@91.98.23.236`
-  (el Makefile lo usa por default; se cambia con `SSH_HOST=...`)
+  (el Makefile lo usa por default; se cambia con `SSH_HOST=...`). Abre una
+  shell en `/opt/laforja`; el Makefile anula ese `RemoteCommand` con
+  `-o RemoteCommand=none`:
+  ```
+  Host laforja
+    HostName 91.98.23.236
+    User deploy-laforja
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    RequestTTY yes
+    RemoteCommand cd /opt/laforja && exec bash -l
+  ```
 - El repo es público: el VPS clona por HTTPS, no hace falta deploy key
 - **Puertos del host ocupados** por otros proyectos: `3000`, `3100`, `5432`,
   `5435`, `5678`, `8080`, `27017`. En el `.env.production` poner
