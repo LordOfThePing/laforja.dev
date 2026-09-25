@@ -1,5 +1,9 @@
 ---
-// Nav: sticky, translucent, con logo "⚒" y CTA de login
+import { getSession } from 'auth-astro/server';
+
+const session = await getSession(Astro.request);
+const user = session?.user;
+const displayName = user?.name?.split(' ')[0] ?? user?.email ?? null;
 ---
 
 <nav class="nav">
@@ -26,10 +30,20 @@
     </div>
 
     <div class="nav__cta">
-      <a href="/login" class="btn btn--ghost">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z" fill="currentColor" opacity=".8"/></svg>
-        Ingresar
-      </a>
+      {user ? (
+        <>
+          <span class="nav__user" title={user.email ?? undefined}>
+            {user.image && <img class="nav__avatar" src={user.image} alt="" />}
+            <span class="nav__username">{displayName}</span>
+          </span>
+          <button id="nav-signout" class="btn btn--ghost" type="button">Salir</button>
+        </>
+      ) : (
+        <a href="/login" class="btn btn--ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z" fill="currentColor" opacity=".8"/></svg>
+          Ingresar
+        </a>
+      )}
     </div>
   </div>
 </nav>
@@ -98,7 +112,38 @@
 
   .nav__cta { display: flex; align-items: center; gap: 12px; }
 
+  .nav__user {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg-elev);
+    color: var(--ink-dim);
+    font-size: 13px;
+  }
+  .nav__avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .nav__username {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   @media (min-width: 780px) {
     .nav__links { display: inline-flex; }
   }
 </style>
+
+<script>
+  import { signOut } from 'auth-astro/client';
+  document.getElementById('nav-signout')?.addEventListener('click', () => {
+    signOut();
+  });
+</script>

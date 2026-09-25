@@ -8,12 +8,17 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "typecheck": "astro check"
   },
   "dependencies": {
-    "astro": "^5.0.0",
-    "@astrojs/react": "^4.0.0",
+    "@astrojs/check": "^0.9.4",
     "@astrojs/node": "^9.0.0",
+    "@astrojs/react": "^4.0.0",
+    "@auth/core": "^0.37.4",
+    "astro": "^5.0.0",
+    "auth-astro": "^4.2.0",
+    "jose": "^5.9.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
