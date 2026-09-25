@@ -4,6 +4,7 @@ import type { Db } from '../db/client.ts';
 import { subscriptionEvents, users } from '../db/schema.ts';
 import type { MercadoPago, Preapproval } from '../lib/mercadopago.ts';
 import { verifyMpSignature } from '../lib/mp-signature.ts';
+import { type RateLimitRule, clientIp, rateLimit } from '../lib/rate-limit.ts';
 
 // MP cobra en next_payment_date y el webhook del cobro llega después; sin este margen el
 // suscriptor perdería el acceso unas horas en cada renovación.
@@ -20,6 +21,7 @@ type Options = {
   db: Db;
   mp: MercadoPago;
   webhookSecret: string;
+  limit: RateLimitRule;
 };
 
 function periodEnd(pre: Preapproval): Date | null {
@@ -81,8 +83,10 @@ async function resolveUpdate(
   return { update: null, userId: null };
 }
 
-export function webhookRoutes({ db, mp, webhookSecret }: Options) {
+export function webhookRoutes({ db, mp, webhookSecret, limit }: Options) {
   const app = new Hono();
+  // Antes de validar la firma: frena el spam antes de gastar HMAC y consultas a MP.
+  app.use(rateLimit(limit, clientIp));
 
   app.post('/mercadopago', async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as {

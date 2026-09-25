@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import type { Db } from './db/client.ts';
 import { type MercadoPago, MercadoPagoError } from './lib/mercadopago.ts';
+import type { RateLimitRule } from './lib/rate-limit.ts';
 import { meRoutes } from './routes/me.ts';
 import { subscriptionRoutes } from './routes/subscription.ts';
 import { toolsRoutes } from './routes/tools.ts';
@@ -14,7 +15,17 @@ type AppOptions = {
   frontendUrl: string;
   mp: MercadoPago;
   mpWebhookSecret: string;
+  rateLimits?: Partial<RateLimits>;
   log?: boolean;
+};
+
+type RateLimits = { unlock: RateLimitRule; webhook: RateLimitRule };
+
+// Unlock: por usuario; el cupo ya acota las escrituras, esto frena el martilleo.
+// Webhook: por IP y generoso, porque MP manda ráfagas legítimas desde pocas IPs.
+const DEFAULT_RATE_LIMITS: RateLimits = {
+  unlock: { limit: 10, windowMs: 60_000 },
+  webhook: { limit: 300, windowMs: 60_000 },
 };
 
 export function createApp({
@@ -23,18 +34,20 @@ export function createApp({
   frontendUrl,
   mp,
   mpWebhookSecret,
+  rateLimits,
   log = true,
 }: AppOptions) {
   const app = new Hono();
+  const limits = { ...DEFAULT_RATE_LIMITS, ...rateLimits };
 
   if (log) app.use(logger());
   app.use('/api/*', cors({ origin: frontendUrl, credentials: true }));
 
   app.get('/health', (c) => c.json({ ok: true }));
-  app.route('/api/tools', toolsRoutes(db, authSecret));
+  app.route('/api/tools', toolsRoutes(db, authSecret, limits.unlock));
   app.route('/api/me', meRoutes(db, authSecret));
   app.route('/api/subscription', subscriptionRoutes({ db, authSecret, frontendUrl, mp }));
-  app.route('/webhooks', webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret }));
+  app.route('/webhooks', webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook }));
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
   app.onError((err, c) => {

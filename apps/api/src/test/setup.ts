@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { sign } from 'hono/jwt';
 import { createApp } from '../app.ts';
+import type { RateLimitRule } from '../lib/rate-limit.ts';
 import { JWT_AUDIENCE } from '../auth.ts';
 import type { Db } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
@@ -12,7 +13,9 @@ import { FakeMercadoPago } from './fake-mp.ts';
 export const TEST_SECRET = 'secreto-de-test';
 export const TEST_MP_WEBHOOK_SECRET = 'secreto-webhook-mp';
 
-export async function createTestApp() {
+export async function createTestApp(
+  rateLimits?: Partial<{ unlock: RateLimitRule; webhook: RateLimitRule }>,
+) {
   const pg = drizzle(new PGlite(), { schema });
   await migrate(pg, { migrationsFolder: './drizzle' });
   const db = pg as unknown as Db;
@@ -24,6 +27,7 @@ export async function createTestApp() {
     frontendUrl: 'http://localhost:3000',
     mp,
     mpWebhookSecret: TEST_MP_WEBHOOK_SECRET,
+    rateLimits,
     log: false,
   });
   return { app, db, mp };

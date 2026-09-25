@@ -1,10 +1,11 @@
 import { and, desc, eq, isNotNull, lte, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { type OptionalAuthEnv, optionalAuth, requireAuth } from '../auth.ts';
+import { type AuthEnv, type OptionalAuthEnv, optionalAuth, requireAuth } from '../auth.ts';
 import type { Db } from '../db/client.ts';
 import { categories, tools, unlocks, users } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import { monthKey } from '../lib/month.ts';
+import { type RateLimitRule, rateLimit } from '../lib/rate-limit.ts';
 import {
   FREE_UNLOCKS_PER_MONTH,
   type Viewer,
@@ -55,7 +56,7 @@ async function loadViewer(db: Db, user: Viewer['user']): Promise<Viewer> {
   return { user, unlockedToolIds: await unlockedToolIds(db, user.id, monthKey()) };
 }
 
-export function toolsRoutes(db: Db, authSecret: string) {
+export function toolsRoutes(db: Db, authSecret: string, unlockLimit: RateLimitRule) {
   const app = new Hono<OptionalAuthEnv>();
 
   function findPublished(slug: string) {
@@ -90,42 +91,47 @@ export function toolsRoutes(db: Db, authSecret: string) {
     return c.json({ tool: presentDetail(row, canView(row, viewer)) });
   });
 
-  app.post('/:slug/unlock', requireAuth(db, authSecret), async (c) => {
-    const user = c.get('user');
-    const row = await findPublished(c.req.param('slug'));
-    if (!row) return c.json({ error: 'not_found' }, 404);
+  app.post(
+    '/:slug/unlock',
+    requireAuth(db, authSecret),
+    rateLimit<AuthEnv>(unlockLimit, (c) => c.get('user').id),
+    async (c) => {
+      const user = c.get('user');
+      const row = await findPublished(c.req.param('slug'));
+      if (!row) return c.json({ error: 'not_found' }, 404);
 
-    const month = monthKey();
-    const result = await db.transaction(async (tx) => {
-      // Lock sobre la fila del usuario: sin esto, dos unlocks concurrentes de herramientas
-      // distintas leen el mismo conteo y ambos pasan, dejando al usuario con 3 en el mes.
-      await tx.select({ id: users.id }).from(users).where(eq(users.id, user.id)).for('update');
+      const month = monthKey();
+      const result = await db.transaction(async (tx) => {
+        // Lock sobre la fila del usuario: sin esto, dos unlocks concurrentes de herramientas
+        // distintas leen el mismo conteo y ambos pasan, dejando al usuario con 3 en el mes.
+        await tx.select({ id: users.id }).from(users).where(eq(users.id, user.id)).for('update');
 
-      const unlocked = await unlockedToolIds(tx, user.id, month);
+        const unlocked = await unlockedToolIds(tx, user.id, month);
 
-      if (row.tier === 'free' || hasSubscriptionAccess(user) || unlocked.has(row.id)) {
-        return { ok: true as const, used: unlocked.size, created: false };
+        if (row.tier === 'free' || hasSubscriptionAccess(user) || unlocked.has(row.id)) {
+          return { ok: true as const, used: unlocked.size, created: false };
+        }
+        if (unlocked.size >= FREE_UNLOCKS_PER_MONTH) {
+          return { ok: false as const, used: unlocked.size };
+        }
+
+        await tx
+          .insert(unlocks)
+          .values({ userId: user.id, toolId: row.id, monthKey: month })
+          .onConflictDoNothing();
+        return { ok: true as const, used: unlocked.size + 1, created: true };
+      });
+
+      const quota = { monthKey: month, ...quotaSummary(result.used) };
+      if (!result.ok) {
+        return c.json({ error: 'quota_exceeded', unlocks: quota }, 403);
       }
-      if (unlocked.size >= FREE_UNLOCKS_PER_MONTH) {
-        return { ok: false as const, used: unlocked.size };
-      }
-
-      await tx
-        .insert(unlocks)
-        .values({ userId: user.id, toolId: row.id, monthKey: month })
-        .onConflictDoNothing();
-      return { ok: true as const, used: unlocked.size + 1, created: true };
-    });
-
-    const quota = { monthKey: month, ...quotaSummary(result.used) };
-    if (!result.ok) {
-      return c.json({ error: 'quota_exceeded', unlocks: quota }, 403);
-    }
-    return c.json(
-      { tool: presentDetail(row, true), unlocks: quota },
-      result.created ? 201 : 200,
-    );
-  });
+      return c.json(
+        { tool: presentDetail(row, true), unlocks: quota },
+        result.created ? 201 : 200,
+      );
+    },
+  );
 
   return app;
 }
