@@ -19,7 +19,7 @@ export function createApp({ db, authSecret, frontendUrl, log = true }: AppOption
   app.use('/api/*', cors({ origin: frontendUrl, credentials: true }));
 
   app.get('/health', (c) => c.json({ ok: true }));
-  app.route('/api/tools', toolsRoutes(db));
+  app.route('/api/tools', toolsRoutes(db, authSecret));
   app.route('/api/me', meRoutes(db, authSecret));
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));

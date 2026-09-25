@@ -8,6 +8,7 @@ export const JWT_AUDIENCE = 'laforja-api';
 
 export type AuthUser = typeof users.$inferSelect;
 export type AuthEnv = { Variables: { user: AuthUser } };
+export type OptionalAuthEnv = { Variables: { user: AuthUser | null } };
 
 type Claims = {
   sub: string;
@@ -52,21 +53,39 @@ async function upsertUser(db: Db, claims: Claims): Promise<AuthUser> {
   return user;
 }
 
+type AuthResult = { kind: 'anonymous' } | { kind: 'invalid' } | { kind: 'user'; user: AuthUser };
+
+async function authenticate(db: Db, secret: string, header: string | undefined): Promise<AuthResult> {
+  if (!header) return { kind: 'anonymous' };
+  const token = header.match(/^Bearer (.+)$/)?.[1];
+  if (!token) return { kind: 'invalid' };
+
+  let claims: Claims | null;
+  try {
+    claims = parseClaims(await verify(token, secret, { alg: 'HS256', aud: JWT_AUDIENCE }));
+  } catch {
+    claims = null;
+  }
+  if (!claims) return { kind: 'invalid' };
+  return { kind: 'user', user: await upsertUser(db, claims) };
+}
+
 export function requireAuth(db: Db, secret: string) {
   return createMiddleware<AuthEnv>(async (c, next) => {
-    const header = c.req.header('Authorization');
-    const token = header?.match(/^Bearer (.+)$/)?.[1];
-    if (!token) return c.json({ error: 'unauthorized' }, 401);
+    const result = await authenticate(db, secret, c.req.header('Authorization'));
+    if (result.kind !== 'user') return c.json({ error: 'unauthorized' }, 401);
+    c.set('user', result.user);
+    await next();
+  });
+}
 
-    let claims: Claims | null;
-    try {
-      claims = parseClaims(await verify(token, secret, { alg: 'HS256', aud: JWT_AUDIENCE }));
-    } catch {
-      claims = null;
-    }
-    if (!claims) return c.json({ error: 'unauthorized' }, 401);
-
-    c.set('user', await upsertUser(db, claims));
+// Sin header se sigue como anónimo; un token presente pero inválido es 401 para que
+// el cliente se entere de que tiene que renovar la sesión en vez de ver todo bloqueado.
+export function optionalAuth(db: Db, secret: string) {
+  return createMiddleware<OptionalAuthEnv>(async (c, next) => {
+    const result = await authenticate(db, secret, c.req.header('Authorization'));
+    if (result.kind === 'invalid') return c.json({ error: 'unauthorized' }, 401);
+    c.set('user', result.kind === 'user' ? result.user : null);
     await next();
   });
 }

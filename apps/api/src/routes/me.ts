@@ -5,8 +5,7 @@ import type { Db } from '../db/client.ts';
 import { tools, unlocks } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import { monthKey } from '../lib/month.ts';
-
-export const FREE_UNLOCKS_PER_MONTH = 2;
+import { quotaSummary } from '../lib/unlocks.ts';
 
 export function meRoutes(db: Db, authSecret: string) {
   const app = new Hono<AuthEnv>();
@@ -37,9 +36,7 @@ export function meRoutes(db: Db, authSecret: string) {
       },
       unlocks: {
         monthKey: currentMonth,
-        limit: FREE_UNLOCKS_PER_MONTH,
-        used: unlockedThisMonth.length,
-        remaining: Math.max(0, FREE_UNLOCKS_PER_MONTH - unlockedThisMonth.length),
+        ...quotaSummary(unlockedThisMonth.length),
         tools: unlockedThisMonth,
       },
     });
