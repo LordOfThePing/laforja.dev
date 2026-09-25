@@ -1,11 +1,18 @@
 import Google from '@auth/core/providers/google';
 import { defineConfig } from 'auth-astro';
 
+// Vite reemplaza import.meta.env.* privadas en el build, así que en la imagen de Docker
+// quedarían undefined. process.env se lee en runtime; import.meta.env cubre `astro dev`.
+const env = (name: string): string | undefined => process.env[name] ?? import.meta.env[name];
+
 export default defineConfig({
+  secret: env('AUTH_SECRET'),
+  // Detrás de Cloudflare Tunnel el Host lo pone el proxy; sin esto Auth.js rechaza el request.
+  trustHost: true,
   providers: [
     Google({
-      clientId: import.meta.env.AUTH_GOOGLE_ID,
-      clientSecret: import.meta.env.AUTH_GOOGLE_SECRET,
+      clientId: env('AUTH_GOOGLE_ID'),
+      clientSecret: env('AUTH_GOOGLE_SECRET'),
     }),
   ],
   callbacks: {

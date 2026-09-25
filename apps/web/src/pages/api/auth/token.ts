@@ -14,7 +14,8 @@ export const GET: APIRoute = async ({ request }) => {
     return jsonError('unauthorized', 401);
   }
 
-  const secret = import.meta.env.AUTH_SECRET;
+  // Ver auth.config.ts: process.env en runtime, import.meta.env en `astro dev`.
+  const secret = process.env.AUTH_SECRET ?? import.meta.env.AUTH_SECRET;
   if (!secret) {
     console.error('AUTH_SECRET no está definida en apps/web');
     return jsonError('server_misconfigured', 500);
