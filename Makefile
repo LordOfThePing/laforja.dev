@@ -7,6 +7,11 @@ ifeq ($(OS),Windows_NT)
 GIT_BIN ?= C:/Program Files/Git/usr/bin
 SHELL := $(GIT_BIN)/bash.exe
 export PATH := $(GIT_BIN);$(PATH)
+# Con un SHELL tipo Unix, make de Windows igual ejecuta las líneas "simples"
+# (sin ; | && etc.) por CreateProcess y no encuentra scp/ssh. .ONESHELL fuerza
+# que toda receta pase por bash; -e mantiene el corte al primer error.
+.ONESHELL:
+.SHELLFLAGS := -ec
 endif
 
 SSH_HOST   ?= laforja
