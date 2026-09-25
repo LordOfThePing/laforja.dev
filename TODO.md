@@ -4,7 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Fix 403 "Cross-site POST" en login con Google detrás del tunnel (checkOrigin de Astro) — en curso por @claude
+_(nada)_
 
 ## Pendiente
 
