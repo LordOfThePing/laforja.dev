@@ -4,10 +4,33 @@
 
 1. Usuario clickea "Ingresar con Google" en la web
 2. Auth.js redirige a Google
-3. Callback → Auth.js valida y hace `upsert` en `users`
-4. Auth.js emite session cookie + JWT firmado con `AUTH_SECRET`
-5. El frontend envía el JWT en `Authorization: Bearer` en cada request a la API
-6. El backend valida el JWT usando la misma secret
+3. Callback → Auth.js valida y guarda la sesión en su cookie
+4. Para hablar con la API, la web firma **su propio** JWT (ver contrato abajo) —
+   no reenvía el token interno de Auth.js, que por default es un JWE cifrado
+5. El frontend envía ese JWT en `Authorization: Bearer` en cada request a la API
+6. El backend valida el JWT con la misma `AUTH_SECRET` y hace `upsert` en
+   `users` por `google_id` (la web no tiene acceso a la DB)
+
+### Contrato del JWT web → API
+
+- Algoritmo: `HS256`, firmado con `AUTH_SECRET`
+- Claims obligatorios:
+  - `sub` — el `sub` de Google (se guarda como `users.google_id`)
+  - `email`
+  - `aud` — siempre `"laforja-api"`
+  - `exp` — obligatorio; tokens sin vencimiento se rechazan
+- Claims opcionales: `name`, `picture` (→ `users.avatar_url`)
+- Cualquier token inválido, vencido o incompleto → `401 {"error":"unauthorized"}`
+- En cada request autenticado se actualizan `email`, `name` y `avatar_url`
+  desde los claims
+
+Para probar sin la web: `cd apps/api && bun run token:dev [email]` imprime un
+token válido por 7 días firmado con el `AUTH_SECRET` del `.env`.
+
+### Cupo mensual
+
+`month_key` se calcula en hora de Argentina (`America/Argentina/Buenos_Aires`),
+así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 
 ## MercadoPago Preapproval — suscripción
 
@@ -62,7 +85,7 @@
 
 | Método | Path | Descripción |
 |---|---|---|
-| `GET` | `/api/me` | Perfil + estado de suscripción + unlocks del mes |
+| `GET` | `/api/me` | Perfil + estado de suscripción (`hasAccess`) + unlocks del mes (`used`, `remaining`, `tools`). Requiere auth |
 | `GET` | `/api/tools` | Lista pública (todas, con flag `is_locked`) |
 | `GET` | `/api/tools/:slug` | Detalle. Si está bloqueada devuelve solo el preview con `isLocked: true` (sirve para SEO); 404 si no existe o no está publicada |
 | `POST` | `/api/tools/:slug/unlock` | Registra unlock, devuelve prompt + video |

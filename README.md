@@ -17,7 +17,8 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - ✅ Bootstrap del frontend (`apps/web`, Astro 5 + React) con landing lista para iterar
 - ✅ Bootstrap del backend (`apps/api`, Hono + Bun) con endpoints públicos de herramientas
 - ✅ Schema v1 en Drizzle + migración inicial + seed
-- ⏳ Auth.js con Google — pendiente
+- ✅ Validación de JWT en la API + `GET /api/me`
+- ⏳ Auth.js con Google en la web — pendiente
 - ⏳ Integración MP Preapproval + webhooks — pendiente
 - ⏳ Docker Compose + Nginx en VPS — pendiente
 
@@ -51,6 +52,8 @@ bun run db:push           # aplica el schema
 bun run db:seed           # carga categorías + herramientas de ejemplo
 bun run dev
 # → http://localhost:4000/health
+
+bun run token:dev         # token para probar endpoints autenticados
 ```
 
 Tests (usan PGlite en memoria, no necesitan Postgres): `bun test`.

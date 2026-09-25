@@ -88,11 +88,14 @@ SELECT
     WHEN u.subscription_status = 'active'
      AND (u.current_period_end IS NULL OR u.current_period_end > now())
      THEN true
+    WHEN u.subscription_status = 'cancelled'
+     AND u.current_period_end > now()
+     THEN true
     WHEN (
       SELECT COUNT(DISTINCT tool_id)
       FROM unlocks
       WHERE user_id = u.id
-        AND month_key = to_char(now(), 'YYYY-MM')
+        AND month_key = to_char(now() AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM')
     ) < 2 THEN true
     ELSE false
   END AS can_view
