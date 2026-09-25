@@ -69,6 +69,8 @@ docker compose run --rm api bun run db:seed
 # web → http://localhost:3000 · api → http://localhost:4000/health
 ```
 
+Deploy al VPS: `make help` y [despliegue-vps.md](docs/despliegue-vps.md#deploy-con-el-makefile).
+
 ## Documentos de referencia
 
 | Doc | Contenido |

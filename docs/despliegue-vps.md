@@ -79,14 +79,40 @@ sudo certbot --nginx -d academia.flynnpedroa.engineer
 # la renovación auto ya queda configurada por el paquete
 ```
 
-## Deploy workflow (manual v1)
+## Deploy con el Makefile
+
+El `Makefile` de la raíz maneja el VPS por SSH. Correrlo desde Git Bash
+(`make help` lista todo).
+
+### Requisitos (tarea "VPS Hetzner" del TODO)
+
+- Alias SSH `laforja` en `~/.ssh/config` que entre como el usuario `deploy`
+  (se puede cambiar con `SSH_HOST=...`)
+- `deploy` en el grupo `docker`, dueño de `/opt/laforja` (idealmente `chmod 750`,
+  porque ahí vive el `.env` con secretos)
+- Acceso de lectura del VPS al repo de GitHub (deploy key), para `make setup`
+  y el `git pull` de `make deploy`
+
+### Primera vez
 
 ```bash
-ssh vps
-cd /opt/laforja
-git pull
-docker compose up -d --build --wait   # migrate corre solo antes de levantar api
-docker compose run --rm api bun run db:seed   # solo la primera vez / al cambiar el seed
+cp .env.example .env.production   # completar con valores de producción (está en .gitignore)
+make setup                        # clona el repo en /opt/laforja
+make env-push                     # scp de .env.production → /opt/laforja/.env (600)
+make deploy                       # pull + build + up; migrate corre solo antes de api
+make seed                         # carga categorías y herramientas
 ```
 
-Automatizable después con el Makefile de deploy (tarea pendiente) o GitHub Actions.
+### Día a día
+
+| Comando | Qué hace |
+|---|---|
+| `make deploy` | Falla si tu `HEAD` no está pusheado a `origin/main` (el VPS deploya lo que hay en GitHub). Después: `git pull --ff-only` + `docker compose up -d --build --wait` |
+| `make env-push` | Sube `.env.production` (o `ENV_FILE=...`). Después correr `make up` o `make deploy` para que los contenedores lo tomen |
+| `make env-diff` | Compara solo los **nombres** de variables local vs VPS, sin mostrar valores |
+| `make logs [SERVICE=api]` | Sigue los logs |
+| `make ps` / `up` / `down` / `restart SERVICE=api` | Manejo de contenedores |
+| `make migrate` / `make seed` | Migraciones / seed a mano |
+| `make psql` / `make shell SERVICE=api` | Consola en la DB o en un contenedor |
+
+Local: `make dev-up`, `make dev-seed`, `make dev-down`, `make test`.
