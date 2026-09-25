@@ -13,3 +13,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-25 — Suscripción MP Preapproval + webhook en `apps/api` — 34ee48b
 - 2026-09-25 — Dockerizar la app (Dockerfiles api/web + docker-compose con migrate) — 6115bf0
 - 2026-09-25 — Rate limit en unlock y webhook de MP — 05a32fb
+- 2026-09-25 — Makefile de deploy — 7a22745
