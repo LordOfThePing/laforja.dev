@@ -4,6 +4,7 @@ import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
 import { type Me, type ToolDetail, formatDuration, getMe, getTool, unlockTool } from '~/lib/api';
+import { loginUrl } from '~/lib/redirect';
 import { youtubeEmbedUrl } from '~/lib/youtube';
 
 const slug = Astro.params.slug ?? '';
@@ -14,7 +15,7 @@ type Notice = 'quota_exceeded' | 'rate_limited' | 'unauthorized';
 let notice: Notice | null = null;
 
 if (Astro.request.method === 'POST') {
-  if (!user) return Astro.redirect('/login');
+  if (!user) return Astro.redirect(loginUrl(Astro.url.pathname));
   const result = await unlockTool(user, slug);
   if (result.ok) return Astro.redirect(`/herramientas/${slug}`, 303);
   if (result.reason === 'not_found') return new Response(null, { status: 404 });
@@ -88,7 +89,7 @@ const gate: 'login' | 'quota' | 'unlock' = !user ? 'login' : outOfQuota ? 'quota
                 <p class="gate__text">
                   Con tu cuenta de Google desbloqueás dos herramientas premium gratis por mes.
                 </p>
-                <a href="/login" class="btn btn--primary">Ingresar con Google</a>
+                <a href={loginUrl(Astro.url.pathname)} class="btn btn--primary">Ingresar con Google</a>
               </>
             )}
             {gate === 'quota' && (
@@ -98,7 +99,7 @@ const gate: 'login' | 'quota' | 'unlock' = !user ? 'login' : outOfQuota ? 'quota
                   El cupo se renueva el día 1. Si no querés esperar, con la suscripción
                   tenés acceso a toda la biblioteca.
                 </p>
-                <a href="/#suscripcion" class="btn btn--primary">Ver suscripción</a>
+                <a href="/suscripcion" class="btn btn--primary">Suscribirme</a>
               </>
             )}
             {gate === 'unlock' && (

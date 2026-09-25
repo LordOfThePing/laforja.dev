@@ -123,3 +123,48 @@ export function formatDuration(seconds: number | null): string | null {
   if (seconds == null) return null;
   return `${Math.max(1, Math.round(seconds / 60))} min`;
 }
+
+export type SubscribeResult =
+  | { ok: true; initPoint: string }
+  | { ok: false; reason: 'already_subscribed' | 'payment_provider_error' };
+
+export async function createSubscription(user: Session['user']): Promise<SubscribeResult> {
+  try {
+    const { initPoint } = await call<{ initPoint: string }>('/api/subscription/create', user, {
+      method: 'POST',
+    });
+    return { ok: true, initPoint };
+  } catch (err) {
+    if (err instanceof ApiError && (err.code === 'already_subscribed' || err.code === 'payment_provider_error')) {
+      return { ok: false, reason: err.code };
+    }
+    throw err;
+  }
+}
+
+export type CancelResult =
+  | { ok: true }
+  | { ok: false; reason: 'no_active_subscription' | 'payment_provider_error' };
+
+export async function cancelSubscription(user: Session['user']): Promise<CancelResult> {
+  try {
+    await call('/api/subscription/cancel', user, { method: 'POST' });
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError && (err.code === 'no_active_subscription' || err.code === 'payment_provider_error')) {
+      return { ok: false, reason: err.code };
+    }
+    throw err;
+  }
+}
+
+const dateFormat = new Intl.DateTimeFormat('es-AR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'America/Argentina/Buenos_Aires',
+});
+
+export function formatDate(iso: string | null): string | null {
+  return iso ? dateFormat.format(new Date(iso)) : null;
+}

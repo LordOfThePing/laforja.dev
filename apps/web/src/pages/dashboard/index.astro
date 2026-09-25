@@ -1,0 +1,217 @@
+---
+import { getSession } from 'auth-astro/server';
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+import { type Me, cancelSubscription, formatDate, getMe } from '~/lib/api';
+import { loginUrl } from '~/lib/redirect';
+
+const session = await getSession(Astro.request);
+const user = session?.user;
+if (!user) return Astro.redirect(loginUrl('/dashboard'));
+
+type Notice = 'cancelled' | 'no_active_subscription' | 'payment_provider_error';
+let notice: Notice | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (form.get('action') === 'cancel') {
+    const result = await cancelSubscription(user);
+    if (result.ok) return Astro.redirect('/dashboard?cancelada=1', 303);
+    notice = result.reason;
+    Astro.response.status = result.reason === 'payment_provider_error' ? 502 : 409;
+  }
+} else if (Astro.url.searchParams.has('cancelada')) {
+  notice = 'cancelled';
+}
+
+let me: Me | null;
+try {
+  me = await getMe(user);
+} catch (err) {
+  console.error('No se pudo cargar /api/me', err);
+  return new Response('No pudimos cargar tu cuenta. Probá de nuevo en un rato.', {
+    status: 502,
+    headers: { 'content-type': 'text/plain; charset=utf-8' },
+  });
+}
+if (!me) return Astro.redirect(loginUrl('/dashboard'));
+
+const { subscription, unlocks } = me;
+const periodEnd = formatDate(subscription.currentPeriodEnd);
+const canCancel = subscription.status === 'active' || subscription.status === 'paused';
+
+const statusLabel: Record<string, string> = {
+  none: 'Sin suscripción',
+  active: 'Activa',
+  paused: 'Pausada — el último cobro falló',
+  cancelled: 'Cancelada',
+};
+
+let statusDetail: string;
+if (subscription.status === 'active') {
+  statusDetail = periodEnd ? `Se renueva sola. Acceso pago hasta el ${periodEnd}.` : 'Se renueva sola cada mes.';
+} else if (subscription.status === 'paused') {
+  statusDetail = 'MercadoPago no pudo cobrar la cuota. Revisá el medio de pago en tu cuenta de MercadoPago.';
+} else if (subscription.status === 'cancelled') {
+  statusDetail = subscription.hasAccess && periodEnd
+    ? `No se va a renovar. Mantenés el acceso hasta el ${periodEnd}.`
+    : 'No se va a renovar.';
+} else {
+  statusDetail = 'Tenés 2 desbloqueos gratis por mes. Con la suscripción, acceso ilimitado.';
+}
+---
+
+<Base title="Mi cuenta — La Forja">
+  <Nav />
+  <main class="dash container">
+    <header class="dash__head">
+      <div class="eyebrow">Mi cuenta</div>
+      <h1 class="dash__title display">Hola{me.user.name ? `, ${me.user.name.split(' ')[0]}` : ''}.</h1>
+      <p class="dash__email mono">{me.user.email}</p>
+    </header>
+
+    {notice === 'cancelled' && (
+      <p class="dash__notice" role="status">Cancelamos tu suscripción. No se te va a volver a cobrar.</p>
+    )}
+    {notice === 'no_active_subscription' && (
+      <p class="dash__notice" role="alert">No encontramos una suscripción activa para cancelar.</p>
+    )}
+    {notice === 'payment_provider_error' && (
+      <p class="dash__notice" role="alert">MercadoPago no respondió. Probá de nuevo en unos minutos.</p>
+    )}
+
+    <div class="dash__grid">
+      <section class="box" aria-labelledby="sub-title">
+        <h2 id="sub-title" class="box__label mono">Suscripción</h2>
+        <p class:list={['box__status', { 'box__status--on': subscription.hasAccess }]}>
+          {statusLabel[subscription.status] ?? subscription.status}
+        </p>
+        <p class="box__text">{statusDetail}</p>
+
+        {!subscription.hasAccess && (
+          <a href="/suscripcion" class="btn btn--primary">Suscribirme por $4.000/mes</a>
+        )}
+
+        {canCancel && (
+          <details class="cancel">
+            <summary>Cancelar suscripción</summary>
+            <p class="box__text">
+              No se te va a volver a cobrar{periodEnd && ` y mantenés el acceso hasta el ${periodEnd}`}.
+            </p>
+            <form method="post">
+              <input type="hidden" name="action" value="cancel" />
+              <button type="submit" class="btn btn--ghost">Sí, cancelar</button>
+            </form>
+          </details>
+        )}
+      </section>
+
+      <section class="box" aria-labelledby="unlocks-title">
+        <h2 id="unlocks-title" class="box__label mono">Desbloqueos de este mes</h2>
+        {subscription.hasAccess ? (
+          <p class="box__text">Con la suscripción no gastás desbloqueos: tenés todo abierto.</p>
+        ) : (
+          <>
+            <p class="box__status">
+              {unlocks.remaining} <span class="box__of">de {unlocks.limit} disponibles</span>
+            </p>
+            <div class="meter" role="img" aria-label={`Usaste ${unlocks.used} de ${unlocks.limit}`}>
+              {Array.from({ length: unlocks.limit }, (_, i) => (
+                <span class:list={['meter__dot', { 'meter__dot--used': i < unlocks.used }]}></span>
+              ))}
+            </div>
+            <p class="box__text">El cupo se renueva el día 1 de cada mes.</p>
+          </>
+        )}
+
+        {unlocks.tools.length > 0 && (
+          <ul class="unlocked">
+            {unlocks.tools.map((t) => (
+              <li><a href={`/herramientas/${t.slug}`}>{t.slug.replaceAll('-', ' ')}</a></li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .dash {
+    max-width: 960px;
+    padding-block: clamp(48px, 8vw, 100px);
+  }
+  .dash__head { margin-bottom: 32px; }
+  .dash__title { font-size: clamp(36px, 6vw, 56px); margin-top: 10px; line-height: 1.05; }
+  .dash__email { color: var(--ink-mute); margin-top: 8px; }
+  .dash__notice {
+    padding: 14px 18px;
+    border: 1px solid rgba(255,176,103,0.3);
+    border-radius: var(--radius);
+    background: rgba(255,122,0,0.06);
+    color: var(--ember-300);
+    margin-bottom: 24px;
+  }
+
+  .dash__grid { display: grid; gap: 18px; }
+  @media (min-width: 780px) {
+    .dash__grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .box {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+  }
+  .box__label {
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px;
+    font-weight: 400;
+  }
+  .box__status { font-family: var(--font-display); font-size: 32px; line-height: 1.1; }
+  .box__status--on { color: var(--ember-300); }
+  .box__of { font-family: var(--font-body); font-size: 15px; color: var(--ink-dim); }
+  .box__text { color: var(--ink-dim); font-size: 15px; }
+
+  .meter { display: flex; gap: 8px; }
+  .meter__dot {
+    width: 36px;
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--ember-500), var(--ember-300));
+  }
+  .meter__dot--used { background: var(--line-strong); }
+
+  .unlocked {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    width: 100%;
+  }
+  .unlocked a {
+    color: var(--ink);
+    text-transform: capitalize;
+    transition: color 200ms var(--ease-out);
+  }
+  .unlocked a:hover { color: var(--ember-300); }
+
+  .cancel { width: 100%; padding-top: 12px; border-top: 1px solid var(--line); }
+  .cancel summary {
+    cursor: pointer;
+    color: var(--ink-mute);
+    font-size: 14px;
+  }
+  .cancel[open] { display: flex; flex-direction: column; gap: 12px; }
+</style>

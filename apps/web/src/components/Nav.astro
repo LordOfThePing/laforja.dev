@@ -32,10 +32,10 @@ const displayName = user?.name?.split(' ')[0] ?? user?.email ?? null;
     <div class="nav__cta">
       {user ? (
         <>
-          <span class="nav__user" title={user.email ?? undefined}>
+          <a href="/dashboard" class="nav__user" title={`Mi cuenta (${user.email ?? ''})`}>
             {user.image && <img class="nav__avatar" src={user.image} alt="" />}
             <span class="nav__username">{displayName}</span>
-          </span>
+          </a>
           <button id="nav-signout" class="btn btn--ghost" type="button">Salir</button>
         </>
       ) : (
@@ -122,7 +122,9 @@ const displayName = user?.name?.split(' ')[0] ?? user?.email ?? null;
     background: var(--bg-elev);
     color: var(--ink-dim);
     font-size: 13px;
+    transition: border-color 200ms var(--ease-out), color 200ms var(--ease-out);
   }
+  .nav__user:hover { border-color: var(--line-strong); color: var(--ink); }
   .nav__avatar {
     width: 24px;
     height: 24px;
