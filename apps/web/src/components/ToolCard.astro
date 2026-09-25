@@ -1,0 +1,185 @@
+---
+import type { Tool } from '~/data/tools';
+interface Props { tool: Tool; }
+const { tool } = Astro.props;
+const locked = tool.tier === 'premium';
+---
+
+<article class:list={['card', { 'card--locked': locked }]}>
+  <div class="card__shine" aria-hidden="true"></div>
+
+  <header class="card__head">
+    <span class:list={['pill', locked ? 'pill--ember' : 'pill--spark']}>
+      {locked ? (
+        <>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M6 10V7a6 6 0 1 1 12 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Premium
+        </>
+      ) : (
+        <>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
+          Gratis
+        </>
+      )}
+    </span>
+    <span class="card__cat mono">{tool.category}</span>
+  </header>
+
+  <h3 class="card__title">{tool.title}</h3>
+  <p class="card__desc">{tool.shortDescription}</p>
+
+  <footer class="card__foot">
+    <div class="card__tags">
+      {tool.tags.slice(0, 2).map((t) => <span class="card__tag mono">#{t}</span>)}
+    </div>
+    <span class="card__duration mono">{tool.duration}</span>
+  </footer>
+
+  {locked && (
+    <div class="card__lock" aria-hidden="true">
+      <div class="card__lock-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 10V7a6 6 0 1 1 12 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  )}
+
+  <a href={`/herramientas/${tool.slug}`} class="card__link" aria-label={`Ver ${tool.title}`}></a>
+</article>
+
+<style>
+  .card {
+    position: relative;
+    padding: 22px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 240px;
+    overflow: hidden;
+    transition: transform 320ms var(--ease-out), border-color 320ms var(--ease-out), box-shadow 320ms var(--ease-out);
+    isolation: isolate;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-1);
+  }
+  .card:hover .card__shine { opacity: 1; }
+
+  .card__shine {
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: radial-gradient(600px circle at var(--x, 50%) var(--y, 0%), rgba(255,122,0,0.08), transparent 40%);
+    opacity: 0;
+    transition: opacity 320ms var(--ease-out);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+  }
+  .card__cat {
+    font-size: 11px;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  .card__title {
+    font-family: var(--font-display);
+    font-size: 26px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    position: relative;
+    z-index: 2;
+  }
+  .card__desc {
+    color: var(--ink-dim);
+    font-size: 14.5px;
+    line-height: 1.55;
+    position: relative;
+    z-index: 2;
+  }
+
+  .card__foot {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-top: 8px;
+    position: relative;
+    z-index: 2;
+  }
+  .card__tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card__tag {
+    font-size: 11px;
+    color: var(--ink-mute);
+  }
+  .card__duration {
+    font-size: 11px;
+    color: var(--ink-mute);
+  }
+
+  .card__link {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+  }
+
+  /* Locked state: blur soft + lock overlay */
+  .card--locked .card__desc {
+    filter: blur(4px);
+    opacity: 0.55;
+    user-select: none;
+  }
+  .card__lock {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    z-index: 1;
+    background: linear-gradient(180deg, transparent 40%, rgba(10,9,8,0.4) 100%);
+  }
+  .card__lock-icon {
+    position: absolute;
+    right: 22px;
+    bottom: 22px;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--ember-500), var(--ember-600));
+    color: #1a0e00;
+    box-shadow: 0 10px 30px -8px var(--ember-glow);
+    transition: transform 260ms var(--ease-out);
+  }
+  .card--locked:hover .card__lock-icon {
+    transform: rotate(-8deg) scale(1.06);
+  }
+</style>
+
+<script>
+  // hover shine: coord del cursor dentro de la card
+  document.querySelectorAll('.card').forEach((card) => {
+    card.addEventListener('pointermove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      (card as HTMLElement).style.setProperty('--x', `${x}%`);
+      (card as HTMLElement).style.setProperty('--y', `${y}%`);
+    });
+  });
+</script>

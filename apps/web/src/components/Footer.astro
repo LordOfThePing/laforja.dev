@@ -1,0 +1,148 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer id="faq" class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <div class="footer__mark" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M4 20 L14 10 M11 7 L17 13 M15 3 L21 9 L17 13" stroke="url(#fg)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs>
+              <linearGradient id="fg" x1="0" y1="0" x2="24" y2="24">
+                <stop offset="0" stop-color="#FFB067"/>
+                <stop offset="1" stop-color="#FF7A00"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="footer__wordmark display">La Forja</div>
+        <p class="footer__tag">
+          Herramientas curadas para trabajar con agentes.
+          Hecho por <a href="https://flynnpedroa.engineer">Flynn Pedroa</a>.
+        </p>
+      </div>
+
+      <div class="footer__col">
+        <div class="footer__col-title">Preguntas frecuentes</div>
+        <details class="faq">
+          <summary>¿Puedo ver todo el catálogo sin registrarme?</summary>
+          <p>Sí. Ves todas las tarjetas con título, descripción corta y categoría. Para abrir el video y copiar el prompt necesitás iniciar sesión con Google.</p>
+        </details>
+        <details class="faq">
+          <summary>¿Cómo funciona el free tier?</summary>
+          <p>Desbloqueás hasta 2 herramientas por mes calendario. El contador se resetea el día 1. Si desbloqueás dos veces la misma en el mismo mes, cuenta como una.</p>
+        </details>
+        <details class="faq">
+          <summary>¿Puedo cancelar la suscripción?</summary>
+          <p>Sí, desde tu dashboard. Cancelás y mantenés el acceso hasta el fin del período pagado.</p>
+        </details>
+      </div>
+
+      <div class="footer__col">
+        <div class="footer__col-title">La Forja</div>
+        <a href="#herramientas">Herramientas</a>
+        <a href="#suscripcion">Suscripción</a>
+        <a href="/login">Ingresar</a>
+      </div>
+    </div>
+
+    <div class="footer__bottom">
+      <span class="mono">© {year} La Forja &middot; construido en Buenos Aires</span>
+      <span class="mono">
+        <a href="/terminos">Términos</a> &middot; <a href="/privacidad">Privacidad</a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    padding-block: 80px 32px;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,0.4));
+    margin-top: 80px;
+  }
+  .footer__grid {
+    display: grid;
+    gap: 40px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 780px) {
+    .footer__grid { grid-template-columns: 1.4fr 1fr 1fr; gap: 60px; }
+  }
+
+  .footer__brand { display: flex; flex-direction: column; gap: 12px; max-width: 320px; }
+  .footer__mark {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    background: linear-gradient(180deg, var(--bg-elev-2), var(--bg-elev));
+    border: 1px solid var(--line-strong);
+  }
+  .footer__wordmark { font-size: 28px; letter-spacing: -0.01em; }
+  .footer__tag { color: var(--ink-dim); font-size: 14px; }
+  .footer__tag a { color: var(--ember-300); text-decoration: underline; text-decoration-color: rgba(255,176,103,0.3); }
+
+  .footer__col { display: flex; flex-direction: column; gap: 12px; }
+  .footer__col-title {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-bottom: 4px;
+  }
+  .footer__col a {
+    color: var(--ink-dim);
+    font-size: 14px;
+    transition: color 200ms;
+    width: fit-content;
+  }
+  .footer__col a:hover { color: var(--ink); }
+
+  .faq {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+  .faq:first-of-type { border-top: 0; padding-top: 0; }
+  .faq summary {
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--ink);
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: '+';
+    color: var(--ember-500);
+    font-size: 18px;
+    transition: transform 220ms var(--ease-out);
+  }
+  .faq[open] summary::after { transform: rotate(45deg); }
+  .faq p {
+    margin-top: 10px;
+    color: var(--ink-dim);
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+
+  .footer__bottom {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: var(--ink-mute);
+    font-size: 12px;
+  }
+  .footer__bottom a { color: var(--ink-dim); }
+  .footer__bottom a:hover { color: var(--ink); }
+</style>

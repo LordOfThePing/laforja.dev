@@ -1,0 +1,175 @@
+---
+// Hero: display serif, gradient text, CTA doble, contador vivo
+---
+
+<section class="hero">
+  <div class="container hero__inner">
+    <div class="hero__badge reveal">
+      <span class="hero__badge-dot" aria-hidden="true"></span>
+      <span>En construcción &middot; nuevas herramientas cada semana</span>
+    </div>
+
+    <h1 class="hero__title display reveal">
+      Herramientas para trabajar
+      <span class="hero__title-em">con agentes</span>,
+      no <em>a pesar</em> de ellos.
+    </h1>
+
+    <p class="hero__lede reveal">
+      Prompts, workflows y patrones curados. Los que probé, refinée y uso todos los días.
+      Sin humo, sin recetas mágicas, sin dumps de Notion.
+    </p>
+
+    <div class="hero__ctas reveal">
+      <a href="#herramientas" class="btn btn--primary">
+        Explorar la biblioteca
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="#suscripcion" class="btn btn--ghost">
+        Cómo funciona la suscripción
+      </a>
+    </div>
+
+    <div class="hero__stats reveal" role="list">
+      <div class="hero__stat" role="listitem">
+        <div class="hero__stat-num">2</div>
+        <div class="hero__stat-lbl">gratis por mes</div>
+      </div>
+      <div class="hero__stat" role="listitem">
+        <div class="hero__stat-num">$4k</div>
+        <div class="hero__stat-lbl">ARS &middot; suscripción mensual</div>
+      </div>
+      <div class="hero__stat" role="listitem">
+        <div class="hero__stat-num">∞</div>
+        <div class="hero__stat-lbl">acceso al catálogo completo</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- decorative rays -->
+  <div class="hero__rays" aria-hidden="true"></div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    padding-block: clamp(80px, 14vw, 160px) clamp(60px, 10vw, 120px);
+    overflow: hidden;
+  }
+  .hero__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    max-width: 900px;
+  }
+
+  .hero__badge {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,122,0,0.05);
+    border: 1px solid rgba(255,176,103,0.2);
+    font-size: 12px;
+    color: var(--ember-300);
+    letter-spacing: 0.01em;
+  }
+  .hero__badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ember-500);
+    box-shadow: 0 0 12px var(--ember-500);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  .hero__title {
+    font-size: clamp(44px, 8.5vw, 96px);
+  }
+  .hero__title-em {
+    background: linear-gradient(180deg, var(--ember-300) 20%, var(--ember-500) 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-style: italic;
+  }
+  .hero__title em {
+    font-style: italic;
+    color: var(--ink-dim);
+  }
+
+  .hero__lede {
+    font-size: clamp(17px, 1.8vw, 21px);
+    color: var(--ink-dim);
+    max-width: 640px;
+    line-height: 1.55;
+  }
+
+  .hero__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .hero__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+    max-width: 640px;
+  }
+  .hero__stat-num {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 4vw, 44px);
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .hero__stat-lbl {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--ink-mute);
+    letter-spacing: 0.01em;
+  }
+
+  /* rays: sutil forge glow abajo derecha */
+  .hero__rays {
+    position: absolute;
+    right: -10%;
+    bottom: -30%;
+    width: 60%;
+    aspect-ratio: 1;
+    background:
+      conic-gradient(from 180deg at 50% 100%,
+        transparent 0deg,
+        rgba(255,122,0,0.08) 20deg,
+        transparent 40deg,
+        rgba(255,122,0,0.06) 60deg,
+        transparent 80deg,
+        rgba(255,176,103,0.08) 110deg,
+        transparent 140deg
+      );
+    filter: blur(50px);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  @media (min-width: 780px) {
+    .hero__badge,
+    .hero__title,
+    .hero__lede,
+    .hero__ctas,
+    .hero__stats { transition-delay: 0ms; }
+    .hero__title    { transition-delay: 80ms; }
+    .hero__lede     { transition-delay: 160ms; }
+    .hero__ctas     { transition-delay: 240ms; }
+    .hero__stats    { transition-delay: 320ms; }
+  }
+</style>

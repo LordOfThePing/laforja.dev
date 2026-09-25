@@ -1,0 +1,104 @@
+---
+// Nav: sticky, translucent, con logo "⚒" y CTA de login
+---
+
+<nav class="nav">
+  <div class="container nav__inner">
+    <a href="/" class="nav__brand" aria-label="La Forja — inicio">
+      <span class="nav__mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M4 20 L14 10 M11 7 L17 13 M15 3 L21 9 L17 13" stroke="url(#g)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="24" y2="24">
+              <stop offset="0" stop-color="#FFB067"/>
+              <stop offset="1" stop-color="#FF7A00"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </span>
+      <span class="nav__wordmark">La Forja</span>
+    </a>
+
+    <div class="nav__links">
+      <a href="#herramientas">Herramientas</a>
+      <a href="#suscripcion">Suscripción</a>
+      <a href="#faq">FAQ</a>
+    </div>
+
+    <div class="nav__cta">
+      <a href="/login" class="btn btn--ghost">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z" fill="currentColor" opacity=".8"/></svg>
+        Ingresar
+      </a>
+    </div>
+  </div>
+</nav>
+
+<style>
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding-block: 14px;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    background: linear-gradient(180deg, rgba(10,9,8,0.75), rgba(10,9,8,0.35));
+    border-bottom: 1px solid var(--line);
+  }
+  .nav__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .nav__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .nav__mark {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, var(--bg-elev-2), var(--bg-elev));
+    border: 1px solid var(--line-strong);
+    box-shadow: 0 0 24px -8px var(--ember-glow);
+  }
+  .nav__wordmark {
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+  .nav__links {
+    display: none;
+    gap: 32px;
+    color: var(--ink-dim);
+    font-size: 14px;
+  }
+  .nav__links a {
+    position: relative;
+    transition: color 200ms var(--ease-out);
+  }
+  .nav__links a:hover { color: var(--ink); }
+  .nav__links a::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -6px;
+    height: 1px;
+    background: var(--ember-500);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 260ms var(--ease-out);
+  }
+  .nav__links a:hover::after { transform: scaleX(1); }
+
+  .nav__cta { display: flex; align-items: center; gap: 12px; }
+
+  @media (min-width: 780px) {
+    .nav__links { display: inline-flex; }
+  }
+</style>

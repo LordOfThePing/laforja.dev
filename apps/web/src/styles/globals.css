@@ -1,0 +1,201 @@
+/* ============================================================
+   La Forja — global styles
+   Dirección: "Forja moderna" (dark + ámbar + serif de display)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ── Color ─────────────────────────────────── */
+  --bg:            #0A0908;
+  --bg-elev:       #12100E;
+  --bg-elev-2:     #1B1815;
+  --ink:           #F5F1EA;
+  --ink-dim:       #A8A29A;
+  --ink-mute:      #6B6660;
+  --line:          rgba(245, 241, 234, 0.08);
+  --line-strong:   rgba(245, 241, 234, 0.16);
+
+  /* Forja: naranja/ámbar cálido, escala */
+  --ember-50:      #FFF4E5;
+  --ember-300:     #FFB067;
+  --ember-500:     #FF7A00;
+  --ember-600:     #E56A00;
+  --ember-glow:    rgba(255, 122, 0, 0.35);
+
+  /* Acento secundario: brasa fría (para free tier tags, etc.) */
+  --spark:         #7DD3C0;
+
+  /* ── Type ──────────────────────────────────── */
+  --font-display:  'Instrument Serif', ui-serif, Georgia, serif;
+  --font-body:     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:     'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ── Layout ────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius:    14px;
+  --radius-lg: 22px;
+  --shadow-1:  0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 40px -20px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 0 1px rgba(255,122,0,0.2), 0 20px 60px -20px var(--ember-glow);
+
+  /* ── Motion ────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ── Reset ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; padding: 0; }
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+  min-height: 100dvh;
+  overflow-x: hidden;
+
+  /* Ambient background — sutil aurora ámbar + rejilla */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 122, 0, 0.14), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 20%, rgba(255, 176, 103, 0.06), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
+  background-attachment: fixed;
+}
+
+/* Grano sutil (SVG data URI) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.98 0 0 0 0 0.95 0 0 0 0 0.9 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+img, svg, video { display: block; max-width: 100%; height: auto; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; }
+
+a { color: inherit; text-decoration: none; }
+
+::selection {
+  background: var(--ember-500);
+  color: var(--bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ember-500);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── Utilities ────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: clamp(20px, 4vw, 40px);
+  position: relative;
+  z-index: 2;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255,255,255,0.02);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-dim);
+  letter-spacing: 0.02em;
+}
+
+.pill--ember { color: var(--ember-300); border-color: rgba(255,176,103,0.25); background: rgba(255,122,0,0.06); }
+.pill--spark { color: var(--spark); border-color: rgba(125,211,192,0.25); background: rgba(125,211,192,0.05); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: transform 220ms var(--ease-out), background 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+  border: 1px solid transparent;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+.btn--primary {
+  background: linear-gradient(180deg, var(--ember-500), var(--ember-600));
+  color: #1a0e00;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 10px 30px -10px var(--ember-glow);
+}
+.btn--primary:hover {
+  box-shadow: 0 1px 0 rgba(255,255,255,0.3) inset, 0 20px 40px -12px var(--ember-glow);
+}
+
+.btn--ghost {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: rgba(255,255,255,0.02);
+  backdrop-filter: blur(8px);
+}
+.btn--ghost:hover {
+  border-color: var(--ink-dim);
+  background: rgba(255,255,255,0.05);
+}
+
+/* ── Type helpers ─────────────────────────── */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+}
+
+.mono { font-family: var(--font-mono); font-size: 0.86em; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ember-300);
+}
+
+/* ── Reveal on scroll ─────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Respetar preferencias de motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+}
