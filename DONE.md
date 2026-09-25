@@ -14,3 +14,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-25 — Dockerizar la app (Dockerfiles api/web + docker-compose con migrate) — 6115bf0
 - 2026-09-25 — Rate limit en unlock y webhook de MP — 05a32fb
 - 2026-09-25 — Makefile de deploy — 7a22745
+- 2026-09-25 — Login con Google en `apps/web` (Auth.js v5) + `GET /api/auth/token` que firma el JWT del contrato — 01dc6a4
