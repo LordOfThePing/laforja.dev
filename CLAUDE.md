@@ -24,11 +24,28 @@ Todo el trabajo pasa por dos archivos en la raíz del repo:
 
 ### 2.1. Antes de empezar una tarea
 
-1. Agregar la tarea a `TODO.md` en la sección **"En curso"**, indicando quién
-   la agarra (agente/persona) si aplica.
-2. **Commitear ese cambio en un commit aislado y pushearlo inmediatamente.**
+1. **Sincronizar con `origin/main` antes de decidir qué agarrar.** Este paso
+   es **obligatorio** — sin él, el mecanismo de "lock" del punto 3 no sirve:
+
+   ```bash
+   git fetch origin main
+   git pull --ff-only origin main
+   ```
+
+   Si el `pull --ff-only` falla porque hay commits locales divergentes,
+   resolvé eso primero (rebase sobre `origin/main`, o si el trabajo local
+   está duplicado, `git reset --hard origin/main` — nunca `push --force`).
+2. **Releer `TODO.md` recién bajado**: si la tarea que pensabas agarrar ya
+   está "en curso" por otro agente, o ya figura en `DONE.md`, elegí otra.
+3. Agregar la tarea a `TODO.md` en la sección **"En curso"**, indicando
+   quién la agarra (agente/persona) si aplica.
+4. **Commitear ese cambio en un commit aislado y pushearlo inmediatamente.**
    Este push es obligatorio: sirve para que ningún otro agente que abra el
    repo agarre la misma tarea en paralelo.
+5. **Si el push del claim es rechazado** (`! [rejected] main -> main
+   (fetch first)`), volver al paso 1 antes de retentar: otro agente pusheó
+   mientras vos estabas armando el claim. Rebaseá tu commit sobre el nuevo
+   `origin/main` y recién ahí retentá el push. **Nunca `--force`.**
 
 ### 2.2. Al terminar una tarea
 
