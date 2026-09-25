@@ -86,9 +86,9 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 | Método | Path | Descripción |
 |---|---|---|
 | `GET` | `/api/me` | Perfil + estado de suscripción (`hasAccess`) + unlocks del mes (`used`, `remaining`, `tools`). Requiere auth |
-| `GET` | `/api/tools` | Lista pública (todas, con flag `is_locked`) |
-| `GET` | `/api/tools/:slug` | Detalle. Si está bloqueada devuelve solo el preview con `isLocked: true` (sirve para SEO); 404 si no existe o no está publicada |
-| `POST` | `/api/tools/:slug/unlock` | Registra unlock, devuelve prompt + video |
+| `GET` | `/api/tools` | Lista pública con `isLocked`. Auth opcional: con token, `isLocked` refleja suscripción + unlocks del mes |
+| `GET` | `/api/tools/:slug` | Detalle. Auth opcional. Si está bloqueada para quien pide, devuelve solo el preview con `isLocked: true` (sirve para SEO); 404 si no existe o no está publicada |
+| `POST` | `/api/tools/:slug/unlock` | Requiere auth. `201` si consumió cupo, `200` si ya tenía acceso (free, suscriptor o ya desbloqueada este mes), `403 quota_exceeded` si no le queda cupo. Devuelve la herramienta completa + `unlocks` (`used`, `remaining`, `limit`) |
 | `POST` | `/api/subscription/create` | Crea Preapproval, devuelve `init_point` |
 | `POST` | `/api/subscription/cancel` | Cancela suscripción |
 | `POST` | `/webhooks/mercadopago` | Webhook de MP |
@@ -98,4 +98,6 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 - JWT expirable en 7 días, refresh en cada request
 - Webhook MP: validar firma HMAC (header `x-signature`) contra `MP_WEBHOOK_SECRET`
 - Idempotencia: `mp_event_id` unique constraint impide procesar el mismo evento dos veces
-- Rate limit en `/api/tools/:slug/unlock` para evitar spam
+- Auth opcional en endpoints públicos: sin header es anónimo, pero un token presente e inválido da `401` (para que el cliente renueve la sesión)
+- `/api/tools/:slug/unlock` toma un lock sobre la fila del usuario (`SELECT … FOR UPDATE`) para que requests concurrentes no superen el cupo
+- Rate limit en `/api/tools/:slug/unlock` — pendiente; hoy el cupo ya acota las escrituras a 2 por usuario por mes
