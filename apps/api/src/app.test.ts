@@ -1,23 +1,17 @@
-import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/pglite';
-import { migrate } from 'drizzle-orm/pglite/migrator';
-import { createApp } from './app.ts';
+import type { createApp } from './app.ts';
 import type { Db } from './db/client.ts';
 import * as schema from './db/schema.ts';
 import { seed, seedTools } from './db/seed-data.ts';
+import { createTestApp } from './test/setup.ts';
 
 let app: ReturnType<typeof createApp>;
 let db: Db;
 
 beforeAll(async () => {
-  const pg = drizzle(new PGlite(), { schema });
-  await migrate(pg, { migrationsFolder: './drizzle' });
-  db = pg as unknown as Db;
+  ({ app, db } = await createTestApp());
   await seed(db);
-  await seed(db);
-  app = createApp({ db, frontendUrl: 'http://localhost:3000', log: false });
 });
 
 describe('GET /health', () => {
