@@ -8,9 +8,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
   firma el JWT del contrato de `docs/auth-y-pagos.md`, guarda sesión, expone
   el token para pegarle a la API. Sin conflicto con la tarea de unlocks
   (esa toca `apps/api/`, esta toca `apps/web/`).
-- Rate limit en `POST /api/tools/:slug/unlock` y `/webhooks/mercadopago` —
-  en curso por @claude — en memoria (una sola instancia de api), 429 + `Retry-After`.
-  Solo `apps/api/`.
 
 ## Pendiente
 

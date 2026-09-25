@@ -12,3 +12,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-25 — Unlocks con cupo de 2/mes + `isLocked` por usuario en `apps/api` — 9a4dacd
 - 2026-09-25 — Suscripción MP Preapproval + webhook en `apps/api` — 34ee48b
 - 2026-09-25 — Dockerizar la app (Dockerfiles api/web + docker-compose con migrate) — 6115bf0
+- 2026-09-25 — Rate limit en unlock y webhook de MP — 05a32fb
