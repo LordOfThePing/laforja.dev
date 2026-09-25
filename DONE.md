@@ -22,3 +22,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-25 — Makefile en Windows: recetas simples fallaban con CreateProcess — a582e85
 - 2026-09-25 — Makefile corrible desde el VPS + alias `ssh laforja` con RemoteCommand — c4c0f6c, b29fb90
 - 2026-09-25 — Fix 403 cross-site en login con Google detrás del tunnel (allowedDomains de Astro) — 0be0344
+- 2026-09-25 — Web conectada a la API real (catálogo, `/herramientas/:slug`, desbloqueo) — cd4e1bb
