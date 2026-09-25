@@ -64,10 +64,12 @@ El **detalle** de qué se hizo va en el mensaje del commit (y en
 ## 3. Commits de código
 
 - Los commits de código (los que **no** tocan `TODO.md` / `DONE.md`) se
-  pueden acumular localmente. **No pushear commits de código por default** —
-  el push lo hace el usuario, salvo pedido explícito.
-- La única excepción son los commits de `TODO.md` / `DONE.md` descritos en
-  §2.1 y §2.2: esos **sí se pushean siempre** apenas se crean.
+  pueden acumular localmente mientras la tarea está en curso.
+- **El código se pushea** junto con el commit de `DONE.md` (§2.2): al
+  terminar la tarea se pushean a `main` todos los commits de código y el de
+  cierre, sin pedir confirmación.
+- Si la tarea queda a medias (§2.3), el código hecho hasta ahí se pushea con
+  el estado intermedio de `TODO.md`.
 - Mensajes en español rioplatense, imperativo corto (`agrega`, `arregla`,
   `refactoriza`).
 - Un commit por cambio lógico.
