@@ -3,7 +3,7 @@
 
 SSH_HOST   ?= laforja
 REMOTE_DIR ?= /opt/laforja
-REPO_URL   ?= git@github.com:LordOfThePing/laforja.dev.git
+REPO_URL   ?= https://github.com/LordOfThePing/laforja.dev.git
 BRANCH     ?= main
 ENV_FILE   ?= .env.production
 SERVICE    ?=
