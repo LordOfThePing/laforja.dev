@@ -53,7 +53,12 @@ Todo lo que está a la derecha de `cloudflared` corre en el docker-compose del V
 
 ## Comunicación entre apps
 
-- Frontend → backend: `fetch` con JWT en `Authorization: Bearer <token>`
+- Frontend → backend: el **servidor de Astro** (SSR) llama a la API por la red interna
+  (`API_URL`, en compose `http://api:4000`) con el JWT en `Authorization: Bearer <token>`.
+  El JWT se firma por request en `src/lib/api-token.ts` y nunca llega al browser; el catálogo
+  y el detalle se renderizan ya con el `isLocked` del usuario. El desbloqueo es un `<form>`
+  POST a `/herramientas/:slug` que el servidor reenvía a `POST /api/tools/:slug/unlock`
+- `GET /api/auth/token` sigue disponible por si una island necesita hablar directo con la API
 - Backend valida JWT usando la misma `AUTH_SECRET`
 - Backend → frontend: JSON REST
 

@@ -18,7 +18,8 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - ✅ Bootstrap del backend (`apps/api`, Hono + Bun) con endpoints públicos de herramientas
 - ✅ Schema v1 en Drizzle + migración inicial + seed
 - ✅ Validación de JWT en la API + `GET /api/me`
-- ⏳ Auth.js con Google en la web — pendiente
+- ✅ Auth.js con Google en la web
+- ✅ Web conectada a la API real (catálogo, detalle `/herramientas/:slug`, desbloqueo)
 - ✅ Unlocks con cupo de 2/mes
 - ✅ Integración MP Preapproval + webhooks en la API (sin probar contra MP real)
 - ✅ Docker Compose (postgres + migrate + api + web)
@@ -95,7 +96,7 @@ academy/
 │   └── web/               # Astro + React (landing, dashboard, auth)
 │       ├── src/
 │       │   ├── components/
-│       │   ├── data/       # mock data por ahora, luego API real
+│       │   ├── lib/        # cliente de la API (server-side) + firma del JWT
 │       │   ├── layouts/
 │       │   ├── pages/
 │       │   └── styles/
