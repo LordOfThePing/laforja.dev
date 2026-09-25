@@ -11,7 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:seed": "bun src/db/seed.ts",
-    "token:dev": "bun src/scripts/dev-token.ts"
+    "token:dev": "bun src/scripts/dev-token.ts",
+    "db:migrate": "bun src/db/migrate.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

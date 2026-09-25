@@ -1,0 +1,70 @@
+name: laforja
+
+x-api-env: &api-env
+  DATABASE_URL: postgres://laforja:${DB_PASSWORD:?falta DB_PASSWORD}@postgres:5432/laforja
+  AUTH_SECRET: ${AUTH_SECRET:?falta AUTH_SECRET}
+  MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:?falta MP_ACCESS_TOKEN}
+  MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:?falta MP_WEBHOOK_SECRET}
+  FRONTEND_URL: ${FRONTEND_URL:?falta FRONTEND_URL}
+  PORT: "4000"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: laforja
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?falta DB_PASSWORD}
+      POSTGRES_DB: laforja
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laforja -d laforja"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
+
+  migrate:
+    build: ./apps/api
+    image: laforja-api
+    command: ["bun", "run", "db:migrate"]
+    environment: *api-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [internal]
+
+  api:
+    image: laforja-api
+    restart: unless-stopped
+    environment: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:4000:4000"
+    networks: [internal]
+
+  web:
+    build: ./apps/web
+    restart: unless-stopped
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?falta AUTH_SECRET}
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
+      API_URL: http://api:4000
+      PUBLIC_SITE_URL: ${FRONTEND_URL:?falta FRONTEND_URL}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks: [internal]
+
+volumes:
+  pg_data:
+
+networks:
+  internal:
