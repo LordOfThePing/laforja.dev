@@ -4,7 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Dashboard + botón "Suscribirme" en la web (`/suscripcion`, `/dashboard/gracias` — hoy 404; `POST /api/subscription/create|cancel` ya existen) — en curso por @claude
+_(nada)_
 
 ## Pendiente
 
