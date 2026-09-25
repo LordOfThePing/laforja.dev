@@ -15,3 +15,5 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-25 — Rate limit en unlock y webhook de MP — 05a32fb
 - 2026-09-25 — Makefile de deploy — 7a22745
 - 2026-09-25 — Login con Google en `apps/web` (Auth.js v5) + `GET /api/auth/token` que firma el JWT del contrato — 01dc6a4
+- 2026-09-25 — VPS Hetzner: usuario `deploy-laforja`, `/opt/laforja`, alias `laforja` — 1c8c581
+- 2026-09-25 — Fix de env de Auth.js en la imagen Docker de la web — 3790522
