@@ -119,4 +119,6 @@ Cualquier error de la API de MP en un endpoint se devuelve como
 - Idempotencia: `mp_event_id` unique constraint impide procesar el mismo evento dos veces
 - Auth opcional en endpoints públicos: sin header es anónimo, pero un token presente e inválido da `401` (para que el cliente renueve la sesión)
 - `/api/tools/:slug/unlock` toma un lock sobre la fila del usuario (`SELECT … FOR UPDATE`) para que requests concurrentes no superen el cupo
-- Rate limit en `/api/tools/:slug/unlock` — pendiente; hoy el cupo ya acota las escrituras a 2 por usuario por mes
+- Rate limit en memoria (ventana fija; alcanza con una sola instancia de api), responde `429 {"error":"rate_limited"}` + `Retry-After`:
+  - `POST /api/tools/:slug/unlock`: 10/min **por usuario** (después de validar el token)
+  - `POST /webhooks/mercadopago`: 300/min **por IP**, antes de validar la firma. La IP sale de `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for`; es confiable porque la api solo escucha en `127.0.0.1` detrás del proxy
