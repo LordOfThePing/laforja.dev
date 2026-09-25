@@ -38,7 +38,7 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 
 1. Usuario en dashboard → "Suscribirme"
 2. Frontend → `POST /api/subscription/create`
-3. Backend crea Preapproval con SDK de MP:
+3. Backend crea Preapproval con la API REST de MP (`POST /preapproval`, sin SDK):
    ```json
    {
      "reason": "La Forja — Suscripción mensual",
@@ -48,38 +48,57 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
        "transaction_amount": 4000,
        "currency_id": "ARS"
      },
-     "back_url": "https://laforja.dev/dashboard/gracias",
+     "back_url": "<FRONTEND_URL>/dashboard/gracias",
      "payer_email": "<email del usuario>",
-     "external_reference": "<user_id>"
+     "external_reference": "<user_id>",
+     "status": "pending"
    }
    ```
-4. Backend responde con `init_point` (URL de MP para pagar)
-5. Frontend redirige al usuario a `init_point`
+4. Backend responde `{ initPoint, preapprovalId }` (409 `already_subscribed` si
+   ya tiene una suscripción activa)
+5. Frontend redirige al usuario a `initPoint`
 6. Usuario paga en MP
 7. MP redirige a `back_url` con `preapproval_id`
 
-### Activación (webhook)
+El backend **no** guarda nada al crear: el usuario queda vinculado recién cuando
+llega el webhook `authorized`, vía `external_reference`.
 
-1. MP dispara webhook `POST /webhooks/mercadopago`
-2. Backend valida firma con `MP_WEBHOOK_SECRET`
-3. Si el evento es `subscription_preapproval` con status `authorized`:
-   - `users.subscription_status = 'active'`
-   - `users.subscription_id = <preapproval_id>`
-   - `users.current_period_end = <next_payment_date>`
-4. Guarda evento en `subscription_events` para idempotencia (`mp_event_id` unique)
+### Webhook `POST /webhooks/mercadopago`
 
-### Renovación mensual
+1. **Firma**: header `x-signature: ts=<ts>,v1=<hmac>`. Se recalcula
+   HMAC-SHA256 (hex) con `MP_WEBHOOK_SECRET` sobre
+   `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` — `data.id` sale del
+   **query string** (no del body) y en minúsculas. Firma inválida → `401`.
+2. **Idempotencia**: `mp_event_id` = `id` del body de la notificación. Si ya
+   está en `subscription_events` → `200 {"status":"duplicate"}` sin procesar.
+3. El backend **no confía en el body**: consulta el recurso a MP y actúa según
+   el estado real. Si MP falla → `502` sin registrar el evento, y el reintento
+   de MP lo vuelve a procesar.
+4. Evento + cambio en `users` se guardan en la misma transacción.
 
-- MP dispara `payment` events cuando cobra
-- Backend actualiza `current_period_end` con el siguiente periodo
-- Si `payment.status = 'rejected'`, marcar `subscription_status = 'paused'`
+| `type` | Qué consulta | Efecto |
+|---|---|---|
+| `subscription_preapproval` | `GET /preapproval/:id` | `authorized` → `active`, `subscription_id`, `current_period_end`. `paused` / `cancelled` → mismo estado, **solo si** es la `subscription_id` vigente del usuario (cancelar una preapproval vieja no pisa la nueva) |
+| `subscription_authorized_payment` | `GET /authorized_payments/:id` + su preapproval | pago `approved` → `active` + renueva `current_period_end`. `rejected` → `paused` |
+| otros | — | se guardan en `subscription_events` y se ignoran |
+
+`current_period_end` = `next_payment_date` de la preapproval **+ 3 días de
+gracia**: MP cobra ese día y el webhook llega después, así el suscriptor no
+pierde acceso durante la renovación.
 
 ### Cancelación
 
 1. Usuario en dashboard → "Cancelar suscripción"
-2. Backend → PUT MP Preapproval con status `cancelled`
-3. Webhook confirma → `users.subscription_status = 'cancelled'`
+2. Frontend → `POST /api/subscription/cancel` (409 `no_active_subscription` si
+   no tiene una `active` o `paused`)
+3. Backend → `PUT /preapproval/:id` con status `cancelled` y marca
+   `subscription_status = 'cancelled'` en el acto (el webhook después confirma lo mismo)
 4. Acceso premium se mantiene hasta `current_period_end`
+
+### Errores de MP
+
+Cualquier error de la API de MP en un endpoint se devuelve como
+`502 {"error":"payment_provider_error"}`.
 
 ## Endpoints de la API
 
@@ -89,9 +108,9 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 | `GET` | `/api/tools` | Lista pública con `isLocked`. Auth opcional: con token, `isLocked` refleja suscripción + unlocks del mes |
 | `GET` | `/api/tools/:slug` | Detalle. Auth opcional. Si está bloqueada para quien pide, devuelve solo el preview con `isLocked: true` (sirve para SEO); 404 si no existe o no está publicada |
 | `POST` | `/api/tools/:slug/unlock` | Requiere auth. `201` si consumió cupo, `200` si ya tenía acceso (free, suscriptor o ya desbloqueada este mes), `403 quota_exceeded` si no le queda cupo. Devuelve la herramienta completa + `unlocks` (`used`, `remaining`, `limit`) |
-| `POST` | `/api/subscription/create` | Crea Preapproval, devuelve `init_point` |
-| `POST` | `/api/subscription/cancel` | Cancela suscripción |
-| `POST` | `/webhooks/mercadopago` | Webhook de MP |
+| `POST` | `/api/subscription/create` | Requiere auth. Crea Preapproval, devuelve `{ initPoint, preapprovalId }` |
+| `POST` | `/api/subscription/cancel` | Requiere auth. Cancela en MP, conserva el período pago |
+| `POST` | `/webhooks/mercadopago` | Webhook de MP (firma `x-signature`, idempotente) |
 
 ## Seguridad
 

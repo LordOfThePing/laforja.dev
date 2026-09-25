@@ -19,7 +19,8 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - ✅ Schema v1 en Drizzle + migración inicial + seed
 - ✅ Validación de JWT en la API + `GET /api/me`
 - ⏳ Auth.js con Google en la web — pendiente
-- ⏳ Integración MP Preapproval + webhooks — pendiente
+- ✅ Unlocks con cupo de 2/mes
+- ✅ Integración MP Preapproval + webhooks en la API (sin probar contra MP real)
 - ⏳ Docker Compose + Nginx en VPS — pendiente
 
 ## Stack
