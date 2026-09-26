@@ -14,4 +14,6 @@ export const env = {
   port: Number(process.env.PORT ?? 4000),
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
   adminEmails: parseAdminEmails(process.env.ADMIN_EMAILS),
+  // 0 la desactiva.
+  reconcileIntervalHours: Number(process.env.RECONCILE_INTERVAL_HOURS ?? 6),
 };

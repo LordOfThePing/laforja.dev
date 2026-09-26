@@ -38,7 +38,7 @@ RCOMPOSE = $(REMOTE) "cd $(REMOTE_DIR) && docker compose $(1)"
 
 .DEFAULT_GOAL := help
 .PHONY: help setup env-push env-diff local-only check-pushed deploy up down restart ps logs \
-        migrate seed psql shell backup backups backup-pull dev-up dev-down dev-seed test
+        migrate seed reconcile psql shell backup backups backup-pull dev-up dev-down dev-seed test
 
 help: ## Lista los targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-13s %s\n", $$1, $$2}'
@@ -97,6 +97,9 @@ migrate: ## Corre las migraciones en el VPS
 
 seed: ## Corre el seed en el VPS (idempotente)
 	$(call RCOMPOSE,run --rm api bun run db:seed)
+
+reconcile: ## Reconcilia las suscripciones con MP ahora: make reconcile [DRY=1] (DRY=1 solo muestra)
+	$(call RCOMPOSE,exec -T api bun run reconcile $(if $(DRY),--dry-run))
 
 psql: ## Consola psql en el Postgres del VPS
 	$(REMOTE_TTY) "cd $(REMOTE_DIR) && docker compose exec postgres psql -U laforja laforja"

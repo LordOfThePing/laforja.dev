@@ -17,6 +17,11 @@ export type AuthorizedPayment = {
   payment: { id: number | string; status: string } | null;
 };
 
+export type PreapprovalSearch = {
+  results: Preapproval[];
+  paging: { offset: number; limit: number; total: number };
+};
+
 export type CreatePreapprovalInput = {
   reason: string;
   amount: number;
@@ -30,6 +35,7 @@ export interface MercadoPago {
   getPreapproval(id: string): Promise<Preapproval>;
   cancelPreapproval(id: string): Promise<Preapproval>;
   getAuthorizedPayment(id: string): Promise<AuthorizedPayment>;
+  searchPreapprovals(query: { status: PreapprovalStatus; offset: number; limit: number }): Promise<PreapprovalSearch>;
 }
 
 export class MercadoPagoError extends Error {
@@ -75,5 +81,7 @@ export function createMercadoPago(accessToken: string): MercadoPago {
     cancelPreapproval: (id) =>
       call('PUT', `/preapproval/${encodeURIComponent(id)}`, { status: 'cancelled' }),
     getAuthorizedPayment: (id) => call('GET', `/authorized_payments/${encodeURIComponent(id)}`),
+    searchPreapprovals: ({ status, offset, limit }) =>
+      call('GET', `/preapproval/search?${new URLSearchParams({ status, offset: String(offset), limit: String(limit) })}`),
   };
 }

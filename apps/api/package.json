@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:seed": "bun src/db/seed.ts",
     "token:dev": "bun src/scripts/dev-token.ts",
+    "reconcile": "bun src/scripts/reconcile.ts",
     "db:migrate": "bun src/db/migrate.ts"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import type {
   CreatePreapprovalInput,
   MercadoPago,
   Preapproval,
+  PreapprovalStatus,
 } from '../lib/mercadopago.ts';
 import { MercadoPagoError } from '../lib/mercadopago.ts';
 
@@ -57,5 +58,11 @@ export class FakeMercadoPago implements MercadoPago {
     const payment = this.authorizedPayments.get(id);
     if (!payment) throw new MercadoPagoError(404, 'not found');
     return payment;
+  }
+
+  async searchPreapprovals({ status, offset, limit }: { status: PreapprovalStatus; offset: number; limit: number }) {
+    this.guard();
+    const all = [...this.preapprovals.values()].filter((p) => p.status === status);
+    return { results: all.slice(offset, offset + limit), paging: { offset, limit, total: all.length } };
   }
 }
