@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Admin de cursos en `/admin` (cursos, módulos, lecciones, orden y preview) — en curso por @claude-2
 
 ## Pendiente
 
@@ -24,7 +25,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### v2 — Cursos (ver `docs/roadmap.md`)
 
-- Admin de cursos en `/admin` (cursos, módulos, lecciones, orden y preview) — pendiente — hoy los cursos solo entran por el seed
 - Certificado de completado en PDF — pendiente
 - Progreso por % de video en el reproductor — pendiente — requiere la IFrame API de YouTube (script externo: sumarlo a la CSP); hoy el progreso es completada / no completada
 
