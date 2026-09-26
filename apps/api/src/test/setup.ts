@@ -12,6 +12,7 @@ import { FakeMercadoPago } from './fake-mp.ts';
 
 export const TEST_SECRET = 'secreto-de-test';
 export const TEST_MP_WEBHOOK_SECRET = 'secreto-webhook-mp';
+export const TEST_ADMIN_EMAIL = 'admin@example.com';
 
 export async function createTestApp(
   rateLimits?: Partial<{ unlock: RateLimitRule; webhook: RateLimitRule }>,
@@ -24,6 +25,7 @@ export async function createTestApp(
   const app = createApp({
     db,
     authSecret: TEST_SECRET,
+    adminEmails: new Set([TEST_ADMIN_EMAIL]),
     frontendUrl: 'http://localhost:3000',
     mp,
     mpWebhookSecret: TEST_MP_WEBHOOK_SECRET,

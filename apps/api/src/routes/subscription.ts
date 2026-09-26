@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { type AuthEnv, requireAuth } from '../auth.ts';
-import type { Db } from '../db/client.ts';
+import { type AuthConfig, type AuthEnv, requireAuth } from '../auth.ts';
 import { users } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import type { MercadoPago } from '../lib/mercadopago.ts';
@@ -10,15 +9,15 @@ export const SUBSCRIPTION_PRICE_ARS = 4000;
 export const SUBSCRIPTION_REASON = 'La Forja — Suscripción mensual';
 
 type Options = {
-  db: Db;
-  authSecret: string;
+  auth: AuthConfig;
   frontendUrl: string;
   mp: MercadoPago;
 };
 
-export function subscriptionRoutes({ db, authSecret, frontendUrl, mp }: Options) {
+export function subscriptionRoutes({ auth, frontendUrl, mp }: Options) {
+  const { db } = auth;
   const app = new Hono<AuthEnv>();
-  app.use(requireAuth(db, authSecret));
+  app.use(requireAuth(auth));
 
   app.post('/create', async (c) => {
     const user = c.get('user');

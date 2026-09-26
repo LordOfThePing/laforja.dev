@@ -1,9 +1,15 @@
 import { and, desc, eq, isNotNull, lte, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { type AuthEnv, type OptionalAuthEnv, optionalAuth, requireAuth } from '../auth.ts';
+import {
+  type AuthConfig,
+  type AuthEnv,
+  type OptionalAuthEnv,
+  optionalAuth,
+  requireAuth,
+} from '../auth.ts';
 import type { Db } from '../db/client.ts';
 import { categories, tools, unlocks, users } from '../db/schema.ts';
-import { hasSubscriptionAccess } from '../lib/access.ts';
+import { hasFullAccess } from '../lib/access.ts';
 import { monthKey } from '../lib/month.ts';
 import { type RateLimitRule, rateLimit } from '../lib/rate-limit.ts';
 import {
@@ -56,7 +62,8 @@ async function loadViewer(db: Db, user: Viewer['user']): Promise<Viewer> {
   return { user, unlockedToolIds: await unlockedToolIds(db, user.id, monthKey()) };
 }
 
-export function toolsRoutes(db: Db, authSecret: string, unlockLimit: RateLimitRule) {
+export function toolsRoutes(auth: AuthConfig, unlockLimit: RateLimitRule) {
+  const { db } = auth;
   const app = new Hono<OptionalAuthEnv>();
 
   function findPublished(slug: string) {
@@ -69,7 +76,7 @@ export function toolsRoutes(db: Db, authSecret: string, unlockLimit: RateLimitRu
       .then((rows) => rows[0]);
   }
 
-  app.get('/', optionalAuth(db, authSecret), async (c) => {
+  app.get('/', optionalAuth(auth), async (c) => {
     const viewer = await loadViewer(db, c.get('user'));
     const rows = await db
       .select(previewColumns)
@@ -83,7 +90,7 @@ export function toolsRoutes(db: Db, authSecret: string, unlockLimit: RateLimitRu
     });
   });
 
-  app.get('/:slug', optionalAuth(db, authSecret), async (c) => {
+  app.get('/:slug', optionalAuth(auth), async (c) => {
     const row = await findPublished(c.req.param('slug'));
     if (!row) return c.json({ error: 'not_found' }, 404);
 
@@ -93,7 +100,7 @@ export function toolsRoutes(db: Db, authSecret: string, unlockLimit: RateLimitRu
 
   app.post(
     '/:slug/unlock',
-    requireAuth(db, authSecret),
+    requireAuth(auth),
     rateLimit<AuthEnv>(unlockLimit, (c) => c.get('user').id),
     async (c) => {
       const user = c.get('user');
@@ -108,7 +115,7 @@ export function toolsRoutes(db: Db, authSecret: string, unlockLimit: RateLimitRu
 
         const unlocked = await unlockedToolIds(tx, user.id, month);
 
-        if (row.tier === 'free' || hasSubscriptionAccess(user) || unlocked.has(row.id)) {
+        if (row.tier === 'free' || hasFullAccess(user) || unlocked.has(row.id)) {
           return { ok: true as const, used: unlocked.size, created: false };
         }
         if (unlocked.size >= FREE_UNLOCKS_PER_MONTH) {

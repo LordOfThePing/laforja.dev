@@ -1,15 +1,15 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { type AuthEnv, requireAuth } from '../auth.ts';
-import type { Db } from '../db/client.ts';
+import { type AuthConfig, type AuthEnv, requireAuth } from '../auth.ts';
 import { tools, unlocks } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import { monthKey } from '../lib/month.ts';
 import { quotaSummary } from '../lib/unlocks.ts';
 
-export function meRoutes(db: Db, authSecret: string) {
+export function meRoutes(auth: AuthConfig) {
+  const { db } = auth;
   const app = new Hono<AuthEnv>();
-  app.use(requireAuth(db, authSecret));
+  app.use(requireAuth(auth));
 
   app.get('/', async (c) => {
     const user = c.get('user');
@@ -28,6 +28,7 @@ export function meRoutes(db: Db, authSecret: string) {
         email: user.email,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        role: user.role,
       },
       subscription: {
         status: user.subscriptionStatus,

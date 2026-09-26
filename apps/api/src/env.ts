@@ -1,3 +1,5 @@
+import { parseAdminEmails } from './auth.ts';
+
 function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Falta la variable de entorno ${name}`);
@@ -11,4 +13,5 @@ export const env = {
   mpWebhookSecret: required('MP_WEBHOOK_SECRET'),
   port: Number(process.env.PORT ?? 4000),
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+  adminEmails: parseAdminEmails(process.env.ADMIN_EMAILS),
 };

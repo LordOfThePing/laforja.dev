@@ -12,3 +12,10 @@ export function hasSubscriptionAccess(user: SubscriptionFields, now: Date = new 
   if (status === 'cancelled') return end !== null && end > now;
   return false;
 }
+
+export function hasFullAccess(
+  user: SubscriptionFields & Pick<typeof users.$inferSelect, 'role'>,
+  now: Date = new Date(),
+): boolean {
+  return user.role === 'admin' || hasSubscriptionAccess(user, now);
+}

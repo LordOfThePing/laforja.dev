@@ -27,6 +27,16 @@
 Para probar sin la web: `cd apps/api && bun run token:dev [email]` imprime un
 token válido por 7 días firmado con el `AUTH_SECRET` del `.env`.
 
+### Rol admin
+
+`users.role` es `user` o `admin`. Un email listado en `ADMIN_EMAILS` (api, separados
+por coma, sin importar mayúsculas) se promueve a `admin` en cada login; sacarlo de
+la lista **no** lo degrada, eso se hace desde `/admin/usuarios`. Un admin:
+
+- ve todas las herramientas premium sin gastar cupo (como un suscriptor)
+- accede a `/api/admin/*` y al panel `/admin` de la web
+- no puede sacarse el rol a sí mismo (evita quedarse sin admins)
+
 ### Cupo mensual
 
 `month_key` se calcula en hora de Argentina (`America/Argentina/Buenos_Aires`),
@@ -112,6 +122,22 @@ Cualquier error de la API de MP en un endpoint se devuelve como
 | `POST` | `/api/subscription/create` | Requiere auth. Crea Preapproval, devuelve `{ initPoint, preapprovalId }` |
 | `POST` | `/api/subscription/cancel` | Requiere auth. Cancela en MP, conserva el período pago |
 | `POST` | `/webhooks/mercadopago` | Webhook de MP (firma `x-signature`, idempotente) |
+
+### Admin (`/api/admin/*`)
+
+Requieren auth + `role = admin`; si no, `404` (no se anuncia que existen).
+Input inválido → `400 {"error":"invalid_input","field":...}`; slug repetido → `409 slug_taken`.
+
+| Método | Path | Descripción |
+|---|---|---|
+| `GET` | `/api/admin/stats` | Usuarios, suscriptores activos, unlocks del mes, herramientas (total / publicadas) |
+| `GET` | `/api/admin/tools` | Todas, incluidas las no publicadas |
+| `GET` / `PATCH` / `DELETE` | `/api/admin/tools/:id` | Detalle / edición parcial / baja |
+| `POST` | `/api/admin/tools` | Alta. `publishedAt: null` = borrador |
+| `GET` / `POST` | `/api/admin/categories` | Lista (con `toolCount`) / alta |
+| `PATCH` / `DELETE` | `/api/admin/categories/:id` | Edición / baja (`409 category_in_use` si tiene herramientas) |
+| `GET` | `/api/admin/users` | Últimos 200 usuarios |
+| `PATCH` | `/api/admin/users/:id` | `{ role }`. `409 cannot_demote_self` sobre uno mismo |
 
 ## Seguridad
 

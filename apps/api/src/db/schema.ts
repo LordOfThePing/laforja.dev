@@ -18,12 +18,15 @@ export const subscriptionStatus = pgEnum('subscription_status', [
 
 export const toolTier = pgEnum('tool_tier', ['free', 'premium']);
 
+export const userRole = pgEnum('user_role', ['user', 'admin']);
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
   name: text('name'),
   avatarUrl: text('avatar_url'),
   googleId: text('google_id').notNull().unique(),
+  role: userRole('role').notNull().default('user'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   subscriptionStatus: subscriptionStatus('subscription_status').notNull().default('none'),
   subscriptionId: text('subscription_id'),

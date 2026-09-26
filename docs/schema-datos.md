@@ -12,6 +12,7 @@ Diseñado para v1 (herramientas + prompts) con hooks preparados para v2 (cursos/
 | `name` | text | |
 | `avatar_url` | text | |
 | `google_id` | text unique | sub del token |
+| `role` | enum | `user` / `admin`. Admin ve todo sin cupo y accede a `/admin` |
 | `created_at` | timestamptz | |
 | `subscription_status` | enum | `none` / `active` / `cancelled` / `paused` |
 | `subscription_id` | text nullable | id de Preapproval de MP |

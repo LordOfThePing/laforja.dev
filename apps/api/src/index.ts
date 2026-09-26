@@ -7,6 +7,7 @@ const { db } = createDb(env.databaseUrl);
 const app = createApp({
   db,
   authSecret: env.authSecret,
+  adminEmails: env.adminEmails,
   frontendUrl: env.frontendUrl,
   mp: createMercadoPago(env.mpAccessToken),
   mpWebhookSecret: env.mpWebhookSecret,

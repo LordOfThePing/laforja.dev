@@ -4,6 +4,8 @@ import { logger } from 'hono/logger';
 import type { Db } from './db/client.ts';
 import { type MercadoPago, MercadoPagoError } from './lib/mercadopago.ts';
 import type { RateLimitRule } from './lib/rate-limit.ts';
+import type { AuthConfig } from './auth.ts';
+import { adminRoutes } from './routes/admin.ts';
 import { meRoutes } from './routes/me.ts';
 import { subscriptionRoutes } from './routes/subscription.ts';
 import { toolsRoutes } from './routes/tools.ts';
@@ -12,6 +14,7 @@ import { webhookRoutes } from './routes/webhooks.ts';
 type AppOptions = {
   db: Db;
   authSecret: string;
+  adminEmails?: ReadonlySet<string>;
   frontendUrl: string;
   mp: MercadoPago;
   mpWebhookSecret: string;
@@ -31,6 +34,7 @@ const DEFAULT_RATE_LIMITS: RateLimits = {
 export function createApp({
   db,
   authSecret,
+  adminEmails = new Set(),
   frontendUrl,
   mp,
   mpWebhookSecret,
@@ -39,14 +43,16 @@ export function createApp({
 }: AppOptions) {
   const app = new Hono();
   const limits = { ...DEFAULT_RATE_LIMITS, ...rateLimits };
+  const auth: AuthConfig = { db, secret: authSecret, adminEmails };
 
   if (log) app.use(logger());
   app.use('/api/*', cors({ origin: frontendUrl, credentials: true }));
 
   app.get('/health', (c) => c.json({ ok: true }));
-  app.route('/api/tools', toolsRoutes(db, authSecret, limits.unlock));
-  app.route('/api/me', meRoutes(db, authSecret));
-  app.route('/api/subscription', subscriptionRoutes({ db, authSecret, frontendUrl, mp }));
+  app.route('/api/tools', toolsRoutes(auth, limits.unlock));
+  app.route('/api/me', meRoutes(auth));
+  app.route('/api/subscription', subscriptionRoutes({ auth, frontendUrl, mp }));
+  app.route('/api/admin', adminRoutes(auth));
   app.route('/webhooks', webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook }));
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
