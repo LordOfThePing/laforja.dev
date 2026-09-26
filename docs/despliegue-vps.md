@@ -2,7 +2,7 @@
 
 ## Estructura
 
-- **Docker Compose** con `postgres` + `migrate` + `api` + `web` + `cloudflared`
+- **Docker Compose** con `postgres` + `migrate` + `api` + `web` + `backup` + `cloudflared`
 - **Cloudflare Tunnel** (`cloudflared` dentro del compose) como única entrada
   pública: TLS lo termina Cloudflare, el VPS no abre puertos ni maneja
   certificados. Mismo patrón que los otros proyectos del VPS.
@@ -17,6 +17,7 @@ El archivo real está en la raíz del repo (`docker-compose.yml`). Servicios:
 | `migrate` | `laforja-api` | one-shot: `bun run db:migrate` (migraciones de `apps/api/drizzle/` con drizzle-orm, sin drizzle-kit) |
 | `api` | `laforja-api` | Hono sobre Bun, `127.0.0.1:4000`; arranca solo si `migrate` terminó bien |
 | `web` | `apps/web/Dockerfile` | build con Bun, runtime Node 22 (`dist/server/entry.mjs`), `127.0.0.1:3000` |
+| `backup` | `ops/backup/Dockerfile` | `pg_dump` diario + rotación + copia opcional a un bucket (ver [Backups](#backups-de-postgres)) |
 | `cloudflared` | `cloudflare/cloudflared` | solo con `COMPOSE_PROFILES=tunnel`; conecta el tunnel con `CLOUDFLARE_TUNNEL_TOKEN` |
 
 Variables: `.env` en la raíz, ver `.env.example`. Compose falla al arrancar si
@@ -80,6 +81,63 @@ En el panel de MP → Webhooks: URL
 Agregar los mismos public hostnames con `laforja.dev` en el mismo tunnel,
 actualizar `FRONTEND_URL`, el callback de Google y la URL del webhook de MP.
 Redirect 301 desde el dominio viejo con una Redirect Rule de Cloudflare.
+
+## Backups de Postgres
+
+El servicio `backup` del compose (imagen en `ops/backup/`) hace un `pg_dump`
+en formato custom **una vez por día**: cada hora se fija si hay un dump de las
+últimas ~23 h y si no, lo hace. Un deploy o un reinicio no saltea ni duplica
+días, y el primer backup sale apenas el servicio arranca.
+
+- Los dumps quedan en el volumen `pg_backups` (`/backups/laforja-<fecha UTC>.dump`)
+  y se borran a los `BACKUP_KEEP_DAYS` días (default 14)
+- Si falla, lo loguea (`make logs SERVICE=backup`) y reintenta a la hora
+
+### Copia fuera del VPS
+
+El volumen vive en el mismo disco que la base: si se pierde el VPS, se pierden
+los dos. Hay dos formas de tener una copia afuera, combinables:
+
+1. **Bucket S3-compatible (automático).** Con `BACKUP_S3_BUCKET` y las
+   credenciales en el `.env` (ver `.env.example`), cada dump se sube con rclone
+   y en el bucket se aplica la misma rotación. Con Cloudflare R2: crear el
+   bucket, después *R2 → Manage API tokens* → token con permiso **Object
+   Read & Write** solo sobre ese bucket; el endpoint es
+   `https://<account_id>.r2.cloudflarestorage.com` y `BACKUP_S3_PROVIDER=Cloudflare`.
+   Después `make env-push` + `make up`.
+2. **`make backup-pull` (a mano).** Baja el último dump a `./backups/` de tu
+   máquina (está en `.gitignore`) y verifica el sha256 contra el del VPS.
+
+### Comandos
+
+| Comando | Qué hace |
+|---|---|
+| `make backup` | Hace un backup ahora (por ejemplo, antes de una migración delicada) |
+| `make backups` | Lista los dumps del VPS |
+| `make backup-pull` | Baja el último dump a `./backups/` |
+
+### Restaurar
+
+Parar lo que escribe en la base, restaurar y volver a levantar. `--clean`
+borra y recrea los objetos que están en el dump. Desde `/opt/laforja` en el VPS:
+
+```bash
+docker compose stop api web
+# Un dump que ya está en el VPS (nombre de `make backups`):
+docker compose exec -T backup pg_restore --clean --if-exists --no-owner -d laforja /backups/laforja-XXXX.dump
+docker compose start api web
+```
+
+Desde un dump en tu máquina, el mismo `pg_restore` leyendo de stdin:
+
+```bash
+ssh -o RemoteCommand=none laforja \
+  "cd /opt/laforja && docker compose exec -T backup pg_restore --clean --if-exists --no-owner -d laforja" \
+  < backups/laforja-XXXX.dump
+```
+
+Para mirar un dump sin tocar producción: restaurarlo en una base aparte
+(`createdb -U laforja prueba` en el contenedor `postgres` y `-d prueba`).
 
 ## Deploy con el Makefile
 
