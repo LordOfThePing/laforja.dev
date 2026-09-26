@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import type { createApp } from './app.ts';
 import type { Db } from './db/client.ts';
-import { categories, users } from './db/schema.ts';
+import { categories, tools, users } from './db/schema.ts';
 import { TEST_ADMIN_EMAIL, createTestApp, makeToken } from './test/setup.ts';
 
 let app: ReturnType<typeof createApp>;
@@ -153,5 +153,15 @@ describe('usuarios', () => {
     expect(TEST_ADMIN_EMAIL).toBe(admin!.email.toLowerCase());
     const res = await req('PATCH', `/api/admin/users/${admin!.id}`, adminToken, { role: 'user' });
     expect(res.status).toBe(409);
+  });
+});
+
+describe('GET /api/admin/categories', () => {
+  test('toolCount cuenta las herramientas de cada categoría', async () => {
+    const res = await req('GET', '/api/admin/categories', adminToken);
+    const body = (await res.json()) as { categories: { id: string; toolCount: number }[] };
+    const inDb = await db.select({ id: tools.id }).from(tools).where(eq(tools.categoryId, categoryId));
+    expect(inDb.length).toBeGreaterThan(0);
+    expect(body.categories.find((c) => c.id === categoryId)?.toolCount).toBe(inDb.length);
   });
 });

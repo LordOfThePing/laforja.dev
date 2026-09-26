@@ -129,7 +129,9 @@ export function adminRoutes(auth: AuthConfig) {
         name: categories.name,
         description: categories.description,
         order: categories.order,
-        toolCount: sql<number>`(select count(*) from ${tools} where ${tools.categoryId} = ${categories.id})`.mapWith(Number),
+        // Drizzle no califica columnas en un select de una sola tabla: `${categories.id}` salía
+        // como "id" y la subquery lo comparaba contra tools.id, así que el conteo daba siempre 0.
+        toolCount: sql<number>`(select count(*) from ${tools} t where t.category_id = ${categories}.id)`.mapWith(Number),
       })
       .from(categories)
       .orderBy(asc(categories.order), categories.name);
