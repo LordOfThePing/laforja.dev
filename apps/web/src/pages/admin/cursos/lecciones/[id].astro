@@ -1,0 +1,116 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import {
+  type AdminLesson,
+  errorMessage,
+  getAdminCourse,
+  getAdminLesson,
+  lessonFromForm,
+  mutate,
+  requireAdmin,
+} from '~/lib/admin';
+import { youtubeEmbedUrl } from '~/lib/youtube';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+const id = Astro.params.id ?? '';
+const lesson = await getAdminLesson(auth.user, id);
+if (!lesson) return new Response(null, { status: 404 });
+const course = await getAdminCourse(auth.user, lesson.courseId);
+if (!course) return new Response(null, { status: 404 });
+
+let values: ReturnType<typeof lessonFromForm> | AdminLesson = lesson;
+let error: string | null = null;
+const flash = Astro.url.searchParams.get('ok');
+const back = `/admin/cursos/${course.id}#temario`;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const path = `/api/admin/lessons/${encodeURIComponent(id)}`;
+  if (form.get('action') === 'delete') {
+    const result = await mutate(auth.user, path, 'DELETE');
+    if (result.ok) return Astro.redirect(`/admin/cursos/${course.id}?ok=temario#temario`, 303);
+    error = errorMessage(result);
+  } else {
+    values = lessonFromForm(form);
+    const result = await mutate(auth.user, path, 'PATCH', values);
+    if (result.ok) return Astro.redirect(`/admin/cursos/lecciones/${id}?ok=guardada`, 303);
+    error = errorMessage(result);
+  }
+  Astro.response.status = 400;
+}
+
+const currentModule = 'moduleId' in values && values.moduleId ? values.moduleId : lesson.moduleId;
+const minutes = values.durationSeconds == null ? '' : Math.round(values.durationSeconds / 60);
+const badVideo = values.youtubeUrl !== null && youtubeEmbedUrl(values.youtubeUrl) === null;
+const live = course.publishedAt !== null && Date.parse(course.publishedAt) <= Date.now();
+---
+
+<Admin title={lesson.title}>
+  <a href={back} class="back mono">← {course.title}</a>
+  <div class="admin-bar">
+    <h1>{lesson.title}</h1>
+    {live && <a href={`/cursos/${course.slug}/${lesson.slug}`} class="btn btn--ghost">Ver en el sitio ↗</a>}
+  </div>
+
+  {flash === 'creada' && <p class="admin-notice admin-notice--ok" role="status">Lección creada. Completá el video y el contenido.</p>}
+  {flash === 'guardada' && <p class="admin-notice admin-notice--ok" role="status">Cambios guardados.</p>}
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+  {badVideo && (
+    <p class="admin-notice" role="status">No reconocemos esa URL como un video de YouTube: en el sitio no se va a ver el reproductor.</p>
+  )}
+
+  <form method="post" class="admin-form block">
+    <div class="admin-form__row">
+      <label class="field"><span>Título</span><input name="title" required value={values.title} /></label>
+      <label class="field">
+        <span>Slug</span>
+        <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" class="mono" value={values.slug} />
+        <small>Cambiarlo rompe los links viejos a la lección.</small>
+      </label>
+    </div>
+    <div class="admin-form__row">
+      <label class="field">
+        <span>Módulo</span>
+        <select name="moduleId">
+          {course.modules.map((m) => <option value={m.id} selected={m.id === currentModule}>{m.title}</option>)}
+        </select>
+        <small>Al cambiarlo, la lección va al final de ese módulo.</small>
+      </label>
+      <label class="field"><span>Duración (minutos)</span><input name="durationMinutes" type="number" min="0" step="1" value={minutes} /></label>
+    </div>
+    <label class="field"><span>Video de YouTube (URL)</span><input name="youtubeUrl" type="url" value={values.youtubeUrl ?? ''} /></label>
+    <label class="field">
+      <span>Contenido</span>
+      <textarea name="contentMd" class="content">{values.contentMd ?? ''}</textarea>
+      <small>Párrafos separados por una línea en blanco. Se muestra como texto plano.</small>
+    </label>
+    <label class="field field--check">
+      <input type="checkbox" name="isFreePreview" checked={values.isFreePreview} />
+      <span>Preview gratis: se ve sin suscripción aunque el curso sea pago</span>
+    </label>
+    <div class="admin-actions">
+      <button type="submit" class="btn btn--primary">Guardar lección</button>
+      <a href={back} class="btn btn--ghost">Volver al temario</a>
+    </div>
+  </form>
+
+  <details class="danger">
+    <summary>Borrar lección</summary>
+    <p class="dim">Se borra también el progreso de los alumnos en esta lección. No se puede deshacer.</p>
+    <form method="post">
+      <button type="submit" name="action" value="delete" class="btn btn--ghost btn--danger">Borrar lección</button>
+    </form>
+  </details>
+</Admin>
+
+<style>
+  .back { display: inline-block; color: var(--ink-mute); font-size: 12px; margin-bottom: 8px; }
+  .back:hover { color: var(--ink); }
+  .block { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-elev); }
+  .field textarea.content { min-height: 260px; }
+  .danger { margin-top: 40px; color: var(--ink-dim); }
+  .danger summary { cursor: pointer; color: #ff8a7a; width: fit-content; }
+  .danger form, .danger p { margin-top: 10px; }
+</style>

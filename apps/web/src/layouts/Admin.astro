@@ -10,6 +10,7 @@ const { title } = Astro.props;
 const path = Astro.url.pathname;
 const sections = [
   { href: '/admin', label: 'Resumen', active: path === '/admin' || path.startsWith('/admin/herramientas') },
+  { href: '/admin/cursos', label: 'Cursos', active: path.startsWith('/admin/cursos') },
   { href: '/admin/categorias', label: 'Categorías', active: path.startsWith('/admin/categorias') },
   { href: '/admin/usuarios', label: 'Usuarios', active: path.startsWith('/admin/usuarios') },
 ];

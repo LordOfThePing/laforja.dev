@@ -1,0 +1,261 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import {
+  type AdminCourse,
+  type AdminLesson,
+  courseFromForm,
+  errorMessage,
+  getAdminCourse,
+  lessonFromForm,
+  moduleFromForm,
+  mutate,
+  requireAdmin,
+} from '~/lib/admin';
+import { formatDuration } from '~/lib/api';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+const id = Astro.params.id ?? '';
+const course = await getAdminCourse(auth.user, id);
+if (!course) return new Response(null, { status: 404 });
+
+let error: string | null = null;
+let values: ReturnType<typeof courseFromForm> | AdminCourse = course;
+const flash = Astro.url.searchParams.get('ok');
+const here = `/admin/cursos/${id}`;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const target = encodeURIComponent(String(form.get('target') ?? ''));
+  const direction = form.get('direction');
+
+  if (action === 'delete-course') {
+    const result = await mutate(auth.user, `/api/admin/courses/${id}`, 'DELETE');
+    if (result.ok) return Astro.redirect('/admin/cursos?ok=borrado', 303);
+    error = errorMessage(result);
+  } else if (action === 'update-course') {
+    values = courseFromForm(form, course);
+    const result = await mutate(auth.user, `/api/admin/courses/${id}`, 'PATCH', values);
+    if (result.ok) return Astro.redirect(`${here}?ok=guardado`, 303);
+    error = errorMessage(result);
+  } else if (action === 'add-lesson') {
+    const result = await mutate<{ lesson: AdminLesson }>(
+      auth.user,
+      `/api/admin/modules/${target}/lessons`,
+      'POST',
+      lessonFromForm(form),
+    );
+    if (result.ok) return Astro.redirect(`/admin/cursos/lecciones/${result.value.lesson.id}?ok=creada`, 303);
+    error = errorMessage(result);
+  } else {
+    const calls: Record<string, () => ReturnType<typeof mutate>> = {
+      'add-module': () => mutate(auth.user, `/api/admin/courses/${id}/modules`, 'POST', moduleFromForm(form)),
+      'update-module': () => mutate(auth.user, `/api/admin/modules/${target}`, 'PATCH', moduleFromForm(form)),
+      'delete-module': () => mutate(auth.user, `/api/admin/modules/${target}`, 'DELETE'),
+      'move-module': () => mutate(auth.user, `/api/admin/modules/${target}/move`, 'POST', { direction }),
+      'move-lesson': () => mutate(auth.user, `/api/admin/lessons/${target}/move`, 'POST', { direction }),
+    };
+    const run = calls[action];
+    if (!run) return new Response(null, { status: 400 });
+    const result = await run();
+    if (result.ok) return Astro.redirect(`${here}?ok=temario#temario`, 303);
+    error = errorMessage(result);
+  }
+  Astro.response.status = 400;
+}
+
+const live = course.publishedAt !== null && Date.parse(course.publishedAt) <= Date.now();
+const published = values.publishedAt !== null;
+const lessonTotal = course.modules.reduce((n, m) => n + m.lessons.length, 0);
+---
+
+<Admin title={course.title}>
+  <div class="admin-bar">
+    <h1>{course.title}</h1>
+    {live && <a href={`/cursos/${course.slug}`} class="btn btn--ghost">Ver en el sitio ↗</a>}
+  </div>
+
+  {flash === 'creado' && <p class="admin-notice admin-notice--ok" role="status">Curso creado. Ahora armá el temario.</p>}
+  {flash === 'guardado' && <p class="admin-notice admin-notice--ok" role="status">Cambios guardados.</p>}
+  {flash === 'temario' && <p class="admin-notice admin-notice--ok" role="status">Temario actualizado.</p>}
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  <form method="post" class="admin-form block">
+    <input type="hidden" name="action" value="update-course" />
+    <div class="admin-form__row">
+      <label class="field"><span>Título</span><input name="title" required value={values.title} /></label>
+      <label class="field"><span>Slug</span><input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" class="mono" value={values.slug} /></label>
+    </div>
+    <label class="field"><span>Descripción corta</span><input name="shortDescription" required value={values.shortDescription} /></label>
+    <label class="field">
+      <span>Sobre el curso</span>
+      <textarea name="description">{values.description ?? ''}</textarea>
+      <small>Párrafos separados por una línea en blanco.</small>
+    </label>
+    <div class="admin-form__row">
+      <label class="field">
+        <span>Acceso</span>
+        <select name="tier">
+          <option value="premium" selected={values.tier === 'premium'}>Con suscripción</option>
+          <option value="free" selected={values.tier === 'free'}>Gratis</option>
+        </select>
+      </label>
+      <label class="field"><span>Orden en /cursos</span><input name="order" type="number" min="0" step="1" value={values.order} /></label>
+      <label class="field"><span>Portada (URL)</span><input name="coverImageUrl" type="url" value={values.coverImageUrl ?? ''} /></label>
+    </div>
+    <label class="field field--check">
+      <input type="checkbox" name="published" checked={published} />
+      <span>Publicado{lessonTotal === 0 && ' (todavía no tiene lecciones)'}</span>
+    </label>
+    <div class="admin-actions"><button type="submit" class="btn btn--primary">Guardar curso</button></div>
+  </form>
+
+  <section id="temario" class="syllabus">
+    <div class="admin-bar">
+      <h2>Temario</h2>
+      <span class="dim">{course.modules.length} módulos · {lessonTotal} lecciones · {course.learners} {course.learners === 1 ? 'alumno' : 'alumnos'} con progreso</span>
+    </div>
+
+    <ol class="mods">
+      {course.modules.map((m, mi) => (
+        <li class="mod">
+          <header class="mod__head">
+            <span class="mod__num mono">{String(mi + 1).padStart(2, '0')}</span>
+            <form method="post" class="mod__edit">
+              <input type="hidden" name="target" value={m.id} />
+              <input name="title" required value={m.title} aria-label="Título del módulo" class="mod__title" />
+              <input name="description" value={m.description ?? ''} placeholder="Descripción (opcional)" aria-label="Descripción del módulo" />
+              <button type="submit" name="action" value="update-module" class="btn btn--ghost btn--sm">Guardar</button>
+            </form>
+            <form method="post" class="mod__tools">
+              <input type="hidden" name="target" value={m.id} />
+              <input type="hidden" name="action" value="move-module" />
+              <button type="submit" name="direction" value="up" class="btn btn--ghost btn--sm" disabled={mi === 0} aria-label={`Subir módulo ${m.title}`}>↑</button>
+              <button type="submit" name="direction" value="down" class="btn btn--ghost btn--sm" disabled={mi === course.modules.length - 1} aria-label={`Bajar módulo ${m.title}`}>↓</button>
+            </form>
+          </header>
+
+          {m.lessons.length > 0 && (
+            <ol class="lessons">
+              {m.lessons.map((l, li) => (
+                <li class="lesson">
+                  <a href={`/admin/cursos/lecciones/${l.id}`} class="lesson__title">{l.title}</a>
+                  <span class="dim mono lesson__slug">{l.slug}</span>
+                  <span class="lesson__tags">
+                    {l.isFreePreview && <span class="tag tag--spark">Preview</span>}
+                    {!l.hasVideo && <span class="tag">Sin video</span>}
+                    {l.durationSeconds != null && <span class="dim mono">{formatDuration(l.durationSeconds)}</span>}
+                  </span>
+                  <form method="post" class="lesson__tools">
+                    <input type="hidden" name="target" value={l.id} />
+                    <input type="hidden" name="action" value="move-lesson" />
+                    <button type="submit" name="direction" value="up" class="btn btn--ghost btn--sm" disabled={li === 0} aria-label={`Subir ${l.title}`}>↑</button>
+                    <button type="submit" name="direction" value="down" class="btn btn--ghost btn--sm" disabled={li === m.lessons.length - 1} aria-label={`Bajar ${l.title}`}>↓</button>
+                  </form>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <form method="post" class="add-lesson">
+            <input type="hidden" name="target" value={m.id} />
+            <input type="hidden" name="action" value="add-lesson" />
+            <input name="title" required placeholder="Título de la nueva lección" aria-label={`Nueva lección en ${m.title}`} />
+            <button type="submit" class="btn btn--ghost btn--sm">+ Lección</button>
+          </form>
+
+          <details class="danger danger--inline">
+            <summary>Borrar módulo</summary>
+            <form method="post">
+              <input type="hidden" name="target" value={m.id} />
+              <p class="dim">
+                Se borran sus {m.lessons.length} lecciones y el progreso de los alumnos en ellas. No se puede deshacer.
+              </p>
+              <button type="submit" name="action" value="delete-module" class="btn btn--ghost btn--sm btn--danger">Borrar módulo</button>
+            </form>
+          </details>
+        </li>
+      ))}
+    </ol>
+
+    <form method="post" class="admin-form block add-module">
+      <input type="hidden" name="action" value="add-module" />
+      <div class="admin-form__row">
+        <label class="field"><span>Nuevo módulo</span><input name="title" required placeholder="Título" /></label>
+        <label class="field"><span>Descripción</span><input name="description" placeholder="Opcional" /></label>
+      </div>
+      <div class="admin-actions"><button type="submit" class="btn btn--ghost">+ Agregar módulo</button></div>
+    </form>
+  </section>
+
+  <details class="danger">
+    <summary>Borrar curso</summary>
+    <p class="dim">
+      Se borran sus módulos, lecciones y el progreso de {course.learners} {course.learners === 1 ? 'alumno' : 'alumnos'}. No se puede deshacer.
+    </p>
+    <form method="post">
+      <button type="submit" name="action" value="delete-course" class="btn btn--ghost btn--danger">Borrar curso</button>
+    </form>
+  </details>
+</Admin>
+
+<style>
+  .block { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-elev); }
+  .syllabus { margin-top: 48px; }
+  .mods { list-style: none; display: grid; gap: 14px; margin-bottom: 20px; }
+  .mod {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev);
+  }
+  .mod__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .mod__num { color: var(--ember-300); font-size: 12px; }
+  .mod__edit { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 0; }
+  .mod__edit input,
+  .add-lesson input {
+    flex: 1;
+    min-width: 160px;
+    padding: 8px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+  }
+  .mod__edit .mod__title { font-weight: 600; }
+  .mod__edit input:focus-visible,
+  .add-lesson input:focus-visible { outline: none; border-color: var(--ember-500); }
+  .mod__tools,
+  .lesson__tools { display: flex; gap: 4px; }
+  .mod__tools button:disabled,
+  .lesson__tools button:disabled { opacity: 0.3; cursor: default; }
+
+  .lessons { list-style: none; display: grid; gap: 2px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .lesson {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 12px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+  }
+  .lesson:hover { background: rgba(255,255,255,0.02); }
+  .lesson__title { color: var(--ink); }
+  .lesson__title:hover { color: var(--ember-300); }
+  .lesson__slug { font-size: 12px; grid-column: 1; }
+  .lesson__tags { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; grid-column: 1; }
+  .lesson__tools { grid-column: 2; grid-row: 1 / span 3; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-mute); }
+  .tag--spark { color: var(--spark); border-color: rgba(125,211,192,0.3); }
+
+  .add-lesson { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .danger { margin-top: 40px; color: var(--ink-dim); }
+  .danger--inline { margin-top: 0; font-size: 13px; }
+  .danger summary { cursor: pointer; color: #ff8a7a; width: fit-content; }
+  .danger form, .danger p { margin-top: 10px; }
+</style>

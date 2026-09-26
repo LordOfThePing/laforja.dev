@@ -1,0 +1,94 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import {
+  type AdminCourse,
+  courseFromForm,
+  errorMessage,
+  listAdminCourses,
+  mutate,
+  requireAdmin,
+} from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let error: string | null = null;
+let draft: ReturnType<typeof courseFromForm> | null = null;
+const flash = Astro.url.searchParams.get('ok');
+
+if (Astro.request.method === 'POST') {
+  draft = courseFromForm(await Astro.request.formData(), null);
+  const result = await mutate<{ course: AdminCourse }>(auth.user, '/api/admin/courses', 'POST', draft);
+  if (result.ok) return Astro.redirect(`/admin/cursos/${result.value.course.id}?ok=creado`, 303);
+  error = errorMessage(result);
+  Astro.response.status = 400;
+}
+
+const now = Date.now();
+const courses = (await listAdminCourses(auth.user)).map((c) => ({
+  ...c,
+  live: c.publishedAt !== null && Date.parse(c.publishedAt) <= now,
+}));
+---
+
+<Admin title="Cursos">
+  <h1>Cursos</h1>
+  <p class="dim lede">Creá el curso acá y armá el temario (módulos y lecciones) adentro. Se publica cuando lo marcás.</p>
+
+  {flash === 'borrado' && <p class="admin-notice admin-notice--ok" role="status">Curso borrado.</p>}
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  {courses.length > 0 && (
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Curso</th><th>Tier</th><th>Temario</th><th>Estado</th><th>Orden</th></tr>
+        </thead>
+        <tbody>
+          {courses.map((c) => (
+              <tr>
+                <td>
+                  <a href={`/admin/cursos/${c.id}`}>{c.title}</a>
+                  <div class="dim mono">{c.slug}</div>
+                </td>
+                <td>{c.tier === 'premium' ? 'Suscripción' : 'Gratis'}</td>
+                <td class="dim">{c.moduleCount} mód. · {c.lessonCount} lecc.</td>
+                <td>{c.live ? <span class="pill pill--spark">Publicado</span> : <span class="dim">Borrador</span>}</td>
+                <td class="dim">{c.order}</td>
+              </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <h2 class="new-title">Nuevo curso</h2>
+  <form method="post" class="admin-form new-course">
+    <div class="admin-form__row">
+      <label class="field"><span>Título</span><input name="title" required value={draft?.title ?? ''} /></label>
+      <label class="field">
+        <span>Slug</span>
+        <input name="slug" pattern="[a-z0-9]+(-[a-z0-9]+)*" class="mono" value={draft?.slug ?? ''} />
+        <small>Vacío = se arma con el título.</small>
+      </label>
+    </div>
+    <label class="field"><span>Descripción corta</span><input name="shortDescription" required value={draft?.shortDescription ?? ''} /></label>
+    <div class="admin-form__row">
+      <label class="field">
+        <span>Acceso</span>
+        <select name="tier">
+          <option value="premium" selected={draft?.tier !== 'free'}>Con suscripción</option>
+          <option value="free" selected={draft?.tier === 'free'}>Gratis</option>
+        </select>
+      </label>
+      <label class="field"><span>Orden</span><input name="order" type="number" min="0" step="1" value={draft?.order ?? courses.length + 1} /></label>
+    </div>
+    <div class="admin-actions"><button type="submit" class="btn btn--primary">Crear y armar el temario</button></div>
+  </form>
+</Admin>
+
+<style>
+  .lede { margin-block: 8px 24px; }
+  .new-title { margin-block: 40px 16px; }
+  .new-course { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-elev); }
+</style>
