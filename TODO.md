@@ -4,7 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-_(nada)_
+- CI en GitHub Actions: `bun test` + typecheck de api y web en cada push a `main` — en curso por @claude-2
 
 ## Pendiente
 
@@ -18,7 +18,6 @@ _(nada)_
 ### Operación / producción
 
 - Backups diarios de Postgres (`pg_dump` con rotación, idealmente copia fuera del VPS) — pendiente — hoy la única copia es el volumen `pg_data`
-- CI en GitHub Actions: `bun test` + typecheck de api y web en cada push a `main` — pendiente
 - Monitoreo de uptime de `/health` y de la web + aviso si cae — pendiente
 - Reconciliación periódica de suscripciones contra MP (por si se pierde un webhook) — pendiente — evaluar después de probar MP
 - Headers de seguridad en la web (CSP, `X-Frame-Options`, `Referrer-Policy`) — pendiente
