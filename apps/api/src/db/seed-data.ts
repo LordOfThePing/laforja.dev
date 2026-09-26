@@ -138,7 +138,6 @@ export const seedCourses: SeedCourse[] = [
             title: 'Qué es (y qué no es) un agente',
             durationSeconds: 7 * 60,
             isFreePreview: true,
-            youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
             contentMd: 'Un agente es un loop: decide, actúa, observa y vuelve a decidir.',
           },
           {

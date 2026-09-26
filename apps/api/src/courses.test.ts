@@ -179,7 +179,7 @@ describe('GET /api/courses/:slug/lessons/:lesson', () => {
       await get(`/api/courses/${PREMIUM}/lessons/que-es-un-agente`)
     ).json()) as LessonBody;
     expect(lesson.isLocked).toBe(false);
-    expect(lesson.youtubeUrl).toContain('youtube.com');
+    expect(lesson.contentMd).toContain('loop');
     expect(lesson.prev).toBeNull();
     expect(lesson.progress).toBeNull();
   });
