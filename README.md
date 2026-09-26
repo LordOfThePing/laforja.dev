@@ -26,6 +26,15 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - ✅ Docker Compose (postgres + migrate + api + web)
 - ✅ Deploy en VPS (Hetzner + Cloudflare Tunnel) — `academia.flynnpedroa.engineer`
 - ✅ Rol admin + panel `/admin` (herramientas, categorías, usuarios); admins por `ADMIN_EMAILS`
+- ✅ Páginas legales (`/terminos`, `/privacidad`) y 404/500 propias
+- ✅ Headers de seguridad (CSP con hashes, `X-Frame-Options`, `Referrer-Policy`, HSTS)
+- ✅ SEO: `sitemap.xml`, `robots.txt`, canonical y OG image generada por herramienta
+- ✅ CI (typecheck + tests) y deploy automático en cada push a `main` (GitHub Actions)
+- ✅ Backups diarios de Postgres con rotación (copia fuera del VPS: código listo, falta el bucket)
+
+**Falta para cerrar v1**: probar la suscripción contra MP sandbox, pasar el OAuth de Google a
+"producción" y cargar las herramientas reales. El estado vivo del trabajo está en
+[`TODO.md`](TODO.md); lo terminado, en [`DONE.md`](DONE.md).
 
 ## Stack
 
@@ -36,7 +45,7 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - **Pagos**: MercadoPago Preapproval + webhook
 - **Deploy**: Docker Compose en VPS (Hetzner) detrás de Cloudflare Tunnel
 
-## Cómo correr el frontend (una vez tengas Bun instalado)
+## Cómo correr el frontend
 
 ```bash
 cd apps/web
@@ -81,29 +90,36 @@ Deploy al VPS: `make help` y [despliegue-vps.md](docs/despliegue-vps.md#deploy-c
 | [arquitectura.md](docs/arquitectura.md) | Stack detallado, diagrama, decisiones |
 | [schema-datos.md](docs/schema-datos.md) | Modelo de datos (v1 + hooks para cursos futuros) |
 | [auth-y-pagos.md](docs/auth-y-pagos.md) | Flujo Google OAuth + MP Preapproval + webhooks |
-| [despliegue-vps.md](docs/despliegue-vps.md) | Docker Compose, Cloudflare Tunnel, Makefile de deploy |
+| [despliegue-vps.md](docs/despliegue-vps.md) | Docker Compose, Cloudflare Tunnel, Makefile, deploy automático, backups |
 | [roadmap.md](docs/roadmap.md) | Fases v1 → v2 → v3 |
 | [diseño-brief.md](docs/diseño-brief.md) | Brief para `/design-shotgun` |
 
 ## Estructura
 
 ```
-academy/
+laforja.dev/
+├── .github/workflows/     # ci.yml (typecheck + tests) y deploy.yml (deploy al VPS)
 ├── apps/
 │   ├── api/               # Hono + Bun + Drizzle (REST)
 │   │   ├── drizzle/        # migraciones generadas
 │   │   └── src/
-│   │       ├── db/         # schema, cliente, seed
+│   │       ├── db/         # schema, cliente, migrate, seed
+│   │       ├── lib/        # unlocks, MercadoPago, rate limit, admin
 │   │       └── routes/
-│   └── web/               # Astro + React (landing, dashboard, auth)
+│   └── web/               # Astro + React (landing, dashboard, admin, auth)
 │       ├── src/
 │       │   ├── components/
-│       │   ├── lib/        # cliente de la API (server-side) + firma del JWT
+│       │   ├── lib/        # cliente de la API (server-side), firma del JWT, OG images
 │       │   ├── layouts/
 │       │   ├── pages/
 │       │   └── styles/
 │       ├── astro.config.mjs
 │       └── package.json
+├── ops/backup/            # contenedor de pg_dump con rotación
+├── scripts/               # setup del VPS y deploy desde CI
 ├── docs/                  # documentos de referencia
+├── docker-compose.yml
+├── Makefile               # deploy y operación del VPS (`make help`)
+├── TODO.md / DONE.md      # estado del trabajo (ver CLAUDE.md §2)
 └── README.md
 ```
