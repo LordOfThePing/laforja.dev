@@ -5,7 +5,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ## En curso
 
 - Monitoreo de uptime de `/health` y de la web + aviso si cae — en curso por @claude-b
-- Actualizar `README.md` (estado: el deploy ya está hecho) y tildar lo cumplido en `docs/roadmap.md` — en curso por @claude-2
 
 ## Pendiente
 
