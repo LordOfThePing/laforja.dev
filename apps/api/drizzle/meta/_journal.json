@@ -22,6 +22,13 @@
       "when": 1790457429654,
       "tag": "0002_courses",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790466498749,
+      "tag": "0003_certificates",
+      "breakpoints": true
     }
   ]
 }

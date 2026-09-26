@@ -158,3 +158,23 @@ export const progress = pgTable(
   },
   (t) => [unique('progress_user_lesson_uq').on(t.userId, t.lessonId)],
 );
+
+// Se emite una vez y queda: si al curso después se le suman lecciones, el certificado sigue
+// valiendo. El id es lo que se comparte (URL pública de verificación), por eso es un uuid.
+export const certificates = pgTable(
+  'certificates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    // Snapshot al emitir: el certificado dice lo que decía el día que se ganó.
+    recipientName: text('recipient_name').notNull(),
+    courseTitle: text('course_title').notNull(),
+    issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('certificates_user_course_uq').on(t.userId, t.courseId)],
+);
