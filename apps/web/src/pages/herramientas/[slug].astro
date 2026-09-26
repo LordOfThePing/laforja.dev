@@ -50,6 +50,7 @@ const gate: 'login' | 'quota' | 'unlock' = !user ? 'login' : outOfQuota ? 'quota
 <Base
   title={tool ? `${tool.title} — La Forja` : 'Herramienta no encontrada — La Forja'}
   description={tool?.shortDescription}
+  image={tool ? `/og/herramientas/${encodeURIComponent(tool.slug)}.png` : undefined}
 >
   <Nav />
   <main class="tool container">
