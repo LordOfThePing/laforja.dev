@@ -35,3 +35,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-26 — CI en GitHub Actions (typecheck + tests de api, typecheck + build de web) — 67f286d, 037cae3
 - 2026-09-26 — Headers de seguridad en la web (CSP con hashes, frame-ancestors, HSTS, etc.) — c37138b
 - 2026-09-26 — `sitemap.xml` + `robots.txt` + OG image por herramienta (y del sitio) — 008c333, e8bfd08
+- 2026-09-26 — Backups diarios de Postgres (servicio `backup`, rotación, `make backup`/`backups`/`backup-pull`) — 116b87b
