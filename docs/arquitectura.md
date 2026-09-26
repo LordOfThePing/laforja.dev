@@ -51,6 +51,15 @@ Todo lo que está a la derecha de `cloudflared` corre en el docker-compose del V
 - El frontend maneja el OAuth dance y emite un JWT propio
 - El backend solo valida el JWT — menos complejidad de CORS
 
+### Headers de seguridad en la web
+- La CSP la genera Astro (`experimental.csp` en `apps/web/astro.config.mjs`) con los hashes de
+  los scripts y estilos inline de cada página, así que no hace falta `'unsafe-inline'`
+- `src/middleware.ts` le suma `frame-ancestors 'none'` y agrega `X-Frame-Options`, `nosniff`,
+  `Referrer-Policy`, `Permissions-Policy` y HSTS
+- **Si sumás un recurso externo** (fuente, embed, imagen de otro host, checkout que no sea MP),
+  agregá su origen en `directives` de `astro.config.mjs` o el browser lo bloquea. En `astro dev`
+  la CSP no se aplica: probalo con `bun run build` + `node dist/server/entry.mjs`
+
 ## Comunicación entre apps
 
 - Frontend → backend: el **servidor de Astro** (SSR) llama a la API por la red interna
