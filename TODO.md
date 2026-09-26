@@ -4,7 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- CI en GitHub Actions: `bun test` + typecheck de api y web en cada push a `main` — en curso por @claude-2
 - Headers de seguridad en la web (CSP, `X-Frame-Options`, `Referrer-Policy`) — en curso por @claude-b
 
 ## Pendiente
