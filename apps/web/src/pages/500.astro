@@ -1,0 +1,19 @@
+---
+import Base from '~/layouts/Base.astro';
+import Footer from '~/components/Footer.astro';
+import ErrorState from '~/components/ErrorState.astro';
+
+// Sin <Nav />: llama a getSession, y si lo que se cayó es auth la página de error también reventaría.
+---
+
+<Base title="Algo se rompió — La Forja">
+  <ErrorState code={500} eyebrow="Error del servidor" title="Se nos apagó el fuego.">
+    Algo falló de nuestro lado, no es culpa tuya. Probá de nuevo en un rato; si sigue pasando,
+    avisanos.
+    <Fragment slot="ctas">
+      <a href={Astro.url.pathname} class="btn btn--primary">Reintentar</a>
+      <a href="/" class="btn btn--ghost">Inicio</a>
+    </Fragment>
+  </ErrorState>
+  <Footer />
+</Base>

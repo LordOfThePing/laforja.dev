@@ -1,0 +1,19 @@
+---
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+import ErrorState from '~/components/ErrorState.astro';
+---
+
+<Base title="Página no encontrada — La Forja">
+  <Nav />
+  <ErrorState code={404} eyebrow="Página no encontrada" title="Esto no salió de la forja.">
+    La dirección no existe o la movimos. Fijate si está bien escrita, o arrancá de nuevo desde el
+    catálogo.
+    <Fragment slot="ctas">
+      <a href="/#herramientas" class="btn btn--primary">Ir al catálogo</a>
+      <a href="/" class="btn btn--ghost">Inicio</a>
+    </Fragment>
+  </ErrorState>
+  <Footer />
+</Base>

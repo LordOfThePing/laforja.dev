@@ -1,0 +1,54 @@
+---
+interface Props {
+  code: number;
+  eyebrow: string;
+  title: string;
+}
+
+const { code, eyebrow, title } = Astro.props;
+---
+
+<main class="err container">
+  <section class="err__card">
+    <div class="err__code display" aria-hidden="true">{code}</div>
+    <div class="eyebrow">{eyebrow}</div>
+    <h1 class="err__title display">{title}</h1>
+    <p class="err__text"><slot /></p>
+    <div class="err__ctas"><slot name="ctas" /></div>
+  </section>
+</main>
+
+<style>
+  .err {
+    max-width: 640px;
+    padding-block: clamp(60px, 12vw, 140px);
+  }
+  .err__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: clamp(28px, 5vw, 44px);
+    border: 1px solid rgba(255,176,103,0.3);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+    box-shadow: var(--shadow-glow);
+    overflow: hidden;
+  }
+  .err__code {
+    position: absolute;
+    top: -0.18em;
+    right: 0.1em;
+    font-size: clamp(120px, 28vw, 200px);
+    line-height: 1;
+    background: linear-gradient(180deg, rgba(255,122,0,0.28), rgba(255,122,0,0));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    pointer-events: none;
+    user-select: none;
+  }
+  .err__title { position: relative; font-size: clamp(32px, 6vw, 48px); line-height: 1.05; }
+  .err__text { position: relative; color: var(--ink-dim); }
+  .err__ctas { position: relative; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+</style>
