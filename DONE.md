@@ -26,3 +26,5 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-25 — Dashboard + flujo de suscripción en la web (`/suscripcion`, `/dashboard`, `/dashboard/gracias`) — de5945f
 - 2026-09-26 — Primer deploy a producción (academia.flynnpedroa.engineer vía Cloudflare Tunnel)
 - 2026-09-26 — SSH del VPS solo por clave (`00-hardening.conf` pisa cloud-init) — c082451
+- 2026-09-26 — Ícono de Google en el botón de login (viewBox 48x48 + path azul) — fdf7842
+- 2026-09-26 — Relevamiento de lo pendiente (v1, operación, SEO, v2, v3) en `TODO.md` — 4a09f9e
