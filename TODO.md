@@ -4,7 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-_(nada)_
+- Deploy automático con GitHub Actions en cada push a `main` — en curso por @claude
 
 ## Pendiente
 
