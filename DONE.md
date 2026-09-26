@@ -33,3 +33,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-26 — Páginas 404/500 propias con el estilo del sitio — 3f8ed1e, adcfff7
 - 2026-09-26 — Páginas `/terminos` y `/privacidad` — 1d4aaca
 - 2026-09-26 — CI en GitHub Actions (typecheck + tests de api, typecheck + build de web) — 67f286d, 037cae3
+- 2026-09-26 — Headers de seguridad en la web (CSP con hashes, frame-ancestors, HSTS, etc.) — c37138b
