@@ -5,6 +5,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ## En curso
 
 - `sitemap.xml` + `robots.txt` + OG image por herramienta — en curso por @claude-2
+- Backups diarios de Postgres (`pg_dump` con rotación, idealmente copia fuera del VPS) — en curso por @claude-b
 
 ## Pendiente
 
@@ -17,7 +18,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### Operación / producción
 
-- Backups diarios de Postgres (`pg_dump` con rotación, idealmente copia fuera del VPS) — pendiente — hoy la única copia es el volumen `pg_data`
 - Monitoreo de uptime de `/health` y de la web + aviso si cae — pendiente
 - Reconciliación periódica de suscripciones contra MP (por si se pierde un webhook) — pendiente — evaluar después de probar MP
 
