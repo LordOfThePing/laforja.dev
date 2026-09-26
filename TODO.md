@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Landing `/cursos` con temario público y reproductor de lecciones con progreso — en curso por @claude-2
 
 ## Pendiente
 
@@ -22,7 +23,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### v2 — Cursos (ver `docs/roadmap.md`)
 
-- Landing `/cursos` con temario público y reproductor de lecciones con progreso — pendiente — la API ya está (`/api/courses`, ver `docs/auth-y-pagos.md`)
 - Admin de cursos en `/admin` (cursos, módulos, lecciones, orden y preview) — pendiente — hoy los cursos solo entran por el seed
 - Certificado de completado en PDF — pendiente
 
