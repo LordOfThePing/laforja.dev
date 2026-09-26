@@ -28,3 +28,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-26 — SSH del VPS solo por clave (`00-hardening.conf` pisa cloud-init) — c082451
 - 2026-09-26 — Ícono de Google en el botón de login (viewBox 48x48 + path azul) — fdf7842
 - 2026-09-26 — Relevamiento de lo pendiente (v1, operación, SEO, v2, v3) en `TODO.md` — 4a09f9e
+- 2026-09-26 — Rol admin (`ADMIN_EMAILS`, pepeflynn22@gmail.com) + panel `/admin` (herramientas, categorías, usuarios) — 17a0ef0, 64c957d
