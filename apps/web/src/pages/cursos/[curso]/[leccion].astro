@@ -1,0 +1,301 @@
+---
+import { getSession } from 'auth-astro/server';
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+import Syllabus from '~/components/cursos/Syllabus.astro';
+import {
+  type CourseDetail,
+  type Lesson,
+  formatDuration,
+  getCourse,
+  getLesson,
+  saveLessonProgress,
+} from '~/lib/api';
+import { loginUrl } from '~/lib/redirect';
+import { youtubeEmbedUrl } from '~/lib/youtube';
+
+const courseSlug = Astro.params.curso ?? '';
+const lessonSlug = Astro.params.leccion ?? '';
+const session = await getSession(Astro.request);
+const user = session?.user;
+const here = `/cursos/${courseSlug}/${lessonSlug}`;
+
+type Notice = 'rate_limited' | 'unauthorized';
+let notice: Notice | null = null;
+
+if (Astro.request.method === 'POST') {
+  if (!user) return Astro.redirect(loginUrl(here));
+  const form = await Astro.request.formData();
+  const action = form.get('action');
+  if (action !== 'complete' && action !== 'uncomplete' && action !== 'complete-next') {
+    return new Response(null, { status: 400 });
+  }
+  const result = await saveLessonProgress(user, courseSlug, lessonSlug, {
+    completed: action !== 'uncomplete',
+  });
+  if (result.ok) {
+    const next = form.get('next');
+    // Solo se sigue a un slug del mismo curso: el form no puede mandar a otro lado.
+    const target =
+      action === 'complete-next' && typeof next === 'string' && /^[\w-]+$/.test(next)
+        ? `/cursos/${courseSlug}/${next}`
+        : here;
+    return Astro.redirect(target, 303);
+  }
+  if (result.reason === 'not_found') return new Response(null, { status: 404 });
+  // subscription_required cae en el render normal: la lección se muestra bloqueada.
+  if (result.reason !== 'subscription_required') notice = result.reason;
+  Astro.response.status = result.reason === 'rate_limited' ? 429 : 403;
+}
+
+let lesson: Lesson | null;
+let course: CourseDetail | null;
+try {
+  [lesson, course] = await Promise.all([
+    getLesson(user, courseSlug, lessonSlug),
+    getCourse(user, courseSlug),
+  ]);
+} catch (err) {
+  console.error(`No se pudo cargar la lección ${courseSlug}/${lessonSlug}`, err);
+  return new Response('No pudimos cargar la lección. Probá de nuevo en un rato.', {
+    status: 502,
+    headers: { 'content-type': 'text/plain; charset=utf-8' },
+  });
+}
+if (!lesson || !course) return new Response(null, { status: 404 });
+
+const embed = lesson.isLocked ? null : youtubeEmbedUrl(lesson.youtubeUrl);
+const paragraphs = lesson.isLocked ? [] : (lesson.contentMd?.split(/\n{2,}/) ?? []);
+const completed = lesson.progress?.completed ?? false;
+const all = course.modules.flatMap((m) => m.lessons);
+const position = all.findIndex((l) => l.slug === lesson.slug) + 1;
+const moduleTitle = course.modules.find((m) => m.lessons.some((l) => l.slug === lesson.slug))?.title;
+const duration = formatDuration(lesson.durationSeconds);
+---
+
+<Base
+  title={`${lesson.title} — ${course.title} — La Forja`}
+  description={course.shortDescription}
+  image={`/og/cursos/${encodeURIComponent(course.slug)}.png`}
+>
+  <Nav />
+  <main class="player container">
+    <nav class="player__crumbs mono" aria-label="Migas">
+      <a href="/cursos">Cursos</a>
+      <span aria-hidden="true">/</span>
+      <a href={`/cursos/${course.slug}`}>{course.title}</a>
+    </nav>
+
+    <div class="player__cols">
+      <article class="player__main">
+        <header class="player__head">
+          <div class="player__meta mono">
+            <span>Lección {position} de {all.length}</span>
+            {moduleTitle && <span>· {moduleTitle}</span>}
+            {duration && <span>· {duration}</span>}
+            {lesson.isFreePreview && course.tier === 'premium' && <span class="player__preview">· Preview gratis</span>}
+          </div>
+          <h1 class="player__title display">{lesson.title}</h1>
+        </header>
+
+        {lesson.isLocked ? (
+          <section class="gate" aria-labelledby="gate-title">
+            <div class="gate__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 10V7a6 6 0 1 1 12 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            {user ? (
+              <>
+                <h2 id="gate-title" class="gate__title">Esta lección es parte de la suscripción</h2>
+                <p class="gate__text">
+                  Con la suscripción tenés todos los cursos y toda la biblioteca de herramientas,
+                  sin cupo.
+                </p>
+                <a href="/suscripcion" class="btn btn--primary">Suscribirme</a>
+              </>
+            ) : (
+              <>
+                <h2 id="gate-title" class="gate__title">Ingresá para seguir el curso</h2>
+                <p class="gate__text">
+                  Las lecciones de este curso se abren con la suscripción. Ingresá con Google
+                  para suscribirte o para ver las que ya tenés.
+                </p>
+                <a href={loginUrl(here)} class="btn btn--primary">Ingresar con Google</a>
+              </>
+            )}
+          </section>
+        ) : (
+          <>
+            {embed ? (
+              <div class="player__video">
+                <iframe
+                  src={embed}
+                  title={`Video: ${lesson.title}`}
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            ) : null}
+
+            {paragraphs.length > 0 && (
+              <section class="player__body">
+                {paragraphs.map((p) => <p>{p}</p>)}
+              </section>
+            )}
+
+            <section class="player__done" aria-label="Progreso de la lección">
+              {notice === 'rate_limited' && (
+                <p class="player__error" role="alert">Demasiados cambios seguidos. Esperá un minuto y probá de nuevo.</p>
+              )}
+              {notice === 'unauthorized' && (
+                <p class="player__error" role="alert">Tu sesión venció. Salí y volvé a ingresar.</p>
+              )}
+              {!user ? (
+                <p class="player__hint">
+                  <a href={loginUrl(here)}>Ingresá</a> para guardar tu progreso.
+                </p>
+              ) : completed ? (
+                <form method="post" class="player__form">
+                  <span class="player__check">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5 10 17 19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Completada
+                  </span>
+                  <button type="submit" name="action" value="uncomplete" class="btn btn--ghost player__small">Marcar como no vista</button>
+                </form>
+              ) : (
+                <form method="post" class="player__form">
+                  {lesson.next ? (
+                    <>
+                      <input type="hidden" name="next" value={lesson.next.slug} />
+                      <button type="submit" name="action" value="complete-next" class="btn btn--primary">Completar y seguir</button>
+                      <button type="submit" name="action" value="complete" class="btn btn--ghost">Marcar como completada</button>
+                    </>
+                  ) : (
+                    <button type="submit" name="action" value="complete" class="btn btn--primary">Terminar el curso</button>
+                  )}
+                </form>
+              )}
+            </section>
+          </>
+        )}
+
+        <nav class="player__pager" aria-label="Lecciones">
+          {lesson.prev ? (
+            <a href={`/cursos/${course.slug}/${lesson.prev.slug}`} class="pager pager--prev">
+              <span class="mono">← Anterior</span>
+              <span>{lesson.prev.title}</span>
+            </a>
+          ) : <span></span>}
+          {lesson.next && (
+            <a href={`/cursos/${course.slug}/${lesson.next.slug}`} class="pager pager--next">
+              <span class="mono">Siguiente →</span>
+              <span>{lesson.next.title}</span>
+            </a>
+          )}
+        </nav>
+      </article>
+
+      <aside class="player__side" aria-labelledby="side-title">
+        <div class="player__side-head">
+          <h2 id="side-title" class="eyebrow">Temario</h2>
+          {course.progress && (
+            <div class="player__side-progress">
+              <progress class="bar" max={course.progress.total} value={course.progress.completed} aria-label="Progreso del curso"></progress>
+              <span class="mono">{course.progress.completed}/{course.progress.total}</span>
+            </div>
+          )}
+        </div>
+        <Syllabus course={course} current={lesson.slug} compact />
+      </aside>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .player { padding-block: clamp(28px, 4vw, 56px); container-type: inline-size; }
+  .player__crumbs { display: flex; flex-wrap: wrap; gap: 10px; color: var(--ink-mute); font-size: 12px; margin-bottom: 28px; }
+  .player__crumbs a { transition: color 200ms var(--ease-out); }
+  .player__crumbs a:hover { color: var(--ink); }
+
+  .player__cols { display: grid; gap: 40px; }
+  @container (min-width: 960px) {
+    .player__cols { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+    .player__side { position: sticky; top: 96px; max-height: calc(100dvh - 120px); overflow-y: auto; }
+  }
+
+  .player__main { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+  .player__head { display: flex; flex-direction: column; gap: 12px; }
+  .player__meta { display: flex; flex-wrap: wrap; gap: 6px; color: var(--ink-mute); font-size: 12px; }
+  .player__preview { color: var(--spark); }
+  .player__title { font-size: clamp(32px, 5vw, 50px); line-height: 1.06; }
+
+  .player__video {
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--bg-elev);
+  }
+  .player__video iframe { width: 100%; height: 100%; border: 0; }
+  .player__body { display: flex; flex-direction: column; gap: 16px; color: var(--ink-dim); font-size: 17px; max-width: 70ch; }
+
+  .player__done { padding-block: 8px; border-top: 1px solid var(--line); padding-top: 24px; }
+  .player__form { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .player__check { display: inline-flex; align-items: center; gap: 8px; color: var(--ember-300); font-weight: 600; }
+  .player__small { padding: 8px 14px; font-size: 13px; }
+  .player__hint { color: var(--ink-dim); }
+  .player__hint a { color: var(--ember-300); text-decoration: underline; text-underline-offset: 3px; }
+  .player__error { color: var(--ember-300); font-size: 14px; margin-bottom: 12px; }
+
+  .player__pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pager {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink-dim);
+    transition: border-color 200ms var(--ease-out), color 200ms var(--ease-out);
+  }
+  .pager:hover { border-color: rgba(255,176,103,0.35); color: var(--ink); }
+  .pager:focus-visible { outline: 2px solid var(--ember-500); outline-offset: 2px; }
+  .pager .mono { color: var(--ink-mute); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  .pager--next { text-align: right; grid-column: 2; }
+
+  .player__side {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--bg-elev), rgba(18,16,14,0.6));
+  }
+  .player__side-head { display: flex; flex-direction: column; gap: 10px; }
+  .player__side-progress { display: flex; align-items: center; gap: 10px; color: var(--ink-mute); font-size: 12px; }
+
+  .gate {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 32px;
+    border: 1px solid rgba(255,176,103,0.25);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, rgba(255,122,0,0.07), rgba(255,122,0,0.01));
+  }
+  .gate__icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--ember-500), var(--ember-600));
+    color: #1a0e00;
+    box-shadow: 0 10px 30px -8px var(--ember-glow);
+  }
+  .gate__title { font-family: var(--font-display); font-size: 30px; line-height: 1.1; font-weight: 400; }
+  .gate__text { color: var(--ink-dim); max-width: 520px; }
+</style>

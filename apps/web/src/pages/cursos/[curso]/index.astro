@@ -1,0 +1,113 @@
+---
+import { getSession } from 'auth-astro/server';
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+import Syllabus from '~/components/cursos/Syllabus.astro';
+import { type CourseDetail, formatLongDuration, getCourse } from '~/lib/api';
+import { loginUrl } from '~/lib/redirect';
+
+const slug = Astro.params.curso ?? '';
+const session = await getSession(Astro.request);
+const user = session?.user;
+
+let course: CourseDetail | null;
+try {
+  course = await getCourse(user, slug);
+} catch (err) {
+  console.error(`No se pudo cargar el curso ${slug}`, err);
+  return new Response('No pudimos cargar el curso. Probá de nuevo en un rato.', {
+    status: 502,
+    headers: { 'content-type': 'text/plain; charset=utf-8' },
+  });
+}
+if (!course) return new Response(null, { status: 404 });
+
+const lessons = course.modules.flatMap((m) => m.lessons);
+const firstOpen = lessons.find((l) => !l.isLocked);
+// "Seguir" apunta a la primera lección abierta sin completar; si no hay progreso, a la primera abierta.
+const resume = lessons.find((l) => !l.isLocked && !l.progress?.completed) ?? firstOpen;
+const started = lessons.some((l) => l.progress?.completed || (l.progress?.secondsWatched ?? 0) > 0);
+const allLocked = !firstOpen;
+const hasLocked = lessons.some((l) => l.isLocked);
+const paragraphs = course.description?.split(/\n{2,}/) ?? [];
+const lessonCount = lessons.length === 1 ? '1 lección' : `${lessons.length} lecciones`;
+const done = course.progress && course.progress.total > 0 && course.progress.completed === course.progress.total;
+---
+
+<Base
+  title={`${course.title} — Cursos — La Forja`}
+  description={course.shortDescription}
+  image={`/og/cursos/${encodeURIComponent(course.slug)}.png`}
+>
+  <Nav />
+  <main class="course container">
+    <a href="/cursos" class="course__back mono">← Todos los cursos</a>
+
+    <header class="course__head">
+      <div class="course__meta">
+        <span class:list={['pill', course.tier === 'premium' ? 'pill--ember' : 'pill--spark']}>
+          {course.tier === 'premium' ? 'Con suscripción' : 'Gratis'}
+        </span>
+        <span class="mono course__stat">{course.modules.length} módulos · {lessonCount} · {formatLongDuration(course.durationSeconds)}</span>
+      </div>
+      <h1 class="course__title display">{course.title}</h1>
+      <p class="course__lede">{course.shortDescription}</p>
+
+      {course.progress && course.progress.total > 0 && (
+        <div class="course__progress">
+          <progress class="bar" max={course.progress.total} value={course.progress.completed} aria-label="Progreso del curso"></progress>
+          <span class="mono">{done ? 'Completado' : `${course.progress.completed} de ${course.progress.total}`}</span>
+        </div>
+      )}
+
+      <div class="course__ctas">
+        {resume && (
+          <a href={`/cursos/${course.slug}/${resume.slug}`} class="btn btn--primary">
+            {done ? 'Repasar' : started ? 'Seguir donde quedaste' : resume.isFreePreview && hasLocked ? 'Ver la lección gratis' : 'Empezar el curso'}
+          </a>
+        )}
+        {hasLocked && !user && (
+          <a href={loginUrl(Astro.url.pathname)} class:list={['btn', allLocked ? 'btn--primary' : 'btn--ghost']}>Ingresar</a>
+        )}
+        {hasLocked && user && (
+          <a href="/suscripcion" class:list={['btn', allLocked ? 'btn--primary' : 'btn--ghost']}>Suscribirme para ver todo</a>
+        )}
+      </div>
+    </header>
+
+    <div class="course__cols">
+      <section class="course__syllabus" aria-labelledby="temario">
+        <h2 id="temario" class="eyebrow">Temario</h2>
+        <Syllabus course={course} />
+      </section>
+      {paragraphs.length > 0 && (
+        <aside class="course__about" aria-labelledby="sobre">
+          <h2 id="sobre" class="eyebrow">Sobre el curso</h2>
+          {paragraphs.map((p) => <p>{p}</p>)}
+        </aside>
+      )}
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .course { padding-block: clamp(40px, 6vw, 80px); container-type: inline-size; }
+  .course__back { display: inline-block; color: var(--ink-mute); margin-bottom: 32px; transition: color 200ms var(--ease-out); }
+  .course__back:hover { color: var(--ink); }
+  .course__head { display: flex; flex-direction: column; gap: 16px; max-width: 760px; margin-bottom: 56px; }
+  .course__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+  .course__stat { color: var(--ink-mute); font-size: 12px; }
+  .course__title { font-size: clamp(38px, 6vw, 64px); line-height: 1.04; }
+  .course__lede { color: var(--ink-dim); font-size: 18px; }
+  .course__progress { display: flex; align-items: center; gap: 14px; max-width: 420px; color: var(--ink-mute); font-size: 12px; }
+  .course__ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+  .course__cols { display: grid; gap: 48px; }
+  .course__syllabus, .course__about { display: flex; flex-direction: column; gap: 18px; }
+  .course__about p { color: var(--ink-dim); }
+  @container (min-width: 900px) {
+    .course__cols { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+    .course__about { order: -1; grid-column: 2; grid-row: 1; }
+  }
+</style>

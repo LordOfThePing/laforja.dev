@@ -1,0 +1,56 @@
+---
+import { getSession } from 'auth-astro/server';
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+import CourseCard from '~/components/cursos/CourseCard.astro';
+import { type CoursePreview, listCourses } from '~/lib/api';
+
+const session = await getSession(Astro.request);
+
+let courses: CoursePreview[] | null;
+try {
+  courses = await listCourses(session?.user);
+} catch (err) {
+  console.error('No se pudo cargar /api/courses', err);
+  courses = null;
+  Astro.response.status = 502;
+}
+---
+
+<Base
+  title="Cursos — La Forja"
+  description="Cursos cortos y prácticos para trabajar con agentes de IA en serio. El temario está abierto; las lecciones, con la suscripción."
+>
+  <Nav />
+  <main class="courses container">
+    <header class="courses__head">
+      <div class="eyebrow">Cursos</div>
+      <h1 class="courses__title display">Aprendé de punta a punta, no de a un prompt.</h1>
+      <p class="courses__lede">
+        Recorridos ordenados, con video y práctica en cada lección. Mirá el temario completo
+        antes de arrancar; con la suscripción tenés todos los cursos abiertos.
+      </p>
+    </header>
+
+    {courses === null ? (
+      <p class="courses__empty" role="alert">No pudimos cargar los cursos. Probá de nuevo en un rato.</p>
+    ) : courses.length === 0 ? (
+      <p class="courses__empty">Estamos grabando los primeros cursos. Volvé pronto.</p>
+    ) : (
+      <div class="courses__grid">
+        {courses.map((course) => <CourseCard course={course} />)}
+      </div>
+    )}
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .courses { padding-block: clamp(48px, 8vw, 100px); }
+  .courses__head { display: flex; flex-direction: column; gap: 16px; max-width: 720px; margin-bottom: 48px; }
+  .courses__title { font-size: clamp(38px, 6vw, 64px); line-height: 1.04; }
+  .courses__lede { color: var(--ink-dim); font-size: 18px; }
+  .courses__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 20px; }
+  .courses__empty { color: var(--ink-dim); }
+</style>

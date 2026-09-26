@@ -1,0 +1,52 @@
+---
+import { type CoursePreview, formatLongDuration } from '~/lib/api';
+
+interface Props {
+  course: CoursePreview;
+}
+
+const { course } = Astro.props;
+const premium = course.tier === 'premium';
+const lessons = course.lessonCount === 1 ? '1 lección' : `${course.lessonCount} lecciones`;
+---
+
+<article class="ccard">
+  <header class="ccard__head">
+    <span class:list={['pill', premium ? 'pill--ember' : 'pill--spark']}>
+      {premium ? 'Con suscripción' : 'Gratis'}
+    </span>
+    <span class="ccard__meta mono">{lessons} · {formatLongDuration(course.durationSeconds)}</span>
+  </header>
+  <h2 class="ccard__title display">{course.title}</h2>
+  <p class="ccard__desc">{course.shortDescription}</p>
+  {course.progress && course.progress.total > 0 && (
+    <div class="ccard__progress">
+      <progress class="bar" max={course.progress.total} value={course.progress.completed} aria-label="Progreso del curso"></progress>
+      <span class="mono">{course.progress.completed}/{course.progress.total}</span>
+    </div>
+  )}
+  <a href={`/cursos/${course.slug}`} class="ccard__link" aria-label={`Ver el curso ${course.title}`}></a>
+</article>
+
+<style>
+  .ccard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 26px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    transition: border-color 220ms var(--ease-out), transform 220ms var(--ease-out);
+  }
+  .ccard:hover { border-color: rgba(255,176,103,0.35); transform: translateY(-2px); }
+  .ccard:has(.ccard__link:focus-visible) { outline: 2px solid var(--ember-500); outline-offset: 3px; }
+  .ccard__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .ccard__meta { color: var(--ink-mute); font-size: 12px; }
+  .ccard__title { font-size: clamp(28px, 4vw, 36px); line-height: 1.08; }
+  .ccard__desc { color: var(--ink-dim); }
+  .ccard__progress { display: flex; align-items: center; gap: 12px; color: var(--ink-mute); font-size: 12px; margin-top: 4px; }
+  .ccard__link { position: absolute; inset: 0; border-radius: inherit; }
+  .ccard__link:focus-visible { outline: none; }
+</style>

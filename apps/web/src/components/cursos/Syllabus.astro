@@ -1,0 +1,96 @@
+---
+import { type CourseDetail, formatDuration } from '~/lib/api';
+
+interface Props {
+  course: Pick<CourseDetail, 'slug' | 'modules'>;
+  current?: string;
+  compact?: boolean;
+}
+
+const { course, current, compact = false } = Astro.props;
+---
+
+<ol class:list={['syl', { 'syl--compact': compact }]}>
+  {course.modules.map((mod, m) => (
+    <li class="syl__module">
+      <div class="syl__mhead">
+        <span class="syl__num mono">{String(m + 1).padStart(2, '0')}</span>
+        <div>
+          <h3 class="syl__mtitle">{mod.title}</h3>
+          {!compact && mod.description && <p class="syl__mdesc">{mod.description}</p>}
+        </div>
+      </div>
+      <ol class="syl__lessons">
+        {mod.lessons.map((l) => {
+          const done = l.progress?.completed ?? false;
+          const state = done ? 'Completada' : l.isLocked ? 'Bloqueada' : null;
+          return (
+            <li>
+              <a
+                href={`/cursos/${course.slug}/${l.slug}`}
+                class:list={['syl__lesson', { 'is-current': l.slug === current, 'is-done': done, 'is-locked': l.isLocked }]}
+                aria-current={l.slug === current ? 'page' : undefined}
+              >
+                <span class="syl__icon" aria-hidden="true">
+                  {done ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17 19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  ) : l.isLocked ? (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 10V7a6 6 0 1 1 12 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+                  )}
+                </span>
+                <span class="syl__ltitle">
+                  {l.title}
+                  {state && <span class="sr-only"> ({state})</span>}
+                </span>
+                {l.isFreePreview && l.isLocked === false && !compact && <span class="syl__tag mono">Preview</span>}
+                {l.durationSeconds != null && <span class="syl__dur mono">{formatDuration(l.durationSeconds)}</span>}
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </li>
+  ))}
+</ol>
+
+<style>
+  .syl { list-style: none; display: flex; flex-direction: column; gap: 22px; }
+  .syl__mhead { display: flex; gap: 14px; align-items: baseline; margin-bottom: 10px; }
+  .syl__num { color: var(--ember-300); font-size: 12px; }
+  .syl__mtitle { font-size: 17px; font-weight: 600; }
+  .syl--compact .syl__mtitle { font-size: 14px; }
+  .syl__mdesc { color: var(--ink-mute); font-size: 14px; }
+  .syl__lessons { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .syl__lesson {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    color: var(--ink-dim);
+    transition: background 180ms var(--ease-out), color 180ms var(--ease-out);
+  }
+  .syl--compact .syl__lesson { padding: 8px 10px; font-size: 14px; }
+  .syl__lesson:hover { background: rgba(255,255,255,0.03); color: var(--ink); }
+  .syl__lesson:focus-visible { outline: 2px solid var(--ember-500); outline-offset: 1px; }
+  .syl__lesson.is-current { background: rgba(255,122,0,0.08); border-color: rgba(255,176,103,0.25); color: var(--ink); }
+  .syl__lesson.is-locked { color: var(--ink-mute); }
+  .syl__icon {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-mute);
+  }
+  .is-done .syl__icon { background: var(--ember-500); border-color: var(--ember-500); color: #1a0e00; }
+  .is-current:not(.is-done) .syl__icon { color: var(--ember-300); border-color: rgba(255,176,103,0.4); }
+  .syl__ltitle { flex: 1; min-width: 0; }
+  .syl__tag { color: var(--spark); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; }
+  .syl__dur { color: var(--ink-mute); font-size: 12px; }
+</style>

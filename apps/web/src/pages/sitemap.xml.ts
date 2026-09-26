@@ -1,15 +1,16 @@
 import type { APIRoute } from 'astro';
-import { listTools } from '~/lib/api';
+import { listCourses, listTools } from '~/lib/api';
 
-const STATIC_PATHS = ['/', '/suscripcion', '/terminos', '/privacidad'];
+const STATIC_PATHS = ['/', '/cursos', '/suscripcion', '/terminos', '/privacidad'];
 
 const escapeXml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export const GET: APIRoute = async ({ site }) => {
   let tools;
+  let courses;
   try {
-    tools = await listTools(undefined);
+    [tools, courses] = await Promise.all([listTools(undefined), listCourses(undefined)]);
   } catch (err) {
     console.error('No se pudo armar el sitemap', err);
     // Un sitemap sin las herramientas le diría al crawler que desaparecieron; mejor que reintente.
@@ -21,6 +22,10 @@ export const GET: APIRoute = async ({ site }) => {
     ...tools.map((t) => ({
       loc: new URL(`/herramientas/${encodeURIComponent(t.slug)}`, site).href,
       lastmod: t.publishedAt.slice(0, 10),
+    })),
+    ...courses.map((c) => ({
+      loc: new URL(`/cursos/${encodeURIComponent(c.slug)}`, site).href,
+      lastmod: c.publishedAt.slice(0, 10),
     })),
   ];
 
