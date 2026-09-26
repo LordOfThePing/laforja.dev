@@ -82,6 +82,35 @@ Agregar los mismos public hostnames con `laforja.dev` en el mismo tunnel,
 actualizar `FRONTEND_URL`, el callback de Google y la URL del webhook de MP.
 Redirect 301 desde el dominio viejo con una Redirect Rule de Cloudflare.
 
+## Monitoreo de uptime
+
+`.github/workflows/uptime.yml` corre cada 5 minutos (GitHub puede atrasarlo
+algunos minutos) y chequea, desde afuera y pasando por Cloudflare:
+
+| Chequeo | Espera |
+|---|---|
+| web: `GET /` | 200 y el texto `La Forja` |
+| api: `GET /api/health` | 200 y `"ok":true` — la api hace `select 1` contra Postgres (timeout 3 s) y responde 503 si la base no contesta |
+
+`/api/health` existe porque el `/health` de la api (el del healthcheck de
+Docker) no sale por el tunnel: sin prefijo `/api` cae en la web.
+
+Cada chequeo se reintenta 4 veces con 20 s de pausa antes de dar la caída por
+buena, para que un deploy (que reinicia contenedores) no dispare alertas.
+
+**Aviso:** si algo falla, el workflow abre un issue con la etiqueta `caida`
+(o comenta en el que ya esté abierto) y la corrida queda en rojo. Cuando vuelve
+a responder, cierra el issue solo. GitHub avisa por mail de los issues nuevos a
+quien *watchea* el repo (el dueño, por default) y de las corridas fallidas de
+un `schedule` a quien tocó el cron por última vez.
+
+- Probarlo a mano: pestaña *Actions* → *Uptime* → *Run workflow*
+- URL chequeada: variable del repo `SITE_URL` (Settings → Secrets and
+  variables → Actions → *Variables*); sin ella usa
+  `https://academia.flynnpedroa.engineer`
+- GitHub desactiva los workflows con `schedule` si el repo pasa 60 días sin
+  commits; si pasa, se reactiva desde la pestaña *Actions*
+
 ## Backups de Postgres
 
 El servicio `backup` del compose (imagen en `ops/backup/`) hace un `pg_dump`
