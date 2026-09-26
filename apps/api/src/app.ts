@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
@@ -49,6 +50,17 @@ export function createApp({
   app.use('/api/*', cors({ origin: frontendUrl, credentials: true }));
 
   app.get('/health', (c) => c.json({ ok: true }));
+  // /health es el liveness del healthcheck de Docker y no sale por el tunnel (cae en la web).
+  // Este es el que mira el monitoreo de uptime: pasa por Cloudflare y además prueba la base.
+  app.get('/api/health', async (c) => {
+    try {
+      await withTimeout(db.execute(sql`select 1`), 3000);
+      return c.json({ ok: true });
+    } catch (err) {
+      console.error('health: la base no responde', err);
+      return c.json({ ok: false, error: 'db_unavailable' }, 503);
+    }
+  });
   app.route('/api/tools', toolsRoutes(auth, limits.unlock));
   app.route('/api/me', meRoutes(auth));
   app.route('/api/subscription', subscriptionRoutes({ auth, frontendUrl, mp }));
@@ -63,4 +75,12 @@ export function createApp({
   });
 
   return app;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`timeout de ${ms} ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }

@@ -1,10 +1,11 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import type { createApp } from './app.ts';
+import { createApp } from './app.ts';
 import type { Db } from './db/client.ts';
 import * as schema from './db/schema.ts';
 import { seed, seedTools } from './db/seed-data.ts';
-import { createTestApp } from './test/setup.ts';
+import { FakeMercadoPago } from './test/fake-mp.ts';
+import { TEST_MP_WEBHOOK_SECRET, TEST_SECRET, createTestApp } from './test/setup.ts';
 
 let app: ReturnType<typeof createApp>;
 let db: Db;
@@ -19,6 +20,35 @@ describe('GET /health', () => {
     const res = await app.request('/health');
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
+  });
+});
+
+describe('GET /api/health', () => {
+  test('responde ok si la base contesta', async () => {
+    const res = await app.request('/api/health');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  test('responde 503 si la base falla', async () => {
+    const brokenDb = { execute: () => Promise.reject(new Error('conexión rechazada')) } as unknown as Db;
+    const broken = createApp({
+      db: brokenDb,
+      authSecret: TEST_SECRET,
+      frontendUrl: 'http://localhost:3000',
+      mp: new FakeMercadoPago(),
+      mpWebhookSecret: TEST_MP_WEBHOOK_SECRET,
+      log: false,
+    });
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      const res = await broken.request('/api/health');
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ ok: false, error: 'db_unavailable' });
+    } finally {
+      console.error = originalError;
+    }
   });
 });
 
