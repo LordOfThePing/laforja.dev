@@ -4,7 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Landing `/cursos` con temario público y reproductor de lecciones con progreso — en curso por @claude-2
 
 ## Pendiente
 
@@ -16,6 +15,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 - Copia de backups fuera del VPS: crear bucket R2 + token y cargar `BACKUP_S3_*` en el `.env` del VPS — pendiente — el código ya lo soporta; ver "Backups de Postgres" en `docs/despliegue-vps.md`
 
+- Nav en mobile: debajo de 780px los links (Herramientas, Cursos, …) se ocultan y no hay menú — pendiente
+
 ### SEO y crecimiento
 
 - Analytics livianas y respetuosas (Plausible/Umami self-hosted) — pendiente — el roadmap v3 pide métricas de desbloqueos; esto cubre tráfico
@@ -25,6 +26,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 - Admin de cursos en `/admin` (cursos, módulos, lecciones, orden y preview) — pendiente — hoy los cursos solo entran por el seed
 - Certificado de completado en PDF — pendiente
+- Progreso por % de video en el reproductor — pendiente — requiere la IFrame API de YouTube (script externo: sumarlo a la CSP); hoy el progreso es completada / no completada
 
 ### v3 — Comunidad
 
