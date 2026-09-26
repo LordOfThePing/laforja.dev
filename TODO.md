@@ -4,14 +4,13 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-_(nada)_
+- Páginas `/terminos` y `/privacidad` — en curso por @claude — el footer ya las linkea y dan 404; Google y MP las piden para producción
 
 ## Pendiente
 
 ### v1 — cerrar el MVP
 
 - Probar la suscripción contra MP sandbox (credenciales TEST, webhook del panel de MP apuntando a `/webhooks/mercadopago`) — pendiente — pospuesto por el usuario; bloquea el criterio de done de v1
-- Páginas `/terminos` y `/privacidad` — pendiente — el footer ya las linkea y dan 404; Google y MP las piden para producción
 - Pantalla de consentimiento de Google OAuth en modo "producción" — pendiente — en modo testing solo entran los usuarios de prueba; requiere las páginas legales
 - Cargar las herramientas reales (videos + prompts) y sacar el seed de ejemplo de prod — pendiente — depende del panel admin
 - Actualizar `README.md` (estado: el deploy ya está hecho) y tildar lo cumplido en `docs/roadmap.md` — pendiente
