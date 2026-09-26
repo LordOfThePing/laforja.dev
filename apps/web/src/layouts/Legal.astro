@@ -1,0 +1,75 @@
+---
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  updated: string;
+}
+
+const { title, description, updated } = Astro.props;
+---
+
+<Base title={`${title} — La Forja`} description={description}>
+  <Nav />
+  <main class="legal container">
+    <header class="legal__head">
+      <div class="eyebrow">Legal</div>
+      <h1 class="legal__title display">{title}</h1>
+      <p class="legal__updated mono">Última actualización: {updated}</p>
+    </header>
+    <article class="legal__body">
+      <slot />
+    </article>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .legal {
+    max-width: 760px;
+    padding-block: clamp(48px, 8vw, 100px);
+  }
+  .legal__head {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 32px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--line);
+  }
+  .legal__title { font-size: clamp(38px, 7vw, 60px); line-height: 1.05; }
+  .legal__updated { color: var(--ink-mute); font-size: 12px; }
+
+  .legal__body { color: var(--ink-dim); font-size: 15.5px; line-height: 1.7; }
+  .legal__body :global(h2) {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 28px;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-top: 48px;
+    margin-bottom: 14px;
+  }
+  .legal__body :global(h2:first-child) { margin-top: 0; }
+  .legal__body :global(p + p),
+  .legal__body :global(p + ul),
+  .legal__body :global(ul + p) { margin-top: 14px; }
+  .legal__body :global(ul) {
+    padding-left: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .legal__body :global(li::marker) { color: var(--ember-500); }
+  .legal__body :global(strong) { color: var(--ink); font-weight: 500; }
+  .legal__body :global(a) {
+    color: var(--ember-300);
+    text-decoration: underline;
+    text-decoration-color: rgba(255,176,103,0.3);
+    text-underline-offset: 3px;
+  }
+  .legal__body :global(a:hover) { text-decoration-color: var(--ember-300); }
+</style>

@@ -34,7 +34,8 @@ if (session?.user) {
 
       <p class="login__fine">
         Solo usamos tu email para identificarte y guardar tu cupo mensual.
-        Nunca lo compartimos.
+        No lo vendemos ni lo usamos para publicidad. Más detalle en la
+        <a href="/privacidad">política de privacidad</a>.
       </p>
     </div>
   </main>
@@ -100,4 +101,5 @@ if (session?.user) {
     line-height: 1.5;
     text-align: center;
   }
+  .login__fine a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 </style>

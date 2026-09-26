@@ -1,0 +1,125 @@
+---
+import Legal from '~/layouts/Legal.astro';
+import { CONTACT_EMAIL, LEGAL_UPDATED, RESPONSIBLE_NAME } from '~/lib/legal';
+
+const mailto = `mailto:${CONTACT_EMAIL}`;
+---
+
+<Legal
+  title="Política de privacidad"
+  description="Qué datos guarda La Forja, para qué los usa, con quién los comparte y cómo ejercer tus derechos."
+  updated={LEGAL_UPDATED}
+>
+  <h2>1. Responsable</h2>
+  <p>
+    El responsable de la base de datos de La Forja es <strong>{RESPONSIBLE_NAME}</strong>, Ciudad
+    Autónoma de Buenos Aires, Argentina. Contacto: <a href={mailto}>{CONTACT_EMAIL}</a>. Tratamos
+    tus datos según la Ley 25.326 de Protección de Datos Personales.
+  </p>
+
+  <h2>2. Qué datos guardamos</h2>
+  <p>Guardamos lo mínimo para que el servicio funcione:</p>
+  <ul>
+    <li>
+      <strong>De tu cuenta de Google</strong>, cuando ingresás: tu identificador de Google, email,
+      nombre y foto de perfil. No accedemos a tu Gmail, Drive, contactos ni a nada más de tu
+      cuenta.
+    </li>
+    <li>
+      <strong>Uso del servicio</strong>: qué herramientas desbloqueaste y en qué mes, para llevar
+      tu cupo gratuito.
+    </li>
+    <li>
+      <strong>Suscripción</strong>: el identificador de tu suscripción en MercadoPago, su estado,
+      la fecha hasta la que tenés acceso y las notificaciones de pago que nos envía MercadoPago.
+      <strong>No recibimos ni guardamos datos de tarjetas</strong>.
+    </li>
+    <li>
+      <strong>Datos técnicos</strong>: como cualquier servidor web, registramos temporalmente la
+      IP y los datos básicos de cada pedido, para seguridad y para limitar abusos.
+    </li>
+  </ul>
+
+  <h2>3. Para qué los usamos</h2>
+  <ul>
+    <li>Identificarte cuando ingresás y mostrarte tu cuenta.</li>
+    <li>Llevar tu cupo mensual y darte acceso a lo que desbloqueaste o pagaste.</li>
+    <li>Gestionar la suscripción, los cobros y las cancelaciones.</li>
+    <li>Avisarte cambios importantes del servicio, del precio o de estos términos.</li>
+    <li>Proteger el sitio contra fraude y abuso.</li>
+  </ul>
+  <p>
+    No vendemos tus datos, no los usamos para publicidad de terceros y no te mandamos newsletters
+    sin tu consentimiento.
+  </p>
+
+  <h2>4. Con quién los compartimos</h2>
+  <p>Solo con los proveedores que necesitamos para operar:</p>
+  <ul>
+    <li><strong>Google</strong>, para el inicio de sesión.</li>
+    <li>
+      <strong>MercadoPago</strong>, para procesar la suscripción. Le pasamos tu email y un
+      identificador interno; el resto de los datos de pago los cargás directamente en MercadoPago.
+    </li>
+    <li>
+      <strong>Hetzner</strong>, donde está alojado el servidor y la base de datos (Unión Europea),
+      y <strong>Cloudflare</strong>, por donde pasa el tráfico del sitio. Esto implica una
+      transferencia internacional de datos a proveedores con niveles de protección adecuados.
+    </li>
+    <li>
+      <strong>YouTube</strong>, al reproducir un video embebido. Usamos el modo de privacidad
+      mejorada (<span class="mono">youtube-nocookie.com</span>), pero al darle play YouTube recibe
+      datos según su propia política.
+    </li>
+  </ul>
+  <p>Además, podemos entregar datos si nos lo exige una autoridad competente según la ley.</p>
+
+  <h2>5. Cookies</h2>
+  <p>
+    Usamos solo cookies necesarias para mantener tu sesión iniciada y proteger los formularios. No
+    usamos cookies de publicidad ni de seguimiento de terceros.
+  </p>
+
+  <h2>6. Cuánto tiempo los guardamos</h2>
+  <p>
+    Mientras tengas la cuenta. Si pedís darla de baja, borramos tus datos personales, salvo lo que
+    debamos conservar por obligaciones legales o contables (por ejemplo, registros de pagos), que
+    guardamos solo por el plazo que exige la ley.
+  </p>
+
+  <h2>7. Tus derechos</h2>
+  <p>
+    Podés pedirnos en cualquier momento acceder a tus datos, corregirlos, actualizarlos o
+    eliminarlos, escribiendo a <a href={mailto}>{CONTACT_EMAIL}</a> desde el email de tu cuenta.
+    El acceso es gratuito si lo pedís con intervalos no menores a seis meses. Respondemos el acceso
+    dentro de los 10 días corridos y las rectificaciones o supresiones dentro de los 5 días hábiles.
+  </p>
+  <p>
+    También podés quitarle el acceso a La Forja desde la configuración de seguridad de tu cuenta de
+    Google.
+  </p>
+  <p>
+    La <strong>Agencia de Acceso a la Información Pública</strong>, en su carácter de órgano de
+    control de la Ley 25.326, tiene la atribución de atender las denuncias y reclamos que
+    interpongan quienes resulten afectados en sus derechos por incumplimiento de las normas
+    vigentes en materia de protección de datos personales.
+  </p>
+
+  <h2>8. Seguridad</h2>
+  <p>
+    Todo el tráfico va cifrado por HTTPS, el servidor solo acepta acceso administrativo con clave
+    criptográfica y la base de datos no está expuesta a internet. Ningún sistema es infalible: si
+    detectamos un incidente que afecte tus datos, te avisamos.
+  </p>
+
+  <h2>9. Menores</h2>
+  <p>
+    El servicio no está dirigido a menores de 13 años y no recolectamos a sabiendas datos de ellos.
+  </p>
+
+  <h2>10. Cambios</h2>
+  <p>
+    Si cambiamos esta política de forma relevante, te avisamos por email o con un aviso en el sitio.
+    Ver también los <a href="/terminos">términos y condiciones</a>.
+  </p>
+</Legal>

@@ -1,0 +1,129 @@
+---
+import Legal from '~/layouts/Legal.astro';
+import { CONTACT_EMAIL, LEGAL_UPDATED, RESPONSIBLE_NAME } from '~/lib/legal';
+
+const mailto = `mailto:${CONTACT_EMAIL}`;
+---
+
+<Legal
+  title="Términos y condiciones"
+  description="Condiciones de uso de La Forja: cuenta, cupo gratuito, suscripción con MercadoPago, cancelación y arrepentimiento."
+  updated={LEGAL_UPDATED}
+>
+  <h2>1. Quiénes somos</h2>
+  <p>
+    La Forja es una biblioteca curada de herramientas, prompts y workflows para trabajar con
+    agentes de IA, operada por <strong>{RESPONSIBLE_NAME}</strong>, con domicilio en la Ciudad
+    Autónoma de Buenos Aires, Argentina. Para cualquier consulta escribinos a
+    <a href={mailto}>{CONTACT_EMAIL}</a>.
+  </p>
+  <p>
+    Al crear una cuenta o usar el sitio aceptás estos términos. Si no estás de acuerdo, no uses
+    el servicio.
+  </p>
+
+  <h2>2. Tu cuenta</h2>
+  <ul>
+    <li>Ingresás con tu cuenta de Google. No manejamos contraseñas.</li>
+    <li>Tenés que ser mayor de 18 años, o contar con autorización de tu madre, padre o tutor.</li>
+    <li>La cuenta es personal: no la compartas ni revendas el acceso.</li>
+    <li>
+      Podemos suspender cuentas que abusen del servicio (por ejemplo, automatizar descargas
+      masivas o redistribuir el contenido premium).
+    </li>
+  </ul>
+
+  <h2>3. Plan gratuito</h2>
+  <p>
+    Con una cuenta gratuita podés ver el catálogo completo y desbloquear hasta
+    <strong>2 herramientas por mes calendario</strong> (hora de Argentina). El cupo se renueva el
+    día 1 de cada mes y no es acumulable. Una herramienta desbloqueada queda disponible durante el
+    mes en que la desbloqueaste. Algunas herramientas se ofrecen gratis para todos y no consumen
+    cupo.
+  </p>
+
+  <h2>4. Suscripción</h2>
+  <ul>
+    <li>
+      La suscripción cuesta <strong>$4.000 ARS por mes</strong>, con impuestos incluidos, y da
+      acceso ilimitado a toda la biblioteca mientras esté vigente.
+    </li>
+    <li>
+      El cobro es recurrente y automático a través de <strong>MercadoPago</strong>. Nosotros no
+      vemos ni guardamos los datos de tu tarjeta: los procesa MercadoPago bajo sus propias
+      condiciones.
+    </li>
+    <li>
+      Si un cobro es rechazado, el acceso ilimitado se suspende hasta que se regularice el pago.
+      Contemplamos unos días de gracia alrededor de la fecha de renovación.
+    </li>
+    <li>
+      Podemos cambiar el precio. Si lo hacemos, te avisamos por email con al menos 30 días de
+      anticipación, y podés cancelar antes de que aplique.
+    </li>
+  </ul>
+
+  <h2>5. Cancelación</h2>
+  <p>
+    Podés cancelar cuando quieras desde <a href="/dashboard">tu cuenta</a>, con el mismo botón y
+    la misma facilidad con que te suscribiste. Al cancelar no se hacen más cobros y mantenés el
+    acceso hasta el final del período que ya pagaste. No hay permanencia mínima ni cargos por
+    baja.
+  </p>
+
+  <h2>6. Derecho de arrepentimiento</h2>
+  <p>
+    Según el artículo 34 de la Ley 24.240 de Defensa del Consumidor, podés revocar la contratación
+    dentro de los <strong>10 días corridos</strong> desde que te suscribiste, sin dar motivos y
+    sin costo. Para hacerlo, escribinos a <a href={mailto}>{CONTACT_EMAIL}</a> desde el email de
+    tu cuenta indicando que querés arrepentirte: cancelamos la suscripción y te devolvemos el
+    importe cobrado por el mismo medio de pago.
+  </p>
+
+  <h2>7. Contenido</h2>
+  <ul>
+    <li>
+      Los prompts, textos, videos y la selección del catálogo son de La Forja o de sus autores.
+      Podés usarlos en tus propios proyectos, personales o comerciales, pero no podés
+      republicarlos, revenderlos ni redistribuirlos como colección.
+    </li>
+    <li>
+      Los videos se reproducen desde YouTube y están sujetos a sus términos. Las herramientas de
+      terceros que recomendamos (modelos, apps, servicios) tienen sus propias condiciones y
+      precios, que no controlamos.
+    </li>
+    <li>
+      El catálogo cambia: podemos agregar, actualizar o retirar herramientas en cualquier momento.
+    </li>
+  </ul>
+
+  <h2>8. Sin garantías</h2>
+  <p>
+    El contenido es material educativo que compartimos tal como lo usamos. Los resultados de los
+    modelos de IA varían y pueden ser incorrectos: revisá siempre lo que generan antes de usarlo,
+    sobre todo en código, datos sensibles o decisiones importantes. En la medida en que lo permita
+    la ley, no respondemos por daños derivados del uso de las herramientas o de servicios de
+    terceros. Nada de esto limita los derechos que te da la Ley de Defensa del Consumidor.
+  </p>
+  <p>
+    Hacemos lo posible por mantener el sitio disponible, pero puede haber interrupciones por
+    mantenimiento o fallas.
+  </p>
+
+  <h2>9. Cambios a estos términos</h2>
+  <p>
+    Si cambiamos estos términos de forma relevante, te avisamos por email o con un aviso en el
+    sitio antes de que entren en vigencia. La fecha de la última actualización figura arriba.
+  </p>
+
+  <h2>10. Ley aplicable</h2>
+  <p>
+    Estos términos se rigen por las leyes de la República Argentina. Ante cualquier conflicto,
+    intentemos resolverlo primero escribiéndonos. Como consumidor, podés además recurrir a los
+    tribunales de tu domicilio o a la
+    <a href="https://www.argentina.gob.ar/produccion/defensadelconsumidor/formulario" rel="noopener">Ventanilla Federal de Defensa del Consumidor</a>.
+  </p>
+  <p>
+    Cómo tratamos tus datos está explicado en la <a href="/privacidad">política de privacidad</a>.
+  </p>
+</Legal>
