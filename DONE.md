@@ -37,3 +37,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-26 — `sitemap.xml` + `robots.txt` + OG image por herramienta (y del sitio) — 008c333, e8bfd08
 - 2026-09-26 — Backups diarios de Postgres (servicio `backup`, rotación, `make backup`/`backups`/`backup-pull`) — 116b87b
 - 2026-09-26 — README y roadmap al día con el estado de v1 — 61cf9fd
+- 2026-09-26 — Monitoreo de uptime (workflow Uptime + `/api/health` con chequeo de la base, aviso por issue) — 9d4b9f2, 84aff53

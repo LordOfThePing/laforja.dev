@@ -4,7 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Monitoreo de uptime de `/health` y de la web + aviso si cae — en curso por @claude-b
 
 ## Pendiente
 
@@ -22,7 +21,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ### SEO y crecimiento
 
 - Analytics livianas y respetuosas (Plausible/Umami self-hosted) — pendiente — el roadmap v3 pide métricas de desbloqueos; esto cubre tráfico
-- Migrar a `laforja.dev` (hostnames del tunnel, `FRONTEND_URL`, callback de Google, webhook de MP, redirect 301, `site` en `apps/web/astro.config.mjs`: de ahí salen canonical, sitemap y OG) — pendiente — ver `docs/despliegue-vps.md`
+- Migrar a `laforja.dev` (hostnames del tunnel, `FRONTEND_URL`, callback de Google, webhook de MP, redirect 301, `site` en `apps/web/astro.config.mjs`: de ahí salen canonical, sitemap y OG; variable `SITE_URL` del workflow Uptime) — pendiente — ver `docs/despliegue-vps.md`
 
 ### v2 — Cursos (ver `docs/roadmap.md`)
 
