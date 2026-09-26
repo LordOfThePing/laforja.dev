@@ -1,6 +1,6 @@
 # Modelo de datos
 
-Diseñado para v1 (herramientas + prompts) con hooks preparados para v2 (cursos/módulos).
+v1 (herramientas + prompts) y v2 (cursos → módulos → lecciones, con progreso).
 
 ## Tablas v1
 
@@ -70,12 +70,64 @@ Historial de webhooks de MP para auditoría e idempotencia.
 | `payload` | jsonb | body crudo del webhook |
 | `received_at` | timestamptz | |
 
-## Tablas v2 (cursos — diseño anticipado)
+## Tablas v2 (cursos)
 
-- `courses` (id, slug, title, description, cover, tier, order, published_at)
-- `modules` (id, course_id, title, description, order)
-- `lessons` (id, module_id, title, youtube_url, content_md, order, duration_seconds)
-- `progress` (id, user_id, lesson_id, completed_at, seconds_watched)
+### `courses`
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `slug` | text unique | |
+| `title` | text | |
+| `short_description` | text | para cards y SEO |
+| `description` | text nullable | texto largo de la landing del curso |
+| `cover_image_url` | text nullable | |
+| `tier` | enum `tool_tier` | `free` / `premium` (mismo enum que `tools`) |
+| `order` | int | orden en `/cursos` |
+| `published_at` | timestamptz nullable | `null` o futura = no publicado |
+| `created_at` | timestamptz | |
+
+### `modules`
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `course_id` | uuid fk → courses | `on delete cascade` |
+| `title` | text | |
+| `description` | text nullable | |
+| `order` | int | |
+
+**Unique** `(id, course_id)`: solo existe para ser target de la FK compuesta de `lessons`.
+
+### `lessons`
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `module_id` | uuid | |
+| `course_id` | uuid | denormalizado; **FK compuesta** `(module_id, course_id)` → `modules(id, course_id)` garantiza que coincida con el del módulo |
+| `slug` | text | **unique `(course_id, slug)`**: URLs `/cursos/:curso/:leccion` |
+| `title` | text | |
+| `youtube_url` | text nullable | |
+| `content_md` | text nullable | |
+| `duration_seconds` | int nullable | |
+| `order` | int | dentro del módulo |
+| `is_free_preview` | bool | abierta a todos aunque el curso sea premium |
+
+### `progress`
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `user_id` | uuid fk → users | `on delete cascade` |
+| `lesson_id` | uuid fk → lessons | `on delete cascade` |
+| `seconds_watched` | int | solo sube (`greatest`) |
+| `completed_at` | timestamptz nullable | primera vez que se completó |
+| `updated_at` | timestamptz | |
+
+**Unique** `(user_id, lesson_id)`.
+
+### Acceso a cursos
+
+Los cursos **no** usan el cupo de unlocks: la suscripción abre todo (roadmap v2).
+Una lección se ve si el curso es `free`, si la lección es `is_free_preview`, o si el usuario
+tiene suscripción vigente / es admin. El temario (títulos, duraciones) es siempre público.
 
 ## Lógica de "2 gratis por mes"
 

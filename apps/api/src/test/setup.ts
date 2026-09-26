@@ -15,7 +15,7 @@ export const TEST_MP_WEBHOOK_SECRET = 'secreto-webhook-mp';
 export const TEST_ADMIN_EMAIL = 'admin@example.com';
 
 export async function createTestApp(
-  rateLimits?: Partial<{ unlock: RateLimitRule; webhook: RateLimitRule }>,
+  rateLimits?: Partial<{ unlock: RateLimitRule; webhook: RateLimitRule; progress: RateLimitRule }>,
 ) {
   const pg = drizzle(new PGlite(), { schema });
   await migrate(pg, { migrationsFolder: './drizzle' });

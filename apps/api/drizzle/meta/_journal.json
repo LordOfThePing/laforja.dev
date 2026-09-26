@@ -15,6 +15,13 @@
       "when": 1790432461140,
       "tag": "0001_user_role",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790457429654,
+      "tag": "0002_courses",
+      "breakpoints": true
     }
   ]
 }

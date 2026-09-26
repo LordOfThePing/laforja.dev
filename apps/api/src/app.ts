@@ -7,6 +7,7 @@ import { type MercadoPago, MercadoPagoError } from './lib/mercadopago.ts';
 import type { RateLimitRule } from './lib/rate-limit.ts';
 import type { AuthConfig } from './auth.ts';
 import { adminRoutes } from './routes/admin.ts';
+import { coursesRoutes } from './routes/courses.ts';
 import { meRoutes } from './routes/me.ts';
 import { subscriptionRoutes } from './routes/subscription.ts';
 import { toolsRoutes } from './routes/tools.ts';
@@ -23,13 +24,15 @@ type AppOptions = {
   log?: boolean;
 };
 
-type RateLimits = { unlock: RateLimitRule; webhook: RateLimitRule };
+type RateLimits = { unlock: RateLimitRule; webhook: RateLimitRule; progress: RateLimitRule };
 
 // Unlock: por usuario; el cupo ya acota las escrituras, esto frena el martilleo.
 // Webhook: por IP y generoso, porque MP manda ráfagas legítimas desde pocas IPs.
 const DEFAULT_RATE_LIMITS: RateLimits = {
   unlock: { limit: 10, windowMs: 60_000 },
   webhook: { limit: 300, windowMs: 60_000 },
+  // Progreso: el reproductor lo manda cada tantos segundos; esto deja margen para varias pestañas.
+  progress: { limit: 60, windowMs: 60_000 },
 };
 
 export function createApp({
@@ -62,6 +65,7 @@ export function createApp({
     }
   });
   app.route('/api/tools', toolsRoutes(auth, limits.unlock));
+  app.route('/api/courses', coursesRoutes(auth, limits.progress));
   app.route('/api/me', meRoutes(auth));
   app.route('/api/subscription', subscriptionRoutes({ auth, frontendUrl, mp }));
   app.route('/api/admin', adminRoutes(auth));

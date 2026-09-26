@@ -1,4 +1,7 @@
 import {
+  boolean,
+  foreignKey,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -84,3 +87,74 @@ export const subscriptionEvents = pgTable('subscription_events', {
   payload: jsonb('payload').notNull(),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const courses = pgTable('courses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  shortDescription: text('short_description').notNull(),
+  description: text('description'),
+  coverImageUrl: text('cover_image_url'),
+  tier: toolTier('tier').notNull().default('premium'),
+  order: integer('order').notNull().default(0),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const modules = pgTable(
+  'modules',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description'),
+    order: integer('order').notNull().default(0),
+  },
+  // Target de la FK compuesta de lessons: garantiza que lessons.course_id sea el del módulo.
+  (t) => [unique('modules_id_course_uq').on(t.id, t.courseId)],
+);
+
+export const lessons = pgTable(
+  'lessons',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    moduleId: uuid('module_id').notNull(),
+    // Denormalizado desde modules para poder exigir slug único por curso en la base.
+    courseId: uuid('course_id').notNull(),
+    slug: text('slug').notNull(),
+    title: text('title').notNull(),
+    youtubeUrl: text('youtube_url'),
+    contentMd: text('content_md'),
+    durationSeconds: integer('duration_seconds'),
+    order: integer('order').notNull().default(0),
+    isFreePreview: boolean('is_free_preview').notNull().default(false),
+  },
+  (t) => [
+    foreignKey({
+      name: 'lessons_module_course_fk',
+      columns: [t.moduleId, t.courseId],
+      foreignColumns: [modules.id, modules.courseId],
+    }).onDelete('cascade'),
+    unique('lessons_course_slug_uq').on(t.courseId, t.slug),
+    index('lessons_module_idx').on(t.moduleId),
+  ],
+);
+
+export const progress = pgTable(
+  'progress',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    lessonId: uuid('lesson_id')
+      .notNull()
+      .references(() => lessons.id, { onDelete: 'cascade' }),
+    secondsWatched: integer('seconds_watched').notNull().default(0),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('progress_user_lesson_uq').on(t.userId, t.lessonId)],
+);

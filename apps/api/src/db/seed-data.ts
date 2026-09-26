@@ -1,6 +1,6 @@
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Db } from './client.ts';
-import { categories, tools } from './schema.ts';
+import { categories, courses, lessons, modules, tools } from './schema.ts';
 
 type SeedCategory = typeof categories.$inferInsert;
 type SeedTool = Omit<typeof tools.$inferInsert, 'categoryId' | 'publishedAt'> & {
@@ -113,6 +113,123 @@ export const seedTools: SeedTool[] = [
   },
 ];
 
+type SeedLesson = Omit<typeof lessons.$inferInsert, 'moduleId' | 'courseId' | 'order'>;
+type SeedCourse = Omit<typeof courses.$inferInsert, 'publishedAt'> & {
+  modules: { title: string; description?: string; lessons: SeedLesson[] }[];
+};
+
+export const seedCourses: SeedCourse[] = [
+  {
+    slug: 'agentes-de-punta-a-punta',
+    title: 'Agentes de punta a punta',
+    shortDescription:
+      'De un prompt suelto a un agente que planifica, usa herramientas y se evalúa solo.',
+    description:
+      'Un recorrido práctico para pasar de pedirle cosas a un chat a diseñar agentes que trabajan por vos. Cada lección cierra con algo que podés usar el mismo día.',
+    tier: 'premium',
+    order: 1,
+    modules: [
+      {
+        title: 'Fundamentos',
+        description: 'Qué es un agente y cuándo conviene usar uno.',
+        lessons: [
+          {
+            slug: 'que-es-un-agente',
+            title: 'Qué es (y qué no es) un agente',
+            durationSeconds: 7 * 60,
+            isFreePreview: true,
+            youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            contentMd: 'Un agente es un loop: decide, actúa, observa y vuelve a decidir.',
+          },
+          {
+            slug: 'planificar-antes-de-actuar',
+            title: 'Planificar antes de actuar',
+            durationSeconds: 12 * 60,
+            contentMd: 'Pedile un plan explícito antes de dejarlo tocar nada.',
+          },
+        ],
+      },
+      {
+        title: 'En producción',
+        lessons: [
+          {
+            slug: 'herramientas-y-permisos',
+            title: 'Herramientas y permisos',
+            durationSeconds: 15 * 60,
+            contentMd: 'Cada herramienta que le das es una superficie de error: empezá por las de solo lectura.',
+          },
+          {
+            slug: 'evaluar-al-agente',
+            title: 'Evaluar al agente',
+            durationSeconds: 18 * 60,
+            contentMd: 'Sin evals, cada cambio de prompt es una apuesta.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'prompting-desde-cero',
+    title: 'Prompting desde cero',
+    shortDescription: 'Lo mínimo indispensable para dejar de pelearte con el chat.',
+    tier: 'free',
+    order: 2,
+    modules: [
+      {
+        title: 'Lo básico',
+        lessons: [
+          {
+            slug: 'contexto-primero',
+            title: 'Contexto primero',
+            durationSeconds: 6 * 60,
+            contentMd: 'El modelo no sabe nada de tu proyecto hasta que se lo contás.',
+          },
+          {
+            slug: 'ejemplos-que-ensenan',
+            title: 'Ejemplos que enseñan',
+            durationSeconds: 8 * 60,
+            contentMd: 'Dos buenos ejemplos valen más que diez adjetivos.',
+          },
+        ],
+      },
+    ],
+  },
+];
+
+async function seedCourse(db: Db, { modules: mods, ...course }: SeedCourse, publishedAt: Date) {
+  const [row] = await db
+    .insert(courses)
+    .values({ ...course, publishedAt })
+    .onConflictDoUpdate({
+      target: courses.slug,
+      set: {
+        title: sql`excluded.title`,
+        shortDescription: sql`excluded.short_description`,
+        description: sql`excluded.description`,
+        tier: sql`excluded.tier`,
+        order: sql`excluded.order`,
+      },
+    })
+    .returning({ id: courses.id });
+  if (!row) throw new Error(`El upsert del curso ${course.slug} no devolvió fila`);
+
+  // Los módulos no tienen clave natural para hacer upsert, y borrarlos arrastraría en cascada
+  // el progreso de los alumnos. Así que el temario se siembra una sola vez por curso.
+  const existing = await db.select({ id: modules.id }).from(modules).where(eq(modules.courseId, row.id)).limit(1);
+  if (existing.length > 0) return;
+
+  for (const [m, mod] of mods.entries()) {
+    const [modRow] = await db
+      .insert(modules)
+      .values({ courseId: row.id, title: mod.title, description: mod.description, order: m + 1 })
+      .returning({ id: modules.id });
+    if (!modRow) throw new Error(`No se pudo crear el módulo ${mod.title}`);
+    await db.insert(lessons).values(
+      mod.lessons.map((lesson, l) => ({ ...lesson, moduleId: modRow.id, courseId: row.id, order: l + 1 })),
+    );
+  }
+}
+
 export async function seed(db: Db) {
   await db
     .insert(categories)
@@ -152,4 +269,8 @@ export async function seed(db: Db) {
         publishedAt: sql`excluded.published_at`,
       },
     });
+
+  for (const [i, course] of seedCourses.entries()) {
+    await seedCourse(db, course, new Date(now - i * 60_000));
+  }
 }
