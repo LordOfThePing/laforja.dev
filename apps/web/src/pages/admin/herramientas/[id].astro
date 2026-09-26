@@ -16,7 +16,7 @@ if (!auth.ok) return auth.response;
 
 const id = Astro.params.id ?? '';
 const tool = await getAdminTool(auth.user, id);
-if (!tool) return new Response('No encontrado', { status: 404 });
+if (!tool) return new Response(null, { status: 404 });
 
 let values: ReturnType<typeof toolFromForm> | AdminTool = tool;
 let error: string | null = null;
