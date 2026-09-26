@@ -30,3 +30,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-26 — Relevamiento de lo pendiente (v1, operación, SEO, v2, v3) en `TODO.md` — 4a09f9e
 - 2026-09-26 — Rol admin (`ADMIN_EMAILS`, pepeflynn22@gmail.com) + panel `/admin` (herramientas, categorías, usuarios) — 17a0ef0, 64c957d
 - 2026-09-26 — Deploy automático con GitHub Actions en cada push a `main` — 6624b26
+- 2026-09-26 — Páginas 404/500 propias con el estilo del sitio — 3f8ed1e, adcfff7

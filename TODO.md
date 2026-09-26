@@ -5,7 +5,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ## En curso
 
 - Páginas `/terminos` y `/privacidad` — en curso por @claude — el footer ya las linkea y dan 404; Google y MP las piden para producción
-- Página 404/500 propias con el estilo del sitio — en curso por @claude-2
 
 ## Pendiente
 
