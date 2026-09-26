@@ -1,9 +1,12 @@
-import type { categories, tools } from '../db/schema.ts';
+import type { categories, courses, lessons, modules, tools } from '../db/schema.ts';
 
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; field: string };
 
 type ToolInput = Omit<typeof tools.$inferInsert, 'id' | 'createdAt'>;
 type CategoryInput = Omit<typeof categories.$inferInsert, 'id'>;
+type CourseInput = Omit<typeof courses.$inferInsert, 'id' | 'createdAt'>;
+type ModuleInput = Pick<typeof modules.$inferInsert, 'title' | 'description'>;
+type LessonInput = Omit<typeof lessons.$inferInsert, 'id' | 'courseId' | 'order'>;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -83,15 +86,8 @@ const toolFields = {
   longDescription: (b: Record<string, unknown>) => optionalText(b, 'longDescription'),
   youtubeUrl: (b: Record<string, unknown>) => optionalUrl(b, 'youtubeUrl'),
   promptBody: (b: Record<string, unknown>) => text(b, 'promptBody'),
-  tier: (b: Record<string, unknown>) => {
-    if (b.tier !== 'free' && b.tier !== 'premium') throw new FieldError('tier');
-    return b.tier;
-  },
-  categoryId: (b: Record<string, unknown>) => {
-    const v = text(b, 'categoryId');
-    if (!UUID.test(v)) throw new FieldError('categoryId');
-    return v;
-  },
+  tier,
+  categoryId: (b: Record<string, unknown>) => uuid(b, 'categoryId'),
   tags: (b: Record<string, unknown>) => {
     const v = b.tags ?? [];
     if (!Array.isArray(v) || !v.every((t) => typeof t === 'string')) throw new FieldError('tags');
@@ -108,6 +104,72 @@ const categoryFields = {
   description: (b: Record<string, unknown>) => optionalText(b, 'description'),
   order: (b: Record<string, unknown>) => optionalInt(b, 'order') ?? 0,
 };
+
+function tier(b: Record<string, unknown>) {
+  if (b.tier !== 'free' && b.tier !== 'premium') throw new FieldError('tier');
+  return b.tier;
+}
+
+function uuid(b: Record<string, unknown>, field: string): string {
+  const v = text(b, field);
+  if (!UUID.test(v)) throw new FieldError(field);
+  return v;
+}
+
+const courseFields = {
+  slug,
+  title: (b: Record<string, unknown>) => text(b, 'title'),
+  shortDescription: (b: Record<string, unknown>) => text(b, 'shortDescription'),
+  description: (b: Record<string, unknown>) => optionalText(b, 'description'),
+  coverImageUrl: (b: Record<string, unknown>) => optionalUrl(b, 'coverImageUrl'),
+  tier,
+  order: (b: Record<string, unknown>) => optionalInt(b, 'order') ?? 0,
+  publishedAt: (b: Record<string, unknown>) => optionalDate(b, 'publishedAt'),
+};
+
+const moduleFields = {
+  title: (b: Record<string, unknown>) => text(b, 'title'),
+  description: (b: Record<string, unknown>) => optionalText(b, 'description'),
+};
+
+const lessonFields = {
+  moduleId: (b: Record<string, unknown>) => uuid(b, 'moduleId'),
+  slug,
+  title: (b: Record<string, unknown>) => text(b, 'title'),
+  youtubeUrl: (b: Record<string, unknown>) => optionalUrl(b, 'youtubeUrl'),
+  contentMd: (b: Record<string, unknown>) => optionalText(b, 'contentMd'),
+  durationSeconds: (b: Record<string, unknown>) => optionalInt(b, 'durationSeconds'),
+  isFreePreview: (b: Record<string, unknown>) => {
+    const v = b.isFreePreview ?? false;
+    if (typeof v !== 'boolean') throw new FieldError('isFreePreview');
+    return v;
+  },
+};
+
+export function parseCourse(raw: unknown): ParseResult<CourseInput>;
+export function parseCourse(raw: unknown, partial: true): ParseResult<Partial<CourseInput>>;
+export function parseCourse(raw: unknown, partial = false) {
+  return parse(raw, partial, courseFields);
+}
+
+export function parseModule(raw: unknown): ParseResult<ModuleInput>;
+export function parseModule(raw: unknown, partial: true): ParseResult<Partial<ModuleInput>>;
+export function parseModule(raw: unknown, partial = false) {
+  return parse(raw, partial, moduleFields);
+}
+
+// moduleId viene de la URL al crear; en el PATCH sirve para mover la lección de módulo.
+export function parseLesson(raw: unknown): ParseResult<Omit<LessonInput, 'moduleId'>>;
+export function parseLesson(raw: unknown, partial: true): ParseResult<Partial<LessonInput>>;
+export function parseLesson(raw: unknown, partial = false) {
+  const { moduleId: _moduleId, ...createFields } = lessonFields;
+  return parse(raw, partial, partial ? lessonFields : createFields);
+}
+
+export function parseDirection(raw: unknown): 'up' | 'down' | null {
+  const d = raw && typeof raw === 'object' ? (raw as { direction?: unknown }).direction : undefined;
+  return d === 'up' || d === 'down' ? d : null;
+}
 
 export function parseTool(raw: unknown): ParseResult<ToolInput>;
 export function parseTool(raw: unknown, partial: true): ParseResult<Partial<ToolInput>>;

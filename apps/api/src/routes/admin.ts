@@ -5,6 +5,7 @@ import { categories, tools, unlocks, users } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import { isUuid, parseCategory, parseTool } from '../lib/admin-input.ts';
 import { monthKey } from '../lib/month.ts';
+import { adminCourseRoutes } from './admin-courses.ts';
 
 const toolColumns = {
   id: tools.id,
@@ -35,6 +36,7 @@ export function adminRoutes(auth: AuthConfig) {
   const { db } = auth;
   const app = new Hono<AuthEnv>();
   app.use(requireAuth(auth), requireAdmin);
+  app.route('/', adminCourseRoutes(db));
 
   async function slugTaken(table: typeof tools | typeof categories, slug: string, exceptId?: string) {
     const [row] = await db
