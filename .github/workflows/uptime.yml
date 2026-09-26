@@ -1,0 +1,79 @@
+name: Uptime
+
+on:
+  # GitHub no garantiza el horario: con carga, los cron se atrasan varios minutos.
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+# Si una corrida se atrasa y se pisa con la siguiente, no tiene sentido correr las dos.
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+permissions:
+  issues: write
+
+env:
+  # Variable del repo (Settings → Variables) para no tocar esto al migrar a laforja.dev.
+  SITE_URL: ${{ vars.SITE_URL || 'https://academia.flynnpedroa.engineer' }}
+  ISSUE_LABEL: caida
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chequear web y api
+        id: check
+        run: |
+          # Un deploy reinicia los contenedores: se reintenta ~1 min antes de dar la caída por buena.
+          probe() {
+            local name="$1" url="$2" expect="$3" body code
+            for attempt in 1 2 3 4; do
+              code=$(curl -sS -o body.txt -w '%{http_code}' --max-time 15 "$url" || true)
+              body=$(head -c 2000 body.txt 2>/dev/null || true)
+              if [ "$code" = 200 ] && grep -q -- "$expect" <<<"$body"; then
+                echo "$name OK ($url)"
+                return 0
+              fi
+              echo "$name intento $attempt: HTTP $code"
+              [ "$attempt" -lt 4 ] && sleep 20
+            done
+            echo "- **$name** (\`$url\`): HTTP $code" >> failures.md
+            return 1
+          }
+
+          : > failures.md
+          ok=true
+          probe web "$SITE_URL/" 'La Forja' || ok=false
+          probe api "$SITE_URL/api/health" '"ok":true' || ok=false
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+
+      - name: Abrir o actualizar el issue de caída
+        if: steps.check.outputs.ok == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create "$ISSUE_LABEL" --color B60205 --description 'Sitio caído (lo abre y cierra el workflow Uptime)' 2>/dev/null || true
+          body=$(printf 'Falló el chequeo de %s (%s UTC):\n\n%s\n\n[Corrida](%s)' \
+            "$SITE_URL" "$(date -u '+%Y-%m-%d %H:%M')" "$(cat failures.md)" "$RUN_URL")
+          open=$(gh issue list --label "$ISSUE_LABEL" --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "$body"
+          else
+            gh issue create --title "Sitio caído: $SITE_URL" --label "$ISSUE_LABEL" --body "$body"
+          fi
+          exit 1
+
+      - name: Cerrar el issue si volvió
+        if: steps.check.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for n in $(gh issue list --label "$ISSUE_LABEL" --state open --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "Volvió a responder ($(date -u '+%Y-%m-%d %H:%M') UTC)."
+          done
