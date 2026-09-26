@@ -244,6 +244,54 @@ export async function saveLessonProgress(
   }
 }
 
+export type Certificate = {
+  id: string;
+  recipientName: string;
+  courseTitle: string;
+  courseSlug: string;
+  issuedAt: string;
+};
+
+export type IssueCertificateResult =
+  | { ok: true; certificate: Certificate }
+  | { ok: false; reason: 'not_completed' | 'name_required' | 'not_found' | 'unauthorized' };
+
+export async function issueCertificate(
+  user: Session['user'],
+  courseSlug: string,
+): Promise<IssueCertificateResult> {
+  try {
+    const { certificate } = await call<{ certificate: Certificate }>(
+      `/api/courses/${encodeURIComponent(courseSlug)}/certificate`,
+      user,
+      { method: 'POST' },
+    );
+    return { ok: true, certificate };
+  } catch (err) {
+    if (
+      err instanceof ApiError &&
+      (err.code === 'not_completed' ||
+        err.code === 'name_required' ||
+        err.code === 'not_found' ||
+        err.code === 'unauthorized')
+    ) {
+      return { ok: false, reason: err.code };
+    }
+    throw err;
+  }
+}
+
+export async function getCertificate(id: string): Promise<(Certificate & { verifyUrl: string }) | null> {
+  const res = await orNotFound(
+    call<{ certificate: Certificate & { verifyUrl: string } }>(`/api/certificates/${encodeURIComponent(id)}`, undefined),
+  );
+  return res?.certificate ?? null;
+}
+
+export function fetchCertificatePdf(id: string): Promise<Response> {
+  return fetch(apiUrl(`/api/certificates/${encodeURIComponent(id)}/pdf`), { signal: AbortSignal.timeout(10_000) });
+}
+
 export function formatDuration(seconds: number | null): string | null {
   if (seconds == null) return null;
   return `${Math.max(1, Math.round(seconds / 60))} min`;

@@ -4,12 +4,23 @@ import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
 import Syllabus from '~/components/cursos/Syllabus.astro';
-import { type CourseDetail, formatLongDuration, getCourse } from '~/lib/api';
+import { type CourseDetail, formatLongDuration, getCourse, issueCertificate } from '~/lib/api';
 import { loginUrl } from '~/lib/redirect';
 
 const slug = Astro.params.curso ?? '';
 const session = await getSession(Astro.request);
 const user = session?.user;
+
+let certificateError: 'not_completed' | 'name_required' | null = null;
+if (Astro.request.method === 'POST') {
+  if (!user) return Astro.redirect(loginUrl(Astro.url.pathname));
+  const result = await issueCertificate(user, slug);
+  if (result.ok) return Astro.redirect(`/certificados/${result.certificate.id}`, 303);
+  if (result.reason === 'not_found') return new Response(null, { status: 404 });
+  if (result.reason === 'unauthorized') return Astro.redirect(loginUrl(Astro.url.pathname));
+  certificateError = result.reason;
+  Astro.response.status = 409;
+}
 
 let course: CourseDetail | null;
 try {
@@ -61,9 +72,23 @@ const done = course.progress && course.progress.total > 0 && course.progress.com
         </div>
       )}
 
+      {certificateError === 'name_required' && (
+        <p class="course__notice" role="alert">
+          Tu cuenta de Google no tiene nombre, y el certificado lo necesita. Agregalo en tu cuenta de Google, volvé a ingresar y probá de nuevo.
+        </p>
+      )}
+      {certificateError === 'not_completed' && (
+        <p class="course__notice" role="alert">Todavía te faltan lecciones para el certificado.</p>
+      )}
+
       <div class="course__ctas">
+        {done && user && (
+          <form method="post">
+            <button type="submit" class="btn btn--primary">Obtener certificado</button>
+          </form>
+        )}
         {resume && (
-          <a href={`/cursos/${course.slug}/${resume.slug}`} class="btn btn--primary">
+          <a href={`/cursos/${course.slug}/${resume.slug}`} class:list={['btn', done && user ? 'btn--ghost' : 'btn--primary']}>
             {done ? 'Repasar' : started ? 'Seguir donde quedaste' : resume.isFreePreview && hasLocked ? 'Ver la lección gratis' : 'Empezar el curso'}
           </a>
         )}
@@ -103,6 +128,7 @@ const done = course.progress && course.progress.total > 0 && course.progress.com
   .course__lede { color: var(--ink-dim); font-size: 18px; }
   .course__progress { display: flex; align-items: center; gap: 14px; max-width: 420px; color: var(--ink-mute); font-size: 12px; }
   .course__ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+  .course__notice { color: var(--ember-300); font-size: 14px; }
   .course__cols { display: grid; gap: 48px; }
   .course__syllabus, .course__about { display: flex; flex-direction: column; gap: 18px; }
   .course__about p { color: var(--ink-dim); }
