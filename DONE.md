@@ -41,3 +41,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-26 — Suscripción probada contra MP sandbox (hecho por el usuario)
 - 2026-09-26 — Pantalla de consentimiento de Google OAuth en producción (hecho por el usuario)
 - 2026-09-26 — Reconciliación periódica de suscripciones contra MP (cada 6 h + `make reconcile [DRY=1]`) — af4f3c0
+- 2026-09-26 — Cursos v2: tablas `courses` / `modules` / `lessons` / `progress` + endpoints — 8cc447c
