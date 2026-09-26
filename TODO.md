@@ -5,6 +5,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ## En curso
 
 - Reconciliación periódica de suscripciones contra MP (por si se pierde un webhook) — en curso por @claude-b
+- Tablas `courses` / `modules` / `lessons` / `progress` + endpoints — en curso por @claude-2
 
 ## Pendiente
 
@@ -23,7 +24,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### v2 — Cursos (ver `docs/roadmap.md`)
 
-- Tablas `courses` / `modules` / `lessons` / `progress` + endpoints — pendiente
 - Landing `/cursos` con temario público y reproductor de lecciones con progreso — pendiente
 - Certificado de completado en PDF — pendiente
 
