@@ -117,6 +117,11 @@ Hetzner `91.98.23.236` (Ubuntu 24.04), compartido con otros proyectos
     RequestTTY yes
     RemoteCommand cd /opt/laforja && exec bash -l
   ```
+- **SSH solo por clave** (todo el VPS, desde el 2026-09-26):
+  `/etc/ssh/sshd_config.d/00-hardening.conf` pone `PasswordAuthentication no`
+  y `KbdInteractiveAuthentication no`. Tiene que llamarse `00-…` para ganarle a
+  `50-cloud-init.conf`, que pone `yes` (sshd se queda con el primer valor que
+  lee). Verificar con `sshd -T | grep passwordauthentication`
 - El repo es público: el VPS clona por HTTPS, no hace falta deploy key
 - **Puertos del host ocupados** por otros proyectos: `3000`, `3100`, `5432`,
   `5435`, `5678`, `8080`, `27017`. En el `.env.production` poner
