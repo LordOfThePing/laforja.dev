@@ -21,10 +21,10 @@ reales. El detalle vive en `TODO.md`.
 
 ## v2 — Cursos
 
-- [ ] Tablas `courses` / `modules` / `lessons` / `progress`
-- [ ] Progreso por lección (visto / no visto / % de video)
-- [ ] Landing `/cursos` con temario visible sin login
-- [ ] Suscripción da acceso a todo (cursos + herramientas ilimitadas)
+- [x] Tablas `courses` / `modules` / `lessons` / `progress`
+- [x] Progreso por lección (visto / no visto) — falta el % de video
+- [x] Landing `/cursos` con temario visible sin login
+- [x] Suscripción da acceso a todo (cursos + herramientas ilimitadas)
 - [ ] Certificado de completado (PDF descargable)
 
 ## v3 — Comunidad y creación
