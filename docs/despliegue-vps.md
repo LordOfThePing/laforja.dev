@@ -127,6 +127,39 @@ Hetzner `91.98.23.236` (Ubuntu 24.04), compartido con otros proyectos
   `5435`, `5678`, `8080`, `27017`. En el `.env.production` poner
   `WEB_PORT=3200` (y `API_PORT` si hiciera falta); Postgres no se publica al host
 
+### Deploy automático (GitHub Actions)
+
+`.github/workflows/deploy.yml` deploya en cada push a `main` (ignora commits que
+solo tocan `*.md` o `docs/`) y también se puede lanzar a mano desde la pestaña
+*Actions* (`workflow_dispatch`). Los deploys van de a uno (`concurrency`).
+
+El workflow entra como `deploy-laforja` con una clave propia, **atada a un solo
+comando** en `authorized_keys`:
+`command="/usr/local/bin/laforja-deploy",restrict ssh-ed25519 … github-actions-laforja`.
+Lo que sea que pida el cliente se ignora: siempre corre ese script (copia de
+`scripts/ci-deploy.sh`, dueño root, fuera del checkout), que hace `git pull
+--ff-only` + `docker compose up -d --build --wait` con un `flock` contra deploys
+simultáneos. Si la clave se filtra, lo único que permite es redeployar
+`origin/main`.
+
+Secrets del repo (Settings → Secrets and variables → Actions):
+
+| Secret | Valor |
+|---|---|
+| `VPS_SSH_KEY` | clave privada `~/.ssh/laforja-gha` (entera, con las líneas `BEGIN`/`END`) |
+| `VPS_KNOWN_HOSTS` | `91.98.23.236 ssh-ed25519 AAAA…` (host key del VPS, sacada de `/etc/ssh/ssh_host_ed25519_key.pub` por `ssh hetzner`, no por `ssh-keyscan`) |
+
+Instalar o rotar la clave y el script (como root, idempotente):
+
+```bash
+ssh-keygen -t ed25519 -N '' -C github-actions-laforja -f ~/.ssh/laforja-gha
+ssh hetzner 'cat > /root/laforja-deploy.sh' < scripts/ci-deploy.sh
+ssh hetzner 'bash -s' -- "\"$(cat ~/.ssh/laforja-gha.pub)\"" < scripts/vps-ci-setup.sh
+```
+
+Si se cambia `scripts/ci-deploy.sh`, hay que reinstalarlo con los dos comandos
+de `ssh hetzner`: el VPS no lo toma del repo.
+
 ### Primera vez
 
 ```bash

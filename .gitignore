@@ -11,3 +11,4 @@ Thumbs.db
 *.log
 bun.lockb
 .turbo/
+.deploy.lock

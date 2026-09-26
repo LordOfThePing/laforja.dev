@@ -1,0 +1,36 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    # Los commits de TODO/DONE y docs no cambian nada de lo que corre en el VPS.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+# Un deploy a la vez; si llega otro push mientras tanto, se encola (no cancela el que está buildeando).
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Configurar SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # La clave está atada a /usr/local/bin/laforja-deploy en el VPS: el comando lo
+      # decide authorized_keys, no este workflow (ver scripts/vps-ci-setup.sh).
+      - name: Deployar
+        run: ssh -o BatchMode=yes -o StrictHostKeyChecking=yes deploy-laforja@91.98.23.236
