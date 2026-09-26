@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- `sitemap.xml` + `robots.txt` + OG image por herramienta — en curso por @claude-2
 
 ## Pendiente
 
@@ -22,7 +23,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### SEO y crecimiento
 
-- `sitemap.xml` + `robots.txt` + OG image por herramienta — pendiente
 - Analytics livianas y respetuosas (Plausible/Umami self-hosted) — pendiente — el roadmap v3 pide métricas de desbloqueos; esto cubre tráfico
 - Migrar a `laforja.dev` (hostnames del tunnel, `FRONTEND_URL`, callback de Google, webhook de MP, redirect 301) — pendiente — ver `docs/despliegue-vps.md`
 
