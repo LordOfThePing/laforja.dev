@@ -7,6 +7,7 @@ import { type MercadoPago, MercadoPagoError } from './lib/mercadopago.ts';
 import type { RateLimitRule } from './lib/rate-limit.ts';
 import type { AuthConfig } from './auth.ts';
 import { adminRoutes } from './routes/admin.ts';
+import { certificatesRoutes } from './routes/certificates.ts';
 import { coursesRoutes } from './routes/courses.ts';
 import { meRoutes } from './routes/me.ts';
 import { subscriptionRoutes } from './routes/subscription.ts';
@@ -66,6 +67,7 @@ export function createApp({
   });
   app.route('/api/tools', toolsRoutes(auth, limits.unlock));
   app.route('/api/courses', coursesRoutes(auth, limits.progress));
+  app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));
   app.route('/api/subscription', subscriptionRoutes({ auth, frontendUrl, mp }));
   app.route('/api/admin', adminRoutes(auth));

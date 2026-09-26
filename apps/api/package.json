@@ -16,8 +16,10 @@
     "db:migrate": "bun src/db/migrate.ts"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
     "drizzle-orm": "^0.45.3",
     "hono": "^4.13.9",
+    "pdf-lib": "^1.17.1",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
