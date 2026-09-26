@@ -25,7 +25,7 @@ reales. El detalle vive en `TODO.md`.
 - [x] Progreso por lección (visto / no visto) — falta el % de video
 - [x] Landing `/cursos` con temario visible sin login
 - [x] Suscripción da acceso a todo (cursos + herramientas ilimitadas)
-- [ ] Certificado de completado (PDF descargable)
+- [x] Certificado de completado (PDF descargable)
 
 ## v3 — Comunidad y creación
 

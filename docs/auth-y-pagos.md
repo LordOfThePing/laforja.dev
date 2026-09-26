@@ -147,10 +147,9 @@ Cualquier error de la API de MP en un endpoint se devuelve como
 | `GET` | `/api/courses/:slug` | Temario público (módulos → lecciones con `isLocked`, sin video ni contenido). Con token, progreso por lección y del curso |
 | `GET` | `/api/courses/:slug/lessons/:lesson` | Lección con `prev` / `next` (cruzan módulos). Si está bloqueada, sin `youtubeUrl` ni `contentMd` e `isLocked: true` |
 | `PUT` | `/api/courses/:slug/lessons/:lesson/progress` | Requiere auth y acceso a la lección (si no, `403 subscription_required`). Body `{ secondsWatched?, completed? }`; los segundos nunca bajan y `completed_at` guarda la primera vez; `completed: false` lo borra |
-| `GET` | `/api/courses` | Cursos publicados con `moduleCount`, `lessonCount`, `durationSeconds`. Auth opcional: con token suma `progress` (`completed` / `total`) |
-| `GET` | `/api/courses/:slug` | Temario público (módulos → lecciones con `isLocked`, sin video ni contenido). Con token, progreso por lección y del curso |
-| `GET` | `/api/courses/:slug/lessons/:lesson` | Lección con `prev` / `next` (cruzan módulos). Si está bloqueada, sin `youtubeUrl` ni `contentMd` e `isLocked: true` |
-| `PUT` | `/api/courses/:slug/lessons/:lesson/progress` | Requiere auth y acceso a la lección (si no, `403 subscription_required`). Body `{ secondsWatched?, completed? }`; los segundos nunca bajan y `completed_at` guarda la primera vez; `completed: false` lo borra |
+| `POST` | `/api/courses/:slug/certificate` | Requiere auth. Emite el certificado si completó **todas** las lecciones (`201`); si ya lo tenía devuelve el mismo (`200`). `409 not_completed` con `completed` / `total`, o `409 name_required` si la cuenta no tiene nombre. Nombre y título se guardan como snapshot: el certificado no cambia aunque el curso sí |
+| `GET` | `/api/certificates/:id` | Público (es el link que se comparte): `recipientName`, `courseTitle`, `courseSlug`, `issuedAt`, `verifyUrl` |
+| `GET` | `/api/certificates/:id/pdf` | Público. A4 apaisado con Instrument Serif embebida (`apps/api/src/assets/fonts`, OFL). La web lo sirve en `/certificados/:id.pdf` |
 | `POST` | `/api/subscription/create` | Requiere auth. Crea Preapproval, devuelve `{ initPoint, preapprovalId }` |
 | `POST` | `/api/subscription/cancel` | Requiere auth. Cancela en MP, conserva el período pago |
 | `POST` | `/webhooks/mercadopago` | Webhook de MP (firma `x-signature`, idempotente) |
@@ -180,6 +179,5 @@ Input inválido → `400 {"error":"invalid_input","field":...}`; slug repetido �
 - `/api/tools/:slug/unlock` toma un lock sobre la fila del usuario (`SELECT … FOR UPDATE`) para que requests concurrentes no superen el cupo
 - Rate limit en memoria (ventana fija; alcanza con una sola instancia de api), responde `429 {"error":"rate_limited"}` + `Retry-After`:
   - `POST /api/tools/:slug/unlock`: 10/min **por usuario** (después de validar el token)
-  - `PUT /api/courses/:slug/lessons/:lesson/progress`: 60/min **por usuario** (el reproductor lo manda periódicamente)
   - `PUT /api/courses/:slug/lessons/:lesson/progress`: 60/min **por usuario** (el reproductor lo manda periódicamente)
   - `POST /webhooks/mercadopago`: 300/min **por IP**, antes de validar la firma. La IP sale de `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for`; es confiable porque la api solo escucha en `127.0.0.1` detrás del proxy
