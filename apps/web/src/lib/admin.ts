@@ -3,6 +3,7 @@ import type { AstroGlobal } from 'astro';
 import { getSession } from 'auth-astro/server';
 import { ApiError, type Me, call, getMe } from './api';
 import { loginUrl } from './redirect';
+import { slugify } from './slug';
 
 export type AdminTool = {
   id: string;
@@ -38,6 +39,47 @@ export type AdminUser = {
   subscriptionStatus: string;
   hasAccess: boolean;
   createdAt: string;
+};
+
+export type AdminCourse = {
+  id: string;
+  slug: string;
+  title: string;
+  shortDescription: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  tier: 'free' | 'premium';
+  order: number;
+  publishedAt: string | null;
+  createdAt: string;
+};
+
+export type AdminCourseRow = AdminCourse & { moduleCount: number; lessonCount: number };
+
+export type AdminLessonRow = {
+  id: string;
+  slug: string;
+  title: string;
+  durationSeconds: number | null;
+  isFreePreview: boolean;
+  hasVideo: boolean;
+};
+
+export type AdminCourseDetail = AdminCourse & {
+  learners: number;
+  modules: { id: string; title: string; description: string | null; lessons: AdminLessonRow[] }[];
+};
+
+export type AdminLesson = {
+  id: string;
+  moduleId: string;
+  courseId: string;
+  slug: string;
+  title: string;
+  youtubeUrl: string | null;
+  contentMd: string | null;
+  durationSeconds: number | null;
+  isFreePreview: boolean;
 };
 
 export type AdminStats = {
@@ -76,6 +118,28 @@ export async function getAdminTool(user: User, id: string): Promise<AdminTool | 
     throw err;
   }
 }
+
+async function orNull<T>(promise: Promise<T>): Promise<T | null> {
+  try {
+    return await promise;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export const listAdminCourses = (user: User) =>
+  call<{ courses: AdminCourseRow[] }>('/api/admin/courses', user).then((r) => r.courses);
+
+export const getAdminCourse = (user: User, id: string) =>
+  orNull(call<{ course: AdminCourseDetail }>(`/api/admin/courses/${encodeURIComponent(id)}`, user)).then(
+    (r) => r?.course ?? null,
+  );
+
+export const getAdminLesson = (user: User, id: string) =>
+  orNull(call<{ lesson: AdminLesson }>(`/api/admin/lessons/${encodeURIComponent(id)}`, user)).then(
+    (r) => r?.lesson ?? null,
+  );
 
 export const listCategories = (user: User) =>
   call<{ categories: AdminCategory[] }>('/api/admin/categories', user).then((r) => r.categories);
@@ -137,6 +201,40 @@ export function toolFromForm(form: FormData, current: AdminTool | null) {
   };
 }
 
+export function courseFromForm(form: FormData, current: AdminCourse | null) {
+  const title = str(form, 'title');
+  const publish = form.get('published') === 'on';
+  return {
+    slug: str(form, 'slug') || slugify(title),
+    title,
+    shortDescription: str(form, 'shortDescription'),
+    description: str(form, 'description') || null,
+    coverImageUrl: str(form, 'coverImageUrl') || null,
+    tier: str(form, 'tier'),
+    order: optionalInt(form, 'order') ?? 0,
+    publishedAt: publish ? (current?.publishedAt ?? new Date().toISOString()) : null,
+  };
+}
+
+export function moduleFromForm(form: FormData) {
+  return { title: str(form, 'title'), description: str(form, 'description') || null };
+}
+
+export function lessonFromForm(form: FormData) {
+  const title = str(form, 'title');
+  const minutes = optionalInt(form, 'durationMinutes');
+  const moduleId = str(form, 'moduleId');
+  return {
+    ...(moduleId ? { moduleId } : {}),
+    slug: str(form, 'slug') || slugify(title),
+    title,
+    youtubeUrl: str(form, 'youtubeUrl') || null,
+    contentMd: str(form, 'contentMd') || null,
+    durationSeconds: minutes === null ? null : Math.round(minutes * 60),
+    isFreePreview: form.get('isFreePreview') === 'on',
+  };
+}
+
 export function categoryFromForm(form: FormData) {
   return {
     slug: str(form, 'slug'),
@@ -159,6 +257,11 @@ const fieldLabels: Record<string, string> = {
   durationSeconds: 'la duración',
   order: 'el orden',
   tags: 'los tags',
+  description: 'la descripción',
+  contentMd: 'el contenido',
+  moduleId: 'el módulo',
+  isFreePreview: 'la opción de preview',
+  direction: 'la dirección',
 };
 
 export function errorMessage(result: { error: string; field?: string }): string {
