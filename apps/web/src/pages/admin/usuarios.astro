@@ -1,0 +1,74 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import { formatDate } from '~/lib/api';
+import { errorMessage, listUsers, mutate, requireAdmin } from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = encodeURIComponent(String(form.get('id') ?? ''));
+  const result = await mutate(auth.user, `/api/admin/users/${id}`, 'PATCH', { role: form.get('role') });
+  if (result.ok) return Astro.redirect('/admin/usuarios', 303);
+  error = errorMessage(result);
+  Astro.response.status = 400;
+}
+
+const users = await listUsers(auth.user);
+
+const subLabel: Record<string, string> = {
+  none: '—',
+  active: 'Activa',
+  paused: 'Pausada',
+  cancelled: 'Cancelada',
+};
+---
+
+<Admin title="Usuarios">
+  <h1>Usuarios</h1>
+  <p class="dim lede">Los últimos 200 que ingresaron. Un admin ve todo sin cupo y entra a este panel.</p>
+
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>Usuario</th><th>Alta</th><th>Suscripción</th><th>Rol</th></tr>
+      </thead>
+      <tbody>
+        {users.map((u) => (
+          <tr>
+            <td>
+              {u.name ?? u.email}
+              {u.name && <div class="dim mono">{u.email}</div>}
+            </td>
+            <td class="dim">{formatDate(u.createdAt)}</td>
+            <td class:list={{ dim: !u.hasAccess }}>{subLabel[u.subscriptionStatus] ?? u.subscriptionStatus}</td>
+            <td>
+              {u.id === auth.me.user.id ? (
+                <span class="pill pill--ember">Admin (vos)</span>
+              ) : (
+                <form method="post" class="role">
+                  <input type="hidden" name="id" value={u.id} />
+                  <input type="hidden" name="role" value={u.role === 'admin' ? 'user' : 'admin'} />
+                  {u.role === 'admin' && <span class="pill pill--ember">Admin</span>}
+                  <button type="submit" class="btn btn--ghost btn--sm">
+                    {u.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}
+                  </button>
+                </form>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</Admin>
+
+<style>
+  .lede { margin-block: 8px 24px; }
+  .role { display: flex; align-items: center; gap: 10px; }
+</style>

@@ -9,7 +9,7 @@
 - [ ] Suscripción MP Preapproval (4.000 ARS/mes)
 - [ ] Webhook MP para activar/renovar/cancelar
 - [ ] Dashboard básico: perfil, suscripción, unlocks del mes
-- [ ] Admin: alta de herramientas vía CLI/seed script (sin UI todavía)
+- [x] Admin: alta de herramientas — resuelto directamente con el panel `/admin` (rol `admin` en `users`)
 
 **Criterio de done**: puedo publicar una herramienta desde consola. Un usuario nuevo puede loguearse, ver el grid, desbloquear 2 gratis, pagar la suscripción, y desbloquear ilimitado desde ahí.
 
@@ -25,7 +25,7 @@
 
 - [ ] Comentarios en herramientas (solo suscriptores)
 - [ ] Colecciones / rutas de aprendizaje curadas
-- [ ] Admin UI para crear contenido sin tocar código
+- [x] Admin UI para crear contenido sin tocar código (adelantado a v1: `/admin`)
 - [ ] Newsletter integrada (probablemente Resend)
 - [ ] Analytics propias: qué se desbloquea más, retención
 

@@ -38,6 +38,7 @@ try {
 if (!me) return Astro.redirect(loginUrl('/dashboard'));
 
 const { subscription, unlocks } = me;
+const isAdmin = me.user.role === 'admin';
 const periodEnd = formatDate(subscription.currentPeriodEnd);
 const canCancel = subscription.status === 'active' || subscription.status === 'paused';
 
@@ -109,7 +110,9 @@ if (subscription.status === 'active') {
 
       <section class="box" aria-labelledby="unlocks-title">
         <h2 id="unlocks-title" class="box__label mono">Desbloqueos de este mes</h2>
-        {subscription.hasAccess ? (
+        {isAdmin ? (
+          <p class="box__text">Como admin no gastás desbloqueos: tenés todo abierto.</p>
+        ) : subscription.hasAccess ? (
           <p class="box__text">Con la suscripción no gastás desbloqueos: tenés todo abierto.</p>
         ) : (
           <>
@@ -133,6 +136,14 @@ if (subscription.status === 'active') {
           </ul>
         )}
       </section>
+
+      {isAdmin && (
+        <section class="box box--admin" aria-labelledby="admin-title">
+          <h2 id="admin-title" class="box__label mono">Administración</h2>
+          <p class="box__text">Cargá y publicá herramientas, ordená categorías y gestioná quién es admin.</p>
+          <a href="/admin" class="btn btn--primary">Ir al panel</a>
+        </section>
+      )}
     </div>
   </main>
   <Footer />
@@ -170,6 +181,7 @@ if (subscription.status === 'active') {
     border-radius: var(--radius-lg);
     background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
   }
+  .box--admin { grid-column: 1 / -1; }
   .box__label {
     color: var(--ink-mute);
     text-transform: uppercase;

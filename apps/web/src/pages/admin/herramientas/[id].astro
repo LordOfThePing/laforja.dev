@@ -1,0 +1,75 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import ToolForm from '~/components/admin/ToolForm.astro';
+import {
+  type AdminTool,
+  errorMessage,
+  getAdminTool,
+  listCategories,
+  mutate,
+  requireAdmin,
+  toolFromForm,
+} from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+const id = Astro.params.id ?? '';
+const tool = await getAdminTool(auth.user, id);
+if (!tool) return new Response('No encontrado', { status: 404 });
+
+let values: ReturnType<typeof toolFromForm> | AdminTool = tool;
+let error: string | null = null;
+const flash = Astro.url.searchParams.get('ok');
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const path = `/api/admin/tools/${encodeURIComponent(id)}`;
+  if (form.get('action') === 'delete') {
+    const result = await mutate(auth.user, path, 'DELETE');
+    if (result.ok) return Astro.redirect('/admin?ok=borrada', 303);
+    error = errorMessage(result);
+  } else {
+    values = toolFromForm(form, tool);
+    const result = await mutate<{ tool: AdminTool }>(auth.user, path, 'PATCH', values);
+    if (result.ok) return Astro.redirect(`/admin/herramientas/${id}?ok=guardada`, 303);
+    error = errorMessage(result);
+  }
+  Astro.response.status = 400;
+}
+
+const categories = await listCategories(auth.user);
+const live = tool.publishedAt !== null && Date.parse(tool.publishedAt) <= Date.now();
+---
+
+<Admin title={tool.title}>
+  <div class="admin-bar">
+    <h1>{tool.title}</h1>
+    {live && <a href={`/herramientas/${tool.slug}`} class="btn btn--ghost">Ver en el sitio ↗</a>}
+  </div>
+
+  {flash === 'creada' && <p class="admin-notice admin-notice--ok" role="status">Herramienta creada.</p>}
+  {flash === 'guardada' && <p class="admin-notice admin-notice--ok" role="status">Cambios guardados.</p>}
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  <ToolForm categories={categories} values={values} submitLabel="Guardar cambios" />
+
+  <details class="danger">
+    <summary>Borrar herramienta</summary>
+    <p class="dim">Se borran también los desbloqueos que tenga. No se puede deshacer.</p>
+    <form method="post">
+      <input type="hidden" name="action" value="delete" />
+      <button type="submit" class="btn btn--ghost btn--danger">Sí, borrar</button>
+    </form>
+  </details>
+</Admin>
+
+<style>
+  .danger {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+  .danger summary { cursor: pointer; color: var(--ink-mute); font-size: 14px; }
+  .danger[open] { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+</style>

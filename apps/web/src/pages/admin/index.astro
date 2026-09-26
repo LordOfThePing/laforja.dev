@@ -1,0 +1,93 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import { formatDate } from '~/lib/api';
+import { getStats, listAdminTools, requireAdmin } from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+const [stats, tools] = await Promise.all([getStats(auth.user), listAdminTools(auth.user)]);
+const now = Date.now();
+const flash = Astro.url.searchParams.get('ok');
+
+function status(publishedAt: string | null): { label: string; live: boolean } {
+  if (!publishedAt) return { label: 'Borrador', live: false };
+  if (Date.parse(publishedAt) > now) return { label: `Programada · ${formatDate(publishedAt)}`, live: false };
+  return { label: 'Publicada', live: true };
+}
+---
+
+<Admin title="Resumen">
+  <h1>Hola, {auth.me.user.name?.split(' ')[0] ?? 'admin'}.</h1>
+
+  {flash === 'borrada' && <p class="admin-notice admin-notice--ok" role="status">Herramienta borrada.</p>}
+
+  <section class="stats" aria-label="Números del sitio">
+    <div class="stat"><span class="stat__n">{stats.users}</span><span class="stat__l">usuarios</span></div>
+    <div class="stat"><span class="stat__n">{stats.activeSubscribers}</span><span class="stat__l">suscripciones activas</span></div>
+    <div class="stat"><span class="stat__n">{stats.unlocksThisMonth}</span><span class="stat__l">desbloqueos este mes</span></div>
+    <div class="stat">
+      <span class="stat__n">{stats.tools.published}<span class="stat__of">/{stats.tools.total}</span></span>
+      <span class="stat__l">herramientas publicadas</span>
+    </div>
+  </section>
+
+  <div class="admin-bar">
+    <h2>Herramientas</h2>
+    <a href="/admin/herramientas/nueva" class="btn btn--primary">Nueva herramienta</a>
+  </div>
+
+  {tools.length === 0 ? (
+    <p class="dim">Todavía no hay herramientas.</p>
+  ) : (
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Título</th><th>Categoría</th><th>Tier</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+          {tools.map((t) => {
+            const s = status(t.publishedAt);
+            return (
+              <tr>
+                <td>
+                  <a href={`/admin/herramientas/${t.id}`}>{t.title}</a>
+                  <div class="dim mono">{t.slug}</div>
+                </td>
+                <td>{t.categoryName}</td>
+                <td>
+                  <span class:list={['pill', t.tier === 'premium' ? 'pill--ember' : 'pill--spark']}>
+                    {t.tier === 'premium' ? 'Premium' : 'Gratis'}
+                  </span>
+                </td>
+                <td class:list={{ dim: !s.live }}>{s.label}</td>
+                <td>{s.live && <a href={`/herramientas/${t.slug}`} class="dim">Ver ↗</a>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+</Admin>
+
+<style>
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+  }
+  .stat__n { font-family: var(--font-display); font-size: 40px; line-height: 1; color: var(--ember-300); }
+  .stat__of { font-size: 22px; color: var(--ink-mute); }
+  .stat__l { font-size: 13px; color: var(--ink-dim); }
+</style>

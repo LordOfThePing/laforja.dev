@@ -1,0 +1,136 @@
+---
+import Base from './Base.astro';
+import Nav from '~/components/Nav.astro';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const path = Astro.url.pathname;
+const sections = [
+  { href: '/admin', label: 'Resumen', active: path === '/admin' || path.startsWith('/admin/herramientas') },
+  { href: '/admin/categorias', label: 'Categorías', active: path.startsWith('/admin/categorias') },
+  { href: '/admin/usuarios', label: 'Usuarios', active: path.startsWith('/admin/usuarios') },
+];
+---
+
+<Base title={`${title} — Admin — La Forja`}>
+  <meta slot="head" name="robots" content="noindex" />
+  <Nav />
+  <main class="admin container">
+    <header class="admin__head">
+      <div class="eyebrow">Administración</div>
+      <nav class="admin__tabs" aria-label="Secciones del panel">
+        {sections.map((s) => (
+          <a href={s.href} class:list={['admin__tab', { 'admin__tab--on': s.active }]} aria-current={s.active ? 'page' : undefined}>
+            {s.label}
+          </a>
+        ))}
+      </nav>
+    </header>
+    <slot />
+  </main>
+</Base>
+
+<style is:global>
+  .admin {
+    max-width: 1100px;
+    padding-block: clamp(32px, 6vw, 72px);
+  }
+  .admin__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .admin__tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .admin__tab {
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-dim);
+    font-size: 14px;
+    transition: color 200ms var(--ease-out), border-color 200ms var(--ease-out);
+  }
+  .admin__tab:hover { color: var(--ink); border-color: var(--line-strong); }
+  .admin__tab--on { color: var(--ember-300); border-color: rgba(255,176,103,0.35); }
+
+  .admin h1 { font-family: var(--font-display); font-size: clamp(32px, 5vw, 44px); line-height: 1.1; }
+  .admin h2 { font-family: var(--font-display); font-size: 26px; font-weight: 400; }
+
+  .admin-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-block: 32px 16px;
+  }
+
+  .admin-notice {
+    padding: 12px 16px;
+    border: 1px solid rgba(255,176,103,0.3);
+    border-radius: var(--radius);
+    background: rgba(255,122,0,0.06);
+    color: var(--ember-300);
+    margin-bottom: 20px;
+  }
+  .admin-notice--ok { color: var(--spark); border-color: rgba(125,211,192,0.3); background: rgba(125,211,192,0.05); }
+
+  .admin-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev);
+  }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .admin-table th,
+  .admin-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .admin-table tr:last-child td { border-bottom: 0; }
+  .admin-table th {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .admin-table a { color: var(--ink); }
+  .admin-table a:hover { color: var(--ember-300); }
+  .admin-table .dim { color: var(--ink-mute); }
+
+  .admin-form { display: grid; gap: 18px; }
+  .admin-form__row { display: grid; gap: 18px; }
+  @container (min-width: 640px) {
+    .admin-form__row { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+  }
+  .admin-form { container-type: inline-size; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field > span { font-size: 13px; color: var(--ink-dim); }
+  .field small { font-size: 12px; color: var(--ink-mute); }
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    transition: border-color 200ms var(--ease-out);
+  }
+  .field textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+  .field textarea.mono { font-size: 13px; min-height: 220px; }
+  .field input:focus-visible,
+  .field select:focus-visible,
+  .field textarea:focus-visible { outline: none; border-color: var(--ember-500); }
+  .field--check { flex-direction: row; align-items: center; gap: 10px; }
+  .field--check input { width: auto; accent-color: var(--ember-500); }
+
+  .admin-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .btn--danger { color: #ff8a7a; border-color: rgba(255,138,122,0.35); }
+  .btn--danger:hover { border-color: #ff8a7a; }
+  .btn--sm { padding: 6px 12px; font-size: 13px; }
+</style>

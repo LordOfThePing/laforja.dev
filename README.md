@@ -24,7 +24,8 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - ✅ Unlocks con cupo de 2/mes
 - ✅ Integración MP Preapproval + webhooks en la API (sin probar contra MP real)
 - ✅ Docker Compose (postgres + migrate + api + web)
-- ⏳ Deploy en VPS (Hetzner + Cloudflare Tunnel) — pendiente
+- ✅ Deploy en VPS (Hetzner + Cloudflare Tunnel) — `academia.flynnpedroa.engineer`
+- ✅ Rol admin + panel `/admin` (herramientas, categorías, usuarios); admins por `ADMIN_EMAILS`
 
 ## Stack
 

@@ -1,0 +1,85 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import { categoryFromForm, errorMessage, listCategories, mutate, requireAdmin } from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let error: string | null = null;
+const flash = Astro.url.searchParams.get('ok');
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action');
+  const id = encodeURIComponent(String(form.get('id') ?? ''));
+  const result =
+    action === 'delete'
+      ? await mutate(auth.user, `/api/admin/categories/${id}`, 'DELETE')
+      : action === 'update'
+        ? await mutate(auth.user, `/api/admin/categories/${id}`, 'PATCH', categoryFromForm(form))
+        : await mutate(auth.user, '/api/admin/categories', 'POST', categoryFromForm(form));
+  if (result.ok) return Astro.redirect(`/admin/categorias?ok=${action === 'delete' ? 'borrada' : 'guardada'}`, 303);
+  error = errorMessage(result);
+  Astro.response.status = 400;
+}
+
+const categories = await listCategories(auth.user);
+---
+
+<Admin title="Categorías">
+  <h1>Categorías</h1>
+  <p class="dim lede">El orden define cómo aparecen los filtros del catálogo (menor primero).</p>
+
+  {flash === 'guardada' && <p class="admin-notice admin-notice--ok" role="status">Categoría guardada.</p>}
+  {flash === 'borrada' && <p class="admin-notice admin-notice--ok" role="status">Categoría borrada.</p>}
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  <ul class="cats">
+    {categories.map((c) => (
+      <li class="cat">
+        <form method="post" class="admin-form cat__form">
+          <input type="hidden" name="id" value={c.id} />
+          <div class="admin-form__row">
+            <label class="field"><span>Nombre</span><input name="name" required value={c.name} /></label>
+            <label class="field"><span>Slug</span><input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={c.slug} class="mono" /></label>
+            <label class="field"><span>Orden</span><input name="order" type="number" step="1" min="0" value={c.order} /></label>
+          </div>
+          <label class="field"><span>Descripción</span><input name="description" value={c.description ?? ''} /></label>
+          <div class="admin-actions">
+            <button type="submit" name="action" value="update" class="btn btn--ghost btn--sm">Guardar</button>
+            {c.toolCount === 0 ? (
+              <button type="submit" name="action" value="delete" class="btn btn--ghost btn--sm btn--danger" formnovalidate>Borrar</button>
+            ) : (
+              <span class="dim">{c.toolCount} {c.toolCount === 1 ? 'herramienta' : 'herramientas'}</span>
+            )}
+          </div>
+        </form>
+      </li>
+    ))}
+  </ul>
+
+  <h2 class="new-title">Nueva categoría</h2>
+  <form method="post" class="admin-form cat">
+    <input type="hidden" name="action" value="create" />
+    <div class="admin-form__row">
+      <label class="field"><span>Nombre</span><input name="name" required /></label>
+      <label class="field"><span>Slug</span><input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" class="mono" /></label>
+      <label class="field"><span>Orden</span><input name="order" type="number" step="1" min="0" value={categories.length + 1} /></label>
+    </div>
+    <label class="field"><span>Descripción</span><input name="description" /></label>
+    <div class="admin-actions"><button type="submit" class="btn btn--primary">Crear categoría</button></div>
+  </form>
+</Admin>
+
+<style>
+  .lede { margin-block: 8px 24px; }
+  .cats { list-style: none; display: grid; gap: 12px; }
+  .cat {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev);
+  }
+  .cat__form { gap: 14px; }
+  .new-title { margin-block: 40px 16px; }
+</style>

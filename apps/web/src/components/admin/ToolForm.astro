@@ -1,0 +1,94 @@
+---
+import type { AdminCategory, AdminTool, toolFromForm } from '~/lib/admin';
+
+interface Props {
+  categories: AdminCategory[];
+  // Lo que se muestra: la herramienta guardada o lo que el admin mandó y falló.
+  values: Partial<ReturnType<typeof toolFromForm>> | AdminTool | null;
+  submitLabel: string;
+}
+
+const { categories, values: v, submitLabel } = Astro.props;
+const minutes = v?.durationSeconds != null ? Math.round(v.durationSeconds / 60) : '';
+---
+
+<form method="post" class="admin-form">
+  <input type="hidden" name="action" value="save" />
+  <div class="admin-form__row">
+    <label class="field">
+      <span>Título</span>
+      <input name="title" required value={v?.title ?? ''} />
+    </label>
+    <label class="field">
+      <span>Slug</span>
+      <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={v?.slug ?? ''} class="mono" />
+      <small>Va en la URL: /herramientas/&lt;slug&gt;</small>
+    </label>
+  </div>
+
+  <label class="field">
+    <span>Descripción corta</span>
+    <input name="shortDescription" required value={v?.shortDescription ?? ''} />
+    <small>Pública: se ve en la card aunque esté bloqueada.</small>
+  </label>
+
+  <label class="field">
+    <span>Descripción larga</span>
+    <textarea name="longDescription">{v?.longDescription ?? ''}</textarea>
+    <small>Se ve al desbloquear. Separá párrafos con una línea en blanco.</small>
+  </label>
+
+  <label class="field">
+    <span>Prompt</span>
+    <textarea name="promptBody" required class="mono">{v?.promptBody ?? ''}</textarea>
+  </label>
+
+  <div class="admin-form__row">
+    <label class="field">
+      <span>Categoría</span>
+      <select name="categoryId" required>
+        {categories.map((c) => (
+          <option value={c.id} selected={v?.categoryId === c.id}>{c.name}</option>
+        ))}
+      </select>
+    </label>
+    <label class="field">
+      <span>Tier</span>
+      <select name="tier">
+        <option value="premium" selected={v?.tier !== 'free'}>Premium</option>
+        <option value="free" selected={v?.tier === 'free'}>Gratis</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Duración del video (min)</span>
+      <input name="durationMinutes" type="number" min="0" step="1" value={minutes} />
+    </label>
+  </div>
+
+  <div class="admin-form__row">
+    <label class="field">
+      <span>URL de YouTube</span>
+      <input name="youtubeUrl" type="url" value={v?.youtubeUrl ?? ''} />
+    </label>
+    <label class="field">
+      <span>URL de portada</span>
+      <input name="coverImageUrl" type="url" value={v?.coverImageUrl ?? ''} />
+    </label>
+  </div>
+
+  <label class="field">
+    <span>Tags</span>
+    <input name="tags" value={v?.tags?.join(', ') ?? ''} />
+    <small>Separados por coma.</small>
+  </label>
+
+  <label class="field field--check">
+    <input type="checkbox" name="published" checked={Boolean(v?.publishedAt)} />
+    <span>Publicada (visible en el catálogo)</span>
+  </label>
+
+  <div class="admin-actions">
+    <button type="submit" class="btn btn--primary">{submitLabel}</button>
+    <a href="/admin" class="btn btn--ghost">Volver</a>
+  </div>
+</form>

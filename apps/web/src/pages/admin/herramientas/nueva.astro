@@ -1,0 +1,31 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import ToolForm from '~/components/admin/ToolForm.astro';
+import { type AdminTool, errorMessage, listCategories, mutate, requireAdmin, toolFromForm } from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let values: ReturnType<typeof toolFromForm> | null = null;
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  values = toolFromForm(await Astro.request.formData(), null);
+  const result = await mutate<{ tool: AdminTool }>(auth.user, '/api/admin/tools', 'POST', values);
+  if (result.ok) return Astro.redirect(`/admin/herramientas/${result.value.tool.id}?ok=creada`, 303);
+  error = errorMessage(result);
+  Astro.response.status = 400;
+}
+
+const categories = await listCategories(auth.user);
+---
+
+<Admin title="Nueva herramienta">
+  <h1>Nueva herramienta</h1>
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+  {categories.length === 0 ? (
+    <p class="admin-notice">Primero creá una <a href="/admin/categorias">categoría</a>.</p>
+  ) : (
+    <ToolForm categories={categories} values={values} submitLabel="Crear" />
+  )}
+</Admin>

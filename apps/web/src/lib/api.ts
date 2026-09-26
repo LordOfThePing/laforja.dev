@@ -27,7 +27,13 @@ export type ToolDetail =
 export type Quota = { monthKey: string; limit: number; used: number; remaining: number };
 
 export type Me = {
-  user: { id: string; email: string; name: string | null; avatarUrl: string | null };
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    avatarUrl: string | null;
+    role: 'user' | 'admin';
+  };
   subscription: { status: string; currentPeriodEnd: string | null; hasAccess: boolean };
   unlocks: Quota & { tools: { slug: string; unlockedAt: string }[] };
 };
@@ -49,15 +55,19 @@ function apiUrl(path: string): string {
   return new URL(path, base).toString();
 }
 
-async function call<T>(
+export async function call<T>(
   path: string,
   user: Session['user'] | undefined,
-  init: { method?: 'GET' | 'POST' } = {},
+  init: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; json?: unknown } = {},
 ): Promise<T> {
   const token = await signApiToken(user);
+  const headers: Record<string, string> = {};
+  if (token) headers.authorization = `Bearer ${token}`;
+  if (init.json !== undefined) headers['content-type'] = 'application/json';
   const res = await fetch(apiUrl(path), {
     method: init.method ?? 'GET',
-    headers: token ? { authorization: `Bearer ${token}` } : {},
+    headers,
+    body: init.json === undefined ? undefined : JSON.stringify(init.json),
     signal: AbortSignal.timeout(5000),
   });
   const body: unknown = await res.json().catch(() => null);
