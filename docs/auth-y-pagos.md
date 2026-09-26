@@ -97,6 +97,30 @@ llega el webhook `authorized`, vía `external_reference`.
 gracia**: MP cobra ese día y el webhook llega después, así el suscriptor no
 pierde acceso durante la renovación.
 
+### Reconciliación con MP (por si se pierde un webhook)
+
+Si un webhook no llega (MP agota los reintentos, la api estaba caída), el
+estado local queda desfasado: en el peor caso, alguien que pagó nunca queda
+vinculado, porque al crear la preapproval no se guarda nada. Para eso la api
+corre `reconcileSubscriptions` (`apps/api/src/reconcile.ts`) cada
+`RECONCILE_INTERVAL_HOURS` horas (default 6, `0` la apaga; la primera corrida
+es un minuto después de arrancar):
+
+1. `GET /preapproval/search?status=authorized` paginado. Cada una se vincula
+   por `external_reference`; si un usuario tiene varias, gana la de
+   `next_payment_date` más lejana
+2. Usuarios `active` / `paused` cuya preapproval no apareció ahí →
+   `GET /preapproval/:id` una por una (así se ven las que MP pausó o canceló).
+   Si MP responde 404 se saltea ese usuario y se loguea
+3. A cada una le aplica **las mismas reglas** que el webhook
+   `subscription_preapproval` (tabla de arriba, `lib/preapproval.ts`). Solo
+   escribe si el estado cambia, y deja un evento `reconciliation` en
+   `subscription_events` con el antes y el después
+
+Cualquier otro error de MP corta la corrida y se reintenta en la siguiente.
+A mano, en el VPS: `make reconcile DRY=1` muestra qué cambiaría sin escribir;
+`make reconcile` lo aplica.
+
 ### Cancelación
 
 1. Usuario en `/dashboard` → "Cancelar suscripción" → "Sí, cancelar"
@@ -119,6 +143,10 @@ Cualquier error de la API de MP en un endpoint se devuelve como
 | `GET` | `/api/tools` | Lista pública con `isLocked`. Auth opcional: con token, `isLocked` refleja suscripción + unlocks del mes |
 | `GET` | `/api/tools/:slug` | Detalle. Auth opcional. Si está bloqueada para quien pide, devuelve solo el preview con `isLocked: true` (sirve para SEO); 404 si no existe o no está publicada |
 | `POST` | `/api/tools/:slug/unlock` | Requiere auth. `201` si consumió cupo, `200` si ya tenía acceso (free, suscriptor o ya desbloqueada este mes), `403 quota_exceeded` si no le queda cupo. Devuelve la herramienta completa + `unlocks` (`used`, `remaining`, `limit`) |
+| `GET` | `/api/courses` | Cursos publicados con `moduleCount`, `lessonCount`, `durationSeconds`. Auth opcional: con token suma `progress` (`completed` / `total`) |
+| `GET` | `/api/courses/:slug` | Temario público (módulos → lecciones con `isLocked`, sin video ni contenido). Con token, progreso por lección y del curso |
+| `GET` | `/api/courses/:slug/lessons/:lesson` | Lección con `prev` / `next` (cruzan módulos). Si está bloqueada, sin `youtubeUrl` ni `contentMd` e `isLocked: true` |
+| `PUT` | `/api/courses/:slug/lessons/:lesson/progress` | Requiere auth y acceso a la lección (si no, `403 subscription_required`). Body `{ secondsWatched?, completed? }`; los segundos nunca bajan y `completed_at` guarda la primera vez; `completed: false` lo borra |
 | `POST` | `/api/subscription/create` | Requiere auth. Crea Preapproval, devuelve `{ initPoint, preapprovalId }` |
 | `POST` | `/api/subscription/cancel` | Requiere auth. Cancela en MP, conserva el período pago |
 | `POST` | `/webhooks/mercadopago` | Webhook de MP (firma `x-signature`, idempotente) |
@@ -148,4 +176,5 @@ Input inválido → `400 {"error":"invalid_input","field":...}`; slug repetido �
 - `/api/tools/:slug/unlock` toma un lock sobre la fila del usuario (`SELECT … FOR UPDATE`) para que requests concurrentes no superen el cupo
 - Rate limit en memoria (ventana fija; alcanza con una sola instancia de api), responde `429 {"error":"rate_limited"}` + `Retry-After`:
   - `POST /api/tools/:slug/unlock`: 10/min **por usuario** (después de validar el token)
+  - `PUT /api/courses/:slug/lessons/:lesson/progress`: 60/min **por usuario** (el reproductor lo manda periódicamente)
   - `POST /webhooks/mercadopago`: 300/min **por IP**, antes de validar la firma. La IP sale de `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for`; es confiable porque la api solo escucha en `127.0.0.1` detrás del proxy
