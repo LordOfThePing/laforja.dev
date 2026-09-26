@@ -12,3 +12,5 @@ Thumbs.db
 bun.lockb
 .turbo/
 .deploy.lock
+# Dumps bajados con `make backup-pull`: tienen datos de usuarios.
+backups/

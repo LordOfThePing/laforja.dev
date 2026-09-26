@@ -38,7 +38,7 @@ RCOMPOSE = $(REMOTE) "cd $(REMOTE_DIR) && docker compose $(1)"
 
 .DEFAULT_GOAL := help
 .PHONY: help setup env-push env-diff local-only check-pushed deploy up down restart ps logs \
-        migrate seed psql shell dev-up dev-down dev-seed test
+        migrate seed psql shell backup backups backup-pull dev-up dev-down dev-seed test
 
 help: ## Lista los targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-13s %s\n", $$1, $$2}'
@@ -104,6 +104,23 @@ psql: ## Consola psql en el Postgres del VPS
 shell: ## Shell en un contenedor: make shell SERVICE=api
 	@test -n "$(SERVICE)" || { echo "Indicá SERVICE=api|web|postgres"; exit 1; }
 	$(REMOTE_TTY) "cd $(REMOTE_DIR) && docker compose exec $(SERVICE) sh"
+
+backup: ## Hace un backup de la DB ahora (además del diario automático)
+	$(call RCOMPOSE,exec -T backup backup.sh)
+
+backups: ## Lista los backups guardados en el VPS
+	$(call RCOMPOSE,exec -T backup ls -lh /backups)
+
+# Copia fuera del VPS sin bucket: baja el último dump y compara el sha256 con el del VPS.
+backup-pull: local-only ## Baja el último backup del VPS a ./backups/
+	@mkdir -p backups
+	@name=$$($(REMOTE) "cd $(REMOTE_DIR) && docker compose exec -T backup sh -c 'ls /backups/laforja-*.dump | tail -n1'"); \
+	test -n "$$name" || { echo "No hay backups en el VPS"; exit 1; }; \
+	dest="backups/$$(basename "$$name")"; \
+	$(REMOTE) "cd $(REMOTE_DIR) && docker compose exec -T backup cat $$name" > "$$dest"; \
+	remote_sum=$$($(REMOTE) "cd $(REMOTE_DIR) && docker compose exec -T backup sha256sum $$name" | cut -d' ' -f1); \
+	test "$$remote_sum" = "$$(sha256sum "$$dest" | cut -d' ' -f1)" || { echo "sha256 no coincide: $$dest"; rm -f "$$dest"; exit 1; }; \
+	echo "OK: $$dest"
 
 # --- Local -------------------------------------------------------------------
 

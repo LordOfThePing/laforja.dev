@@ -64,6 +64,33 @@ services:
       - "127.0.0.1:${WEB_PORT:-3000}:3000"
     networks: [internal]
 
+  # Dump diario a un volumen propio + copia opcional a un bucket S3-compatible (R2, B2, …).
+  # Ver ops/backup/ y "Backups" en docs/despliegue-vps.md.
+  backup:
+    build: ./ops/backup
+    image: laforja-backup
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: laforja
+      PGPASSWORD: ${DB_PASSWORD:?falta DB_PASSWORD}
+      PGDATABASE: laforja
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      RCLONE_CONFIG_OFFSITE_TYPE: s3
+      RCLONE_CONFIG_OFFSITE_PROVIDER: ${BACKUP_S3_PROVIDER:-Other}
+      RCLONE_CONFIG_OFFSITE_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      # Sin esto rclone intenta crear el bucket y falla con tokens que solo tienen permiso de objetos.
+      RCLONE_CONFIG_OFFSITE_NO_CHECK_BUCKET: "true"
+    volumes:
+      - pg_backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
   # Único punto de entrada público: el ruteo por path (web vs api) se configura en el panel
   # del tunnel. Va en un profile para que el stack local levante sin token.
   cloudflared:
@@ -82,6 +109,7 @@ services:
 
 volumes:
   pg_data:
+  pg_backups:
 
 networks:
   internal:
