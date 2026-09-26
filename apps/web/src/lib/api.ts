@@ -58,7 +58,7 @@ function apiUrl(path: string): string {
 export async function call<T>(
   path: string,
   user: Session['user'] | undefined,
-  init: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; json?: unknown } = {},
+  init: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; json?: unknown } = {},
 ): Promise<T> {
   const token = await signApiToken(user);
   const headers: Record<string, string> = {};
@@ -129,9 +129,132 @@ export async function getMe(user: Session['user'] | undefined): Promise<Me | nul
   return call<Me>('/api/me', user);
 }
 
+export type CourseProgress = { completed: number; total: number };
+export type LessonProgress = { secondsWatched: number; completed: boolean };
+
+export type CoursePreview = {
+  slug: string;
+  title: string;
+  shortDescription: string;
+  coverImageUrl: string | null;
+  tier: 'free' | 'premium';
+  publishedAt: string;
+  moduleCount: number;
+  lessonCount: number;
+  durationSeconds: number;
+  progress: CourseProgress | null;
+};
+
+export type SyllabusLesson = {
+  slug: string;
+  title: string;
+  durationSeconds: number | null;
+  isFreePreview: boolean;
+  isLocked: boolean;
+  progress: LessonProgress | null;
+};
+
+export type CourseDetail = Omit<CoursePreview, 'moduleCount' | 'lessonCount' | 'progress'> & {
+  description: string | null;
+  modules: { title: string; description: string | null; lessons: SyllabusLesson[] }[];
+  progress: CourseProgress | null;
+};
+
+type LessonLink = { slug: string; title: string } | null;
+type LessonBase = {
+  slug: string;
+  title: string;
+  durationSeconds: number | null;
+  isFreePreview: boolean;
+  course: { slug: string; title: string; tier: 'free' | 'premium' };
+  prev: LessonLink;
+  next: LessonLink;
+  progress: LessonProgress | null;
+};
+export type Lesson =
+  | (LessonBase & { isLocked: true })
+  | (LessonBase & { isLocked: false; youtubeUrl: string | null; contentMd: string | null });
+
+export async function listCourses(user: Session['user'] | undefined): Promise<CoursePreview[]> {
+  const { courses } = await call<{ courses: CoursePreview[] }>('/api/courses', user);
+  return courses;
+}
+
+async function orNotFound<T>(promise: Promise<T>): Promise<T | null> {
+  try {
+    return await promise;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export async function getCourse(
+  user: Session['user'] | undefined,
+  slug: string,
+): Promise<CourseDetail | null> {
+  const res = await orNotFound(
+    call<{ course: CourseDetail }>(`/api/courses/${encodeURIComponent(slug)}`, user),
+  );
+  return res?.course ?? null;
+}
+
+export async function getLesson(
+  user: Session['user'] | undefined,
+  course: string,
+  lesson: string,
+): Promise<Lesson | null> {
+  const res = await orNotFound(
+    call<{ lesson: Lesson }>(
+      `/api/courses/${encodeURIComponent(course)}/lessons/${encodeURIComponent(lesson)}`,
+      user,
+    ),
+  );
+  return res?.lesson ?? null;
+}
+
+export type ProgressResult =
+  | { ok: true; progress: LessonProgress }
+  | { ok: false; reason: 'not_found' | 'subscription_required' | 'rate_limited' | 'unauthorized' };
+
+export async function saveLessonProgress(
+  user: Session['user'],
+  course: string,
+  lesson: string,
+  input: { completed?: boolean; secondsWatched?: number },
+): Promise<ProgressResult> {
+  try {
+    const { progress } = await call<{ progress: LessonProgress }>(
+      `/api/courses/${encodeURIComponent(course)}/lessons/${encodeURIComponent(lesson)}/progress`,
+      user,
+      { method: 'PUT', json: input },
+    );
+    return { ok: true, progress };
+  } catch (err) {
+    if (
+      err instanceof ApiError &&
+      (err.code === 'not_found' ||
+        err.code === 'subscription_required' ||
+        err.code === 'rate_limited' ||
+        err.code === 'unauthorized')
+    ) {
+      return { ok: false, reason: err.code };
+    }
+    throw err;
+  }
+}
+
 export function formatDuration(seconds: number | null): string | null {
   if (seconds == null) return null;
   return `${Math.max(1, Math.round(seconds / 60))} min`;
+}
+
+export function formatLongDuration(seconds: number): string {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
 }
 
 export type SubscribeResult =
