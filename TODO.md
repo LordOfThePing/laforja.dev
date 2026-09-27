@@ -4,7 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Admin de cursos en `/admin` (cursos, módulos, lecciones, orden y preview) — en curso por @claude-2
 
 ## Pendiente
 
