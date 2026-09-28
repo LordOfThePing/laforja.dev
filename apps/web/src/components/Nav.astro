@@ -6,7 +6,7 @@ const user = session?.user;
 const displayName = user?.name?.split(' ')[0] ?? user?.email ?? null;
 ---
 
-<nav class="nav">
+<nav class="nav" id="nav">
   <div class="container nav__inner">
     <a href="/" class="nav__brand" aria-label="La Forja — inicio">
       <span class="nav__mark" aria-hidden="true">
@@ -23,7 +23,7 @@ const displayName = user?.name?.split(' ')[0] ?? user?.email ?? null;
       <span class="nav__wordmark">La Forja</span>
     </a>
 
-    <div class="nav__links">
+    <div class="nav__links" id="nav-links">
       <a href="/#herramientas">Herramientas</a>
       <a href="/cursos">Cursos</a>
       <a href="/#suscripcion">Suscripción</a>
@@ -45,6 +45,17 @@ const displayName = user?.name?.split(' ')[0] ?? user?.email ?? null;
           Ingresar
         </a>
       )}
+      <button
+        id="nav-toggle"
+        class="nav__toggle"
+        type="button"
+        aria-controls="nav-links"
+        aria-expanded="false"
+        aria-label="Abrir menú"
+      >
+        <span class="nav__toggle-bar" aria-hidden="true"></span>
+        <span class="nav__toggle-bar" aria-hidden="true"></span>
+      </button>
     </div>
   </div>
 </nav>
@@ -139,8 +150,64 @@ const displayName = user?.name?.split(' ')[0] ?? user?.email ?? null;
     white-space: nowrap;
   }
 
+  .nav__toggle {
+    display: inline-grid;
+    place-content: center;
+    gap: 6px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg-elev);
+    color: var(--ink);
+    cursor: pointer;
+    transition: border-color 200ms var(--ease-out);
+  }
+  .nav__toggle:hover { border-color: var(--line-strong); }
+  .nav__toggle-bar {
+    display: block;
+    width: 16px;
+    height: 1.5px;
+    border-radius: 1px;
+    background: currentColor;
+    transition: transform 260ms var(--ease-out);
+  }
+  .nav[data-open] .nav__toggle-bar:first-child { transform: translateY(3.75px) rotate(45deg); }
+  .nav[data-open] .nav__toggle-bar:last-child { transform: translateY(-3.75px) rotate(-45deg); }
+
+  @media (max-width: 479.98px) {
+    .nav__avatar + .nav__username { display: none; }
+    .nav__user:has(.nav__avatar) { padding-right: 4px; }
+  }
+
+  @media (max-width: 779.98px) {
+    /* .container es position: relative; sin esto el panel se ancla al inner y pisa el padding del nav. */
+    .nav__inner { position: static; }
+    .nav[data-open] .nav__links {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      padding: 8px clamp(20px, 4vw, 40px) 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 24px 40px -24px rgba(0, 0, 0, 0.8);
+      font-size: 16px;
+    }
+    .nav[data-open] .nav__links a {
+      padding-block: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .nav[data-open] .nav__links a:last-child { border-bottom: 0; }
+    .nav[data-open] .nav__links a::after { display: none; }
+  }
+
   @media (min-width: 780px) {
     .nav__links { display: inline-flex; }
+    .nav__toggle { display: none; }
   }
 </style>
 
@@ -149,4 +216,34 @@ const displayName = user?.name?.split(' ')[0] ?? user?.email ?? null;
   document.getElementById('nav-signout')?.addEventListener('click', () => {
     signOut();
   });
+
+  const nav = document.getElementById('nav');
+  const toggle = document.getElementById('nav-toggle');
+  const links = document.getElementById('nav-links');
+
+  if (nav && toggle && links) {
+    const setOpen = (open: boolean) => {
+      nav.toggleAttribute('data-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    };
+
+    toggle.addEventListener('click', () => setOpen(!nav.hasAttribute('data-open')));
+    // Los links a anclas (/#faq) no recargan la página, así que el menú quedaría abierto tapando la sección.
+    links.addEventListener('click', (e) => {
+      if ((e.target as Element).closest('a')) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && nav.hasAttribute('data-open')) {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (nav.hasAttribute('data-open') && !nav.contains(e.target as Node)) setOpen(false);
+    });
+    matchMedia('(min-width: 780px)').addEventListener('change', (e) => {
+      if (e.matches) setOpen(false);
+    });
+  }
 </script>
