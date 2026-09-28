@@ -194,3 +194,23 @@ export const userActivity = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.monthKey] }), index('user_activity_month_idx').on(t.monthKey)],
 );
+
+// Planos, sin respuestas anidadas: para v3 alcanza con una conversación por herramienta.
+export const toolComments = pgTable(
+  'tool_comments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    toolId: uuid('tool_id')
+      .notNull()
+      .references(() => tools.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('tool_comments_tool_idx').on(t.toolId, t.createdAt),
+    index('tool_comments_created_idx').on(t.createdAt),
+  ],
+);

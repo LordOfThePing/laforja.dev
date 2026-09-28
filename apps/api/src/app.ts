@@ -26,7 +26,12 @@ type AppOptions = {
   log?: boolean;
 };
 
-type RateLimits = { unlock: RateLimitRule; webhook: RateLimitRule; progress: RateLimitRule };
+type RateLimits = {
+  unlock: RateLimitRule;
+  webhook: RateLimitRule;
+  progress: RateLimitRule;
+  comment: RateLimitRule;
+};
 
 // Unlock: por usuario; el cupo ya acota las escrituras, esto frena el martilleo.
 // Webhook: por IP y generoso, porque MP manda ráfagas legítimas desde pocas IPs.
@@ -35,6 +40,8 @@ const DEFAULT_RATE_LIMITS: RateLimits = {
   webhook: { limit: 300, windowMs: 60_000 },
   // Progreso: el reproductor lo manda cada tantos segundos; esto deja margen para varias pestañas.
   progress: { limit: 60, windowMs: 60_000 },
+  // Comentarios: una persona escribiendo no pasa de un par por minuto; más es spam o un loop.
+  comment: { limit: 5, windowMs: 60_000 },
 };
 
 export function createApp({
@@ -67,7 +74,7 @@ export function createApp({
       return c.json({ ok: false, error: 'db_unavailable' }, 503);
     }
   });
-  app.route('/api/tools', toolsRoutes(auth, limits.unlock));
+  app.route('/api/tools', toolsRoutes(auth, limits.unlock, limits.comment));
   app.route('/api/courses', coursesRoutes(auth, limits.progress));
   app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));

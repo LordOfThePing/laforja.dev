@@ -36,6 +36,13 @@
       "when": 1790603852446,
       "tag": "0004_user_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790608905649,
+      "tag": "0005_tool_comments",
+      "breakpoints": true
     }
   ]
 }

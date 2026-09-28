@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, isNotNull, lte, ne, sql } from 'drizzle-orm';
 import { type Context, Hono } from 'hono';
 import { type AuthConfig, type AuthEnv, requireAdmin, requireAuth } from '../auth.ts';
-import { categories, tools, unlocks, users } from '../db/schema.ts';
+import { categories, toolComments, tools, unlocks, users } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import { isUuid, parseCategory, parseTool } from '../lib/admin-input.ts';
 import { monthKey } from '../lib/month.ts';
@@ -213,6 +213,35 @@ export function adminRoutes(auth: AuthConfig, backupStateDir?: string) {
       .returning({ id: users.id, email: users.email, role: users.role });
     if (!row) return c.json({ error: 'not_found' }, 404);
     return c.json({ user: row });
+  });
+
+  // Moderación: lo último de todas las herramientas, con el email del autor (el público no lo ve).
+  app.get('/comments', async (c) => {
+    const rows = await db
+      .select({
+        id: toolComments.id,
+        body: toolComments.body,
+        createdAt: toolComments.createdAt,
+        tool: { slug: tools.slug, title: tools.title },
+        author: { name: users.name, email: users.email },
+      })
+      .from(toolComments)
+      .innerJoin(tools, eq(toolComments.toolId, tools.id))
+      .innerJoin(users, eq(toolComments.userId, users.id))
+      .orderBy(desc(toolComments.createdAt), desc(toolComments.id))
+      .limit(200);
+    return c.json({ comments: rows });
+  });
+
+  app.delete('/comments/:id', async (c) => {
+    const id = c.req.param('id');
+    if (!isUuid(id)) return c.json({ error: 'not_found' }, 404);
+    const [row] = await db
+      .delete(toolComments)
+      .where(eq(toolComments.id, id))
+      .returning({ id: toolComments.id });
+    if (!row) return c.json({ error: 'not_found' }, 404);
+    return c.body(null, 204);
   });
 
   return app;
