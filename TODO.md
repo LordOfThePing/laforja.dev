@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Progreso por % de video en el reproductor — en curso por @claude — código escrito, falta typecheck/build y probarlo contra YouTube
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
 
 ## Pendiente
@@ -22,7 +23,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### v2 — Cursos (ver `docs/roadmap.md`)
 
-- Progreso por % de video en el reproductor — pendiente — requiere la IFrame API de YouTube (script externo: sumarlo a la CSP); hoy el progreso es completada / no completada
 
 ### v3 — Comunidad
 
