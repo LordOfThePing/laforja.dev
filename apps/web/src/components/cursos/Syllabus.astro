@@ -1,5 +1,10 @@
 ---
-import { type CourseDetail, formatDuration } from '~/lib/api';
+import { type CourseDetail, formatDuration, watchedPercent } from '~/lib/api';
+
+// El anillo de "vista al X %" va con stroke-dasharray (atributo SVG) y no con style="":
+// la CSP bloquea los estilos inline sin hash.
+const RING_R = 11;
+const RING_C = 2 * Math.PI * RING_R;
 
 interface Props {
   course: Pick<CourseDetail, 'slug' | 'modules'>;
@@ -23,7 +28,9 @@ const { course, current, compact = false } = Astro.props;
       <ol class="syl__lessons">
         {mod.lessons.map((l) => {
           const done = l.progress?.completed ?? false;
-          const state = done ? 'Completada' : l.isLocked ? 'Bloqueada' : null;
+          const pct = done || l.isLocked ? null : watchedPercent(l.progress?.secondsWatched ?? 0, l.durationSeconds);
+          const started = pct != null && pct > 0;
+          const state = done ? 'Completada' : l.isLocked ? 'Bloqueada' : started ? `Vista al ${pct} %` : null;
           return (
             <li>
               <a
@@ -38,6 +45,20 @@ const { course, current, compact = false } = Astro.props;
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 10V7a6 6 0 1 1 12 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   ) : (
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+                  )}
+                  {started && (
+                    <svg class="syl__ring" viewBox="0 0 24 24" fill="none">
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r={RING_R}
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-dasharray={`${(RING_C * pct) / 100} ${RING_C}`}
+                        transform="rotate(-90 12 12)"
+                      />
+                    </svg>
                   )}
                 </span>
                 <span class="syl__ltitle">
@@ -88,6 +109,8 @@ const { course, current, compact = false } = Astro.props;
     border: 1px solid var(--line-strong);
     color: var(--ink-mute);
   }
+  .syl__icon { position: relative; }
+  .syl__ring { position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); color: var(--ember-500); }
   .is-done .syl__icon { background: var(--ember-500); border-color: var(--ember-500); color: #1a0e00; }
   .is-current:not(.is-done) .syl__icon { color: var(--ember-300); border-color: rgba(255,176,103,0.4); }
   .syl__ltitle { flex: 1; min-width: 0; }
