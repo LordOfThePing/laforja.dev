@@ -1,4 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
+import { trackPageview } from './lib/analytics';
 
 // El grueso de la CSP lo arma Astro con los hashes de cada página (experimental.csp en
 // astro.config.mjs); acá solo se le suma frame-ancestors, que Astro no deja configurar.
@@ -13,8 +14,9 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
 
-export const onRequest = defineMiddleware(async (_context, next) => {
+export const onRequest = defineMiddleware(async (context, next) => {
   const response = await next();
+  trackPageview(context, response);
   const csp = response.headers.get('Content-Security-Policy');
   response.headers.set(
     'Content-Security-Policy',
