@@ -22,7 +22,7 @@ reales. El detalle vive en `TODO.md`.
 ## v2 — Cursos
 
 - [x] Tablas `courses` / `modules` / `lessons` / `progress`
-- [x] Progreso por lección (visto / no visto) — falta el % de video
+- [x] Progreso por lección (visto / no visto + % de video)
 - [x] Landing `/cursos` con temario visible sin login
 - [x] Suscripción da acceso a todo (cursos + herramientas ilimitadas)
 - [x] Certificado de completado (PDF descargable)
