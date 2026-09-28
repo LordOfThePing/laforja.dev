@@ -1,6 +1,7 @@
 import { createApp } from './app.ts';
 import { createDb } from './db/client.ts';
 import { env } from './env.ts';
+import { createResendMailer } from './lib/mailer.ts';
 import { createMercadoPago } from './lib/mercadopago.ts';
 import { startReconciler } from './reconcile.ts';
 
@@ -13,6 +14,7 @@ const app = createApp({
   frontendUrl: env.frontendUrl,
   mp,
   mpWebhookSecret: env.mpWebhookSecret,
+  mailer: env.resendApiKey ? createResendMailer(env.resendApiKey, env.newsletterFrom) : null,
   backupStateDir: env.backupStateDir,
 });
 

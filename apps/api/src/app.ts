@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import type { Db } from './db/client.ts';
+import { type Mailer, MailerError } from './lib/mailer.ts';
 import { type MercadoPago, MercadoPagoError } from './lib/mercadopago.ts';
 import type { RateLimitRule } from './lib/rate-limit.ts';
 import type { AuthConfig } from './auth.ts';
@@ -11,6 +12,7 @@ import { certificatesRoutes } from './routes/certificates.ts';
 import { collectionsRoutes } from './routes/collections.ts';
 import { coursesRoutes } from './routes/courses.ts';
 import { meRoutes } from './routes/me.ts';
+import { newsletterRoutes } from './routes/newsletter.ts';
 import { subscriptionRoutes } from './routes/subscription.ts';
 import { toolsRoutes } from './routes/tools.ts';
 import { webhookRoutes } from './routes/webhooks.ts';
@@ -22,6 +24,8 @@ type AppOptions = {
   frontendUrl: string;
   mp: MercadoPago;
   mpWebhookSecret: string;
+  // null = newsletter apagada (sin RESEND_API_KEY): los endpoints responden newsletter_disabled.
+  mailer?: Mailer | null;
   rateLimits?: Partial<RateLimits>;
   backupStateDir?: string;
   log?: boolean;
@@ -32,6 +36,7 @@ type RateLimits = {
   webhook: RateLimitRule;
   progress: RateLimitRule;
   comment: RateLimitRule;
+  newsletter: RateLimitRule;
 };
 
 // Unlock: por usuario; el cupo ya acota las escrituras, esto frena el martilleo.
@@ -43,6 +48,8 @@ const DEFAULT_RATE_LIMITS: RateLimits = {
   progress: { limit: 60, windowMs: 60_000 },
   // Comentarios: una persona escribiendo no pasa de un par por minuto; más es spam o un loop.
   comment: { limit: 5, windowMs: 60_000 },
+  // Newsletter: por IP, porque es anónimo; cada alta manda un mail y no queremos ser un cañón de spam.
+  newsletter: { limit: 5, windowMs: 10 * 60_000 },
 };
 
 export function createApp({
@@ -52,6 +59,7 @@ export function createApp({
   frontendUrl,
   mp,
   mpWebhookSecret,
+  mailer = null,
   rateLimits,
   backupStateDir,
   log = true,
@@ -81,13 +89,15 @@ export function createApp({
   app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));
   app.route('/api/subscription', subscriptionRoutes({ auth, frontendUrl, mp }));
-  app.route('/api/admin', adminRoutes(auth, backupStateDir));
+  app.route('/api/newsletter', newsletterRoutes({ db, mailer, frontendUrl, limit: limits.newsletter }));
+  app.route('/api/admin', adminRoutes(auth, { backupStateDir, mailer, frontendUrl }));
   app.route('/webhooks', webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook }));
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
   app.onError((err, c) => {
     console.error(err);
     if (err instanceof MercadoPagoError) return c.json({ error: 'payment_provider_error' }, 502);
+    if (err instanceof MailerError) return c.json({ error: 'mailer_error' }, 502);
     return c.json({ error: 'internal_error' }, 500);
   });
 

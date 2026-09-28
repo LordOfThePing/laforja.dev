@@ -251,3 +251,28 @@ export const collectionItems = pgTable(
     index('collection_items_collection_idx').on(t.collectionId, t.order),
   ],
 );
+
+export const newsletterStatus = pgEnum('newsletter_status', ['pending', 'confirmed', 'unsubscribed']);
+
+// Doble opt-in: se entra como pending y solo el link del mail lo pasa a confirmed. El token es
+// el mismo para confirmar y darse de baja (va en cada envío); se rota al volver a suscribirse.
+export const newsletterSubscribers = pgTable('newsletter_subscribers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  // Siempre en minúsculas: la unicidad es por dirección, no por cómo se tipeó.
+  email: text('email').notNull().unique(),
+  status: newsletterStatus('status').notNull().default('pending'),
+  token: text('token').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+  unsubscribedAt: timestamp('unsubscribed_at', { withTimezone: true }),
+});
+
+export const newsletterIssues = pgTable('newsletter_issues', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  // Si Resend falla a mitad de camino queda cuántos salieron, no los que se pensaba mandar.
+  recipientCount: integer('recipient_count').notNull(),
+  sentBy: uuid('sent_by').references(() => users.id, { onDelete: 'set null' }),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+});

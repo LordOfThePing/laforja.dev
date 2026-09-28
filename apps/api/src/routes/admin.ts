@@ -9,6 +9,8 @@ import { adminBackupRoutes } from './admin-backups.ts';
 import { adminCollectionRoutes } from './admin-collections.ts';
 import { adminCourseRoutes } from './admin-courses.ts';
 import { adminMetricsRoutes } from './admin-metrics.ts';
+import { adminNewsletterRoutes } from './admin-newsletter.ts';
+import type { Mailer } from '../lib/mailer.ts';
 
 const toolColumns = {
   id: tools.id,
@@ -35,7 +37,9 @@ function invalid(c: Context, field: string) {
   return c.json({ error: 'invalid_input', field }, 400);
 }
 
-export function adminRoutes(auth: AuthConfig, backupStateDir?: string) {
+type AdminOptions = { backupStateDir?: string; mailer: Mailer | null; frontendUrl: string };
+
+export function adminRoutes(auth: AuthConfig, { backupStateDir, mailer, frontendUrl }: AdminOptions) {
   const { db } = auth;
   const app = new Hono<AuthEnv>();
   app.use(requireAuth(auth), requireAdmin);
@@ -43,6 +47,7 @@ export function adminRoutes(auth: AuthConfig, backupStateDir?: string) {
   app.route('/', adminCollectionRoutes(db));
   app.route('/', adminBackupRoutes(backupStateDir));
   app.route('/', adminMetricsRoutes(db));
+  app.route('/', adminNewsletterRoutes(db, mailer, frontendUrl));
 
   async function slugTaken(table: typeof tools | typeof categories, slug: string, exceptId?: string) {
     const [row] = await db

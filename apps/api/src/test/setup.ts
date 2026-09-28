@@ -8,6 +8,7 @@ import { JWT_AUDIENCE } from '../auth.ts';
 import type { Db } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
 import { seed } from '../db/seed-data.ts';
+import { FakeMailer } from './fake-mailer.ts';
 import { FakeMercadoPago } from './fake-mp.ts';
 
 export const TEST_SECRET = 'secreto-de-test';
@@ -20,8 +21,10 @@ export async function createTestApp(
     webhook: RateLimitRule;
     progress: RateLimitRule;
     comment: RateLimitRule;
+    newsletter: RateLimitRule;
   }>,
   backupStateDir?: string,
+  mailer: FakeMailer | null = new FakeMailer(),
 ) {
   const pg = drizzle(new PGlite(), { schema });
   await migrate(pg, { migrationsFolder: './drizzle' });
@@ -37,9 +40,10 @@ export async function createTestApp(
     mpWebhookSecret: TEST_MP_WEBHOOK_SECRET,
     rateLimits,
     backupStateDir,
+    mailer,
     log: false,
   });
-  return { app, db, mp };
+  return { app, db, mp, mailer };
 }
 
 export function makeToken(

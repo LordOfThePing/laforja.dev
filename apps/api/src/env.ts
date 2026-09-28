@@ -18,4 +18,7 @@ export const env = {
   reconcileIntervalHours: Number(process.env.RECONCILE_INTERVAL_HOURS ?? 6),
   // Sin esto el panel muestra que los backups no se pueden ver desde acá (por ejemplo, en local).
   backupStateDir: process.env.BACKUP_STATE_DIR || undefined,
+  // Sin key la newsletter queda apagada. El remitente tiene que ser de un dominio verificado en Resend.
+  resendApiKey: process.env.RESEND_API_KEY || undefined,
+  newsletterFrom: process.env.NEWSLETTER_FROM || 'La Forja <newsletter@laforja.dev>',
 };
