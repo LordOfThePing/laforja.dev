@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Comentarios en herramientas (solo suscriptores) — en curso por @claude
 - Analytics propias: qué se desbloquea más, retención — en curso por @claude — sección Métricas en el panel admin
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
 
@@ -26,6 +27,5 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### v3 — Comunidad
 
-- Comentarios en herramientas (solo suscriptores) — pendiente
 - Colecciones / rutas de aprendizaje curadas — pendiente
 - Newsletter integrada (Resend) — pendiente
