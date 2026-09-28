@@ -4,7 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Analytics livianas y respetuosas (Umami self-hosted) — en curso por @claude — el roadmap v3 pide métricas de desbloqueos; esto cubre tráfico
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
 
 ## Pendiente
@@ -15,6 +14,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### Operación / producción
 
+- Activar Umami en prod (profile `analytics`, secretos, cambiar password de admin, `UMAMI_WEBSITE_ID`) — pendiente — pasos en `docs/despliegue-vps.md` → Analytics
 
 ### SEO y crecimiento
 
