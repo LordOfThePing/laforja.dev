@@ -13,6 +13,7 @@ const app = createApp({
   frontendUrl: env.frontendUrl,
   mp,
   mpWebhookSecret: env.mpWebhookSecret,
+  backupStateDir: env.backupStateDir,
 });
 
 if (env.reconcileIntervalHours > 0) {

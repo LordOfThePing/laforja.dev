@@ -16,4 +16,6 @@ export const env = {
   adminEmails: parseAdminEmails(process.env.ADMIN_EMAILS),
   // 0 la desactiva.
   reconcileIntervalHours: Number(process.env.RECONCILE_INTERVAL_HOURS ?? 6),
+  // Sin esto el panel muestra que los backups no se pueden ver desde acá (por ejemplo, en local).
+  backupStateDir: process.env.BACKUP_STATE_DIR || undefined,
 };

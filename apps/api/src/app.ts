@@ -22,6 +22,7 @@ type AppOptions = {
   mp: MercadoPago;
   mpWebhookSecret: string;
   rateLimits?: Partial<RateLimits>;
+  backupStateDir?: string;
   log?: boolean;
 };
 
@@ -44,6 +45,7 @@ export function createApp({
   mp,
   mpWebhookSecret,
   rateLimits,
+  backupStateDir,
   log = true,
 }: AppOptions) {
   const app = new Hono();
@@ -70,7 +72,7 @@ export function createApp({
   app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));
   app.route('/api/subscription', subscriptionRoutes({ auth, frontendUrl, mp }));
-  app.route('/api/admin', adminRoutes(auth));
+  app.route('/api/admin', adminRoutes(auth, backupStateDir));
   app.route('/webhooks', webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook }));
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));

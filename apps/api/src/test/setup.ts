@@ -16,6 +16,7 @@ export const TEST_ADMIN_EMAIL = 'admin@example.com';
 
 export async function createTestApp(
   rateLimits?: Partial<{ unlock: RateLimitRule; webhook: RateLimitRule; progress: RateLimitRule }>,
+  backupStateDir?: string,
 ) {
   const pg = drizzle(new PGlite(), { schema });
   await migrate(pg, { migrationsFolder: './drizzle' });
@@ -30,6 +31,7 @@ export async function createTestApp(
     mp,
     mpWebhookSecret: TEST_MP_WEBHOOK_SECRET,
     rateLimits,
+    backupStateDir,
     log: false,
   });
   return { app, db, mp };

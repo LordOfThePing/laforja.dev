@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Nav en mobile: debajo de 780px los links (Herramientas, Cursos, …) se ocultan y no hay menú — en curso por @claude
 - Copia de backups fuera del VPS: activar la subida a R2 y verificarla — en curso por @claude — bucket y token ya creados, `BACKUP_S3_*` cargados
 - Backups en el panel admin: estado, dumps, config y «Hacer backup ahora» + log de arranque en `loop.sh` — en curso por @claude
 
@@ -15,7 +16,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### Operación / producción
 
-- Nav en mobile: debajo de 780px los links (Herramientas, Cursos, …) se ocultan y no hay menú — pendiente
 
 ### SEO y crecimiento
 
