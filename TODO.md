@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Copia de backups fuera del VPS: activar la subida a R2 y verificarla — en curso por @claude — bucket y token ya creados, `BACKUP_S3_*` cargados
 
 ## Pendiente
 
@@ -12,8 +13,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 - Cargar las herramientas reales (videos + prompts) y sacar el seed de ejemplo de prod — pendiente — depende del panel admin
 
 ### Operación / producción
-
-- Copia de backups fuera del VPS: crear bucket R2 + token y cargar `BACKUP_S3_*` en el `.env` del VPS — pendiente — el código ya lo soporta; ver "Backups de Postgres" en `docs/despliegue-vps.md`
 
 - Nav en mobile: debajo de 780px los links (Herramientas, Cursos, …) se ocultan y no hay menú — pendiente
 
