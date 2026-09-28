@@ -213,6 +213,39 @@ bloqueadores de anuncios no lo cortan.
 
 El panel no sale por el tunnel de Cloudflare: se entra siempre con `make stats`.
 
+## Newsletter (Resend)
+
+Doble opt-in: el form (footer y `/newsletter`) deja la dirección en `pending` y
+manda un mail con el link a `/newsletter/confirmar`; recién al tocar
+«Confirmar» en esa página pasa a `confirmed`. El link solo no confirma, porque
+los antivirus de correo abren los links de los mails. Se escribe desde
+**Admin → Newsletter**: «Mandarme una prueba» y después «Enviar a todos» (en
+lotes de 100, con pausa entre lotes por el rate limit de Resend).
+
+- Cada envío lleva el link de baja (`/newsletter/baja`) y los headers
+  `List-Unsubscribe` + `List-Unsubscribe-Post` (baja en un click de Gmail y
+  compañía, RFC 8058). Ese POST va a `/api/newsletter/unsubscribe/one-click`,
+  directo a la api por la regla `/api/*` del tunnel: el `checkOrigin` de Astro lo
+  rechazaría
+- Sin `RESEND_API_KEY` todo queda apagado: no aparece el form y la api responde
+  `newsletter_disabled`
+- El alta tiene rate limit por IP (5 cada 10 min). La web le reenvía a la api el
+  `cf-connecting-ip` del visitante
+
+### Activarla (una vez)
+
+1. Crear la cuenta en [Resend](https://resend.com) y, en *Domains*, agregar el
+   dominio del remitente (`laforja.dev`). Cargar en Cloudflare DNS los registros
+   que pide (SPF, DKIM y opcionalmente DMARC) y esperar a que quede *Verified*.
+   **Requiere que el dominio ya exista en DNS.**
+2. *API Keys* → crear una con permiso *Sending access* (solo ese dominio).
+3. En `.env.production`: `RESEND_API_KEY=re_...` y, si el remitente no es
+   `La Forja <newsletter@laforja.dev>`, `NEWSLETTER_FROM`.
+4. `make env-push` + `make up`. En Admin → Newsletter tiene que dejar de decir
+   «Está apagada»; el form del footer aparece en hasta 5 minutos (la web cachea
+   el estado).
+5. Suscribirse con un mail propio, confirmar y mandarse una prueba.
+
 ## Deploy con el Makefile
 
 El `Makefile` de la raíz maneja el VPS por SSH (`make help` lista todo). En

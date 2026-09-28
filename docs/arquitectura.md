@@ -100,5 +100,7 @@ AUTH_SECRET=xxx                # misma que web
 DATABASE_URL=postgres://laforja:xxx@postgres:5432/laforja
 MP_ACCESS_TOKEN=xxx
 MP_WEBHOOK_SECRET=xxx
+RESEND_API_KEY=                # newsletter; vacío = apagada
+NEWSLETTER_FROM=La Forja <newsletter@laforja.dev>
 FRONTEND_URL=https://academia.flynnpedroa.engineer
 ```

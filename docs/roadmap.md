@@ -32,7 +32,7 @@ reales. El detalle vive en `TODO.md`.
 - [x] Comentarios en herramientas (solo suscriptores; moderación en `/admin/comentarios`)
 - [x] Colecciones / rutas de aprendizaje curadas (`/rutas`; se arman en `/admin/rutas`)
 - [x] Admin UI para crear contenido sin tocar código (adelantado a v1: `/admin`)
-- [ ] Newsletter integrada (probablemente Resend)
+- [x] Newsletter integrada con Resend (doble opt-in; se escribe en `/admin/newsletter`; apagada hasta cargar `RESEND_API_KEY`)
 - [x] Analytics propias: qué se desbloquea más, retención (`/admin/metricas`)
 
 ## Fuera de scope de v1 (a propósito)

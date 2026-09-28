@@ -194,6 +194,33 @@ Un registro por usuario y mes en que usó el sitio logueado; es la base de la re
 
 **PK** `(user_id, month_key)`. La migración la completó hacia atrás con altas, desbloqueos y progreso.
 
+### `newsletter_subscribers`
+Independiente de `users`: se suscribe una dirección, tenga cuenta o no.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `email` | text unique | en minúsculas |
+| `status` | enum | `pending` / `confirmed` / `unsubscribed` |
+| `token` | text unique | 64 hex; sirve para confirmar y para la baja. Se rota al volver a suscribirse |
+| `created_at` | timestamptz | |
+| `confirmed_at` | timestamptz nullable | primera confirmación |
+| `unsubscribed_at` | timestamptz nullable | |
+
+Solo reciben los `confirmed`. Un `unsubscribed` no se reactiva con el link viejo de confirmación.
+
+### `newsletter_issues`
+Historial de envíos (las pruebas no se guardan).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `subject` | text | |
+| `body` | text | texto plano; el HTML se arma al enviar |
+| `recipient_count` | int | los que salieron de verdad (si Resend corta a mitad, menos que los confirmados) |
+| `sent_by` | uuid fk → users nullable | `on delete set null` |
+| `sent_at` | timestamptz | |
+
 ## Lógica de "2 gratis por mes"
 
 **Insight importante**: no necesitamos cron. El reset mensual es automático porque `month_key` se deriva de la fecha actual.
