@@ -51,3 +51,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-28 — Analytics livianas con Umami self-hosted (pageviews server-side, sin cookies) — fb9e382, 64f45f7
 - 2026-09-28 — `laforja.dev`: hostnames del tunnel, callback de Google OAuth y webhook de MP (hecho por el usuario)
 - 2026-09-28 — Progreso por % de video en el reproductor (IFrame API, retomar, anillo en el temario) — b582117, 5975a63
+- 2026-09-28 — Analytics propias: sección Métricas en el panel admin (actividad mensual, cohortes, top de desbloqueos y cursos) — 364d0d6, d8d1ab2
