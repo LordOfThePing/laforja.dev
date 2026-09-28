@@ -1,0 +1,204 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import { getMetrics, requireAdmin } from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+const m = await getMetrics(auth.user);
+
+const monthName = new Intl.DateTimeFormat('es-AR', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const label = (key: string) => monthName.format(new Date(`${key}-01T00:00:00Z`));
+const pct = (n: number, of: number) => (of === 0 ? 0 : Math.round((n / of) * 100));
+const share = (n: number, max: number) => (max === 0 ? 0 : Math.max(1, (n / max) * 100));
+// La CSP no deja atributos style: el heatmap va en escalones de 20 % con clases.
+const step = (p: number) => Math.min(5, Math.ceil(p / 20));
+
+const maxActive = Math.max(0, ...m.monthly.map((r) => r.activeUsers));
+const maxUnlocks = Math.max(0, ...m.topTools.map((t) => t.unlocks));
+const maxLearners = Math.max(0, ...m.topCourses.map((c) => c.learners));
+const offsets = m.months.map((_, i) => i);
+
+const subs = [
+  { key: 'active', label: 'activas' },
+  { key: 'cancelled', label: 'canceladas (con acceso hasta fin de período)' },
+  { key: 'paused', label: 'pausadas' },
+  { key: 'none', label: 'sin suscripción' },
+] as const;
+---
+
+<Admin title="Métricas">
+  <h1>Métricas</h1>
+  <p class="dim lede">
+    Últimos {m.months.length} meses, sin contar admins. Un usuario está <em>activo</em> en un mes si entró
+    logueado al sitio. El tráfico anónimo está en Umami.
+  </p>
+
+  <section class="stats" aria-label="Suscripciones">
+    {subs.map((s) => (
+      <div class="stat">
+        <span class="stat__n">{m.subscriptions[s.key] ?? 0}</span>
+        <span class="stat__l">{s.label}</span>
+      </div>
+    ))}
+  </section>
+
+  <h2 class="section">Mes a mes</h2>
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>Mes</th><th class="num">Altas</th><th>Activos</th><th class="num">Desbloqueos</th><th class="num">Lecciones completadas</th></tr>
+      </thead>
+      <tbody>
+        {m.monthly.map((r) => (
+          <tr>
+            <td>{label(r.month)}</td>
+            <td class="num">{r.newUsers}</td>
+            <td>
+              <div class="meter" title={`${r.activeUsers} usuarios activos en ${label(r.month)}`}>
+                <svg class="meter__bar" aria-hidden="true"><rect width={`${share(r.activeUsers, maxActive)}%`} height="8" rx="2" /></svg>
+                <span class="meter__n">{r.activeUsers}</span>
+              </div>
+            </td>
+            <td class="num">{r.unlocks}</td>
+            <td class="num">{r.lessonsCompleted}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="section">Retención por cohorte</h2>
+  <p class="dim note">
+    Cada fila son los que se registraron ese mes; cada columna, qué parte siguió activa N meses después.
+  </p>
+  <div class="admin-table-wrap">
+    <table class="admin-table cohorts">
+      <thead>
+        <tr>
+          <th>Alta</th><th class="num">Usuarios</th>
+          {offsets.map((i) => <th class="num">Mes {i}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {m.cohorts.map((c) => (
+          <tr>
+            <td>{label(c.month)}</td>
+            <td class="num">{c.size}</td>
+            {offsets.map((i) => {
+              if (i >= c.active.length) return <td class="cell cell--future" aria-label="todavía no pasó"></td>;
+              if (c.size === 0) return <td class="cell dim">—</td>;
+              const p = pct(c.active[i]!, c.size);
+              return (
+                <td class={`cell cell--${step(p)}`} title={`${c.active[i]} de ${c.size} usuarios`}>
+                  {p}%
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="section">Lo más desbloqueado</h2>
+  <p class="dim note">
+    Solo cuentan los desbloqueos del cupo gratis: los suscriptores ven todo sin desbloquear.
+  </p>
+  {m.topTools.length === 0 ? (
+    <p class="dim">Todavía no hay desbloqueos en estos meses.</p>
+  ) : (
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Herramienta</th><th>Desbloqueos</th><th class="num">Este mes</th><th class="num">Usuarios</th></tr>
+        </thead>
+        <tbody>
+          {m.topTools.map((t) => (
+            <tr>
+              <td><a href={`/admin/herramientas/${t.id}`}>{t.title}</a></td>
+              <td>
+                <div class="meter" title={`${t.unlocks} desbloqueos en ${m.months.length} meses`}>
+                  <svg class="meter__bar" aria-hidden="true"><rect width={`${share(t.unlocks, maxUnlocks)}%`} height="8" rx="2" /></svg>
+                  <span class="meter__n">{t.unlocks}</span>
+                </div>
+              </td>
+              <td class="num">{t.thisMonth}</td>
+              <td class="num">{t.users}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <h2 class="section">Cursos</h2>
+  {m.topCourses.length === 0 ? (
+    <p class="dim">Todavía nadie empezó un curso.</p>
+  ) : (
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Curso</th><th>Alumnos</th><th class="num">Lecciones completadas</th><th class="num">Certificados</th></tr>
+        </thead>
+        <tbody>
+          {m.topCourses.map((c) => (
+            <tr>
+              <td><a href={`/admin/cursos/${c.id}`}>{c.title}</a></td>
+              <td>
+                <div class="meter" title={`${c.learners} alumnos con progreso`}>
+                  <svg class="meter__bar" aria-hidden="true"><rect width={`${share(c.learners, maxLearners)}%`} height="8" rx="2" /></svg>
+                  <span class="meter__n">{c.learners}</span>
+                </div>
+              </td>
+              <td class="num">{c.lessonsCompleted}</td>
+              <td class="num">{c.certificates}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</Admin>
+
+<style>
+  .lede { margin-top: 8px; max-width: 70ch; }
+  .note { margin: -8px 0 16px; font-size: 14px; max-width: 70ch; }
+  .section { margin-block: 40px 16px; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+  }
+  .stat__n { font-family: var(--font-display); font-size: 40px; line-height: 1; color: var(--ember-300); }
+  .stat__l { font-size: 13px; color: var(--ink-dim); }
+
+  .num { text-align: right !important; font-variant-numeric: tabular-nums; }
+
+  .meter { display: flex; align-items: center; gap: 10px; min-width: 160px; }
+  .meter__bar { flex: 1; height: 8px; overflow: visible; }
+  .meter__bar rect { fill: var(--ember-500); }
+  .meter__n { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+  .cohorts .cell {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    border-left: 2px solid var(--bg-elev);
+  }
+  .cohorts .cell--1 { background: rgb(255 122 0 / 0.1); }
+  .cohorts .cell--2 { background: rgb(255 122 0 / 0.2); }
+  .cohorts .cell--3 { background: rgb(255 122 0 / 0.32); }
+  .cohorts .cell--4 { background: rgb(255 122 0 / 0.45); }
+  .cohorts .cell--5 { background: rgb(255 122 0 / 0.6); }
+</style>

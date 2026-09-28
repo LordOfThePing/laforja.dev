@@ -112,6 +112,15 @@ export type BackupStatus =
       dumps: { name: string; size: number; modifiedAt: string }[];
     };
 
+export type AdminMetrics = {
+  months: string[];
+  monthly: { month: string; newUsers: number; activeUsers: number; unlocks: number; lessonsCompleted: number }[];
+  cohorts: { month: string; size: number; active: number[] }[];
+  topTools: { id: string; slug: string; title: string; thisMonth: number; unlocks: number; users: number }[];
+  topCourses: { id: string; slug: string; title: string; learners: number; lessonsCompleted: number; certificates: number }[];
+  subscriptions: Partial<Record<'none' | 'active' | 'cancelled' | 'paused', number>>;
+};
+
 type User = Session['user'];
 
 // Quien no es admin recibe un 404 igual que la API: el panel no se anuncia.
@@ -166,6 +175,8 @@ export const getAdminLesson = (user: User, id: string) =>
 
 export const listCategories = (user: User) =>
   call<{ categories: AdminCategory[] }>('/api/admin/categories', user).then((r) => r.categories);
+
+export const getMetrics = (user: User) => call<AdminMetrics>('/api/admin/metrics', user);
 
 export const getBackupStatus = (user: User) => call<BackupStatus>('/api/admin/backups', user);
 
