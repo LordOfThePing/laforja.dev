@@ -3,7 +3,19 @@ import { getSession } from 'auth-astro/server';
 import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
-import { type Me, type ToolDetail, formatDuration, getMe, getTool, unlockTool } from '~/lib/api';
+import {
+  ApiError,
+  type Me,
+  type ToolComments,
+  type ToolDetail,
+  deleteToolComment,
+  formatDuration,
+  getMe,
+  getTool,
+  getToolComments,
+  postToolComment,
+  unlockTool,
+} from '~/lib/api';
 import { loginUrl } from '~/lib/redirect';
 import { youtubeEmbedUrl } from '~/lib/youtube';
 
@@ -13,20 +25,55 @@ const user = session?.user;
 
 type Notice = 'quota_exceeded' | 'rate_limited' | 'unauthorized';
 let notice: Notice | null = null;
+type CommentNotice = 'invalid_body' | 'rate_limited' | 'subscription_required' | 'unauthorized';
+let commentNotice: CommentNotice | null = null;
+let draft = '';
 
 if (Astro.request.method === 'POST') {
   if (!user) return Astro.redirect(loginUrl(Astro.url.pathname));
-  const result = await unlockTool(user, slug);
-  if (result.ok) return Astro.redirect(`/herramientas/${slug}`, 303);
-  if (result.reason === 'not_found') return new Response(null, { status: 404 });
-  notice = result.reason;
-  Astro.response.status = result.reason === 'rate_limited' ? 429 : 403;
+  const form = await Astro.request.formData();
+  const action = form.get('action');
+
+  if (action === 'comment' || action === 'delete-comment') {
+    const body = form.get('body');
+    const id = form.get('id');
+    if (action === 'comment') draft = typeof body === 'string' ? body : '';
+    const result =
+      action === 'comment'
+        ? await postToolComment(user, slug, draft)
+        : await deleteToolComment(user, slug, typeof id === 'string' ? id : '');
+    // Borrar algo que ya no está (doble click, otra pestaña) no es un error para quien mira.
+    if (result.ok || (action === 'delete-comment' && result.reason === 'not_found')) {
+      return Astro.redirect(`/herramientas/${slug}#comentarios`, 303);
+    }
+    if (result.reason === 'not_found') return new Response(null, { status: 404 });
+    commentNotice = result.reason;
+    Astro.response.status = { invalid_body: 400, rate_limited: 429, subscription_required: 403, unauthorized: 401 }[
+      result.reason
+    ];
+  } else {
+    // El form de desbloqueo no manda action.
+    const result = await unlockTool(user, slug);
+    if (result.ok) return Astro.redirect(`/herramientas/${slug}`, 303);
+    if (result.reason === 'not_found') return new Response(null, { status: 404 });
+    notice = result.reason;
+    Astro.response.status = result.reason === 'rate_limited' ? 429 : 403;
+  }
 }
 
 let tool: ToolDetail | null;
 let me: Me | null = null;
+// En paralelo con la herramienta aunque todavía no se sepa si está bloqueada: si lo está, la API
+// responde 403 y no hay sección. Si falla por otra cosa, la herramienta se ve igual.
+let comments: ToolComments | null = null;
+const commentsLoad = getToolComments(user, slug).catch((err: unknown) => {
+  if (!(err instanceof ApiError && (err.status === 403 || err.status === 404))) {
+    console.error(`No se pudieron cargar los comentarios de ${slug}`, err);
+  }
+  return null;
+});
 try {
-  [tool, me] = await Promise.all([getTool(user, slug), getMe(user)]);
+  [tool, me, comments] = await Promise.all([getTool(user, slug), getMe(user), commentsLoad]);
 } catch (err) {
   console.error(`No se pudo cargar la herramienta ${slug}`, err);
   return new Response('No pudimos cargar la herramienta. Probá de nuevo en un rato.', {
@@ -45,6 +92,19 @@ const remaining = me?.unlocks.remaining ?? 0;
 const quotaText = remaining === 1 ? 'Te queda' : 'Te quedan';
 const outOfQuota = notice === 'quota_exceeded' || (me !== null && remaining === 0);
 const gate: 'login' | 'quota' | 'unlock' = !user ? 'login' : outOfQuota ? 'quota' : 'unlock';
+
+const commentDate = new Intl.DateTimeFormat('es-AR', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'America/Argentina/Buenos_Aires',
+});
+const commentErrors: Record<CommentNotice, string> = {
+  invalid_body: 'El comentario no puede estar vacío ni pasar de 2000 caracteres.',
+  rate_limited: 'Estás comentando muy seguido. Esperá un minuto y probá de nuevo.',
+  subscription_required: 'Comentar es para suscriptores.',
+  unauthorized: 'Tu sesión venció. Salí y volvé a ingresar.',
+};
 ---
 
 <Base
@@ -151,6 +211,73 @@ const gate: 'login' | 'quota' | 'unlock' = !user ? 'login' : outOfQuota ? 'quota
               </header>
               <pre class="prompt__body"><code id="prompt-body">{tool.promptBody}</code></pre>
             </section>
+
+            {comments && (
+              <section id="comentarios" class="comments" aria-labelledby="comments-title">
+                <h2 id="comments-title" class="comments__title">
+                  Comentarios
+                  {comments.comments.length > 0 && <span class="mono comments__count">{comments.comments.length}</span>}
+                </h2>
+
+                {comments.canComment ? (
+                  <form method="post" class="comments__form">
+                    <input type="hidden" name="action" value="comment" />
+                    <label class="sr-only" for="comment-body">Tu comentario</label>
+                    <textarea
+                      id="comment-body"
+                      name="body"
+                      required
+                      maxlength="2000"
+                      rows="3"
+                      placeholder="¿Cómo la usaste? ¿Qué le cambiaste?"
+                    >{draft}</textarea>
+                    {commentNotice && (
+                      <p class="comments__error" role="alert">{commentErrors[commentNotice]}</p>
+                    )}
+                    <button type="submit" class="btn btn--primary">Comentar</button>
+                  </form>
+                ) : (
+                  <p class="comments__hint">
+                    {user ? (
+                      <>Comentar es para suscriptores. <a href="/suscripcion">Suscribite</a> para sumarte a la conversación.</>
+                    ) : (
+                      <><a href={loginUrl(Astro.url.pathname)}>Ingresá</a> con tu suscripción para comentar.</>
+                    )}
+                  </p>
+                )}
+
+                {comments.comments.length === 0 ? (
+                  <p class="comments__empty">Todavía no hay comentarios.</p>
+                ) : (
+                  <ol class="comments__list">
+                    {comments.comments.map((c) => (
+                      <li class="comment">
+                        {c.author.avatarUrl ? (
+                          <img class="comment__avatar" src={c.author.avatarUrl} alt="" loading="lazy" referrerpolicy="no-referrer" />
+                        ) : (
+                          <span class="comment__avatar comment__avatar--initial" aria-hidden="true">{c.author.name[0]}</span>
+                        )}
+                        <div class="comment__main">
+                          <div class="comment__meta">
+                            <span class="comment__author">{c.author.name}</span>
+                            <time class="mono" datetime={c.createdAt}>{commentDate.format(new Date(c.createdAt))}</time>
+                            {c.isMine && <span class="mono comment__mine">Vos</span>}
+                          </div>
+                          <p class="comment__body">{c.body}</p>
+                          {c.canDelete && (
+                            <form method="post" class="comment__delete">
+                              <input type="hidden" name="action" value="delete-comment" />
+                              <input type="hidden" name="id" value={c.id} />
+                              <button type="submit" class="comment__delete-btn">Borrar</button>
+                            </form>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            )}
           </>
         )}
       </article>
@@ -271,4 +398,56 @@ const gate: 'login' | 'quota' | 'unlock' = !user ? 'login' : outOfQuota ? 'quota
   .gate__error { color: var(--ember-300); font-size: 14px; }
 
   .tool__empty { display: flex; flex-direction: column; gap: 16px; }
+
+  .comments { margin-top: 56px; display: flex; flex-direction: column; gap: 24px; scroll-margin-top: 96px; }
+  .comments__title { display: flex; align-items: baseline; gap: 12px; font-family: var(--font-display); font-size: 32px; font-weight: 400; }
+  .comments__count { color: var(--ink-mute); font-size: 13px; }
+  .comments__form { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .comments__form textarea {
+    width: 100%;
+    min-height: 96px;
+    padding: 14px 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--bg-elev);
+    color: var(--ink);
+    font: inherit;
+    resize: vertical;
+    transition: border-color 200ms var(--ease-out);
+  }
+  .comments__form textarea:focus-visible { outline: 2px solid var(--ember-500); outline-offset: 1px; }
+  .comments__error { color: var(--ember-300); font-size: 14px; }
+  .comments__hint, .comments__empty { color: var(--ink-dim); }
+  .comments__hint a { color: var(--ember-300); text-decoration: underline; text-underline-offset: 3px; }
+
+  .comments__list { list-style: none; display: flex; flex-direction: column; }
+  .comment { display: flex; gap: 14px; padding-block: 20px; border-top: 1px solid var(--line); }
+  .comment__avatar { flex: none; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+  .comment__avatar--initial {
+    display: grid;
+    place-items: center;
+    background: var(--bg-elev);
+    border: 1px solid var(--line-strong);
+    color: var(--ember-300);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .comment__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .comment__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; font-size: 14px; }
+  .comment__author { font-weight: 600; }
+  .comment__meta time { color: var(--ink-mute); font-size: 12px; }
+  .comment__mine { color: var(--spark); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; }
+  .comment__body { color: var(--ink-dim); white-space: pre-line; overflow-wrap: anywhere; }
+  .comment__delete-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink-mute);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .comment__delete-btn:hover { color: var(--ember-300); }
 </style>

@@ -124,6 +124,61 @@ export async function unlockTool(user: Session['user'], slug: string): Promise<U
   }
 }
 
+export type ToolComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: { name: string; avatarUrl: string | null };
+  isMine: boolean;
+  canDelete: boolean;
+};
+
+export type ToolComments = { comments: ToolComment[]; canComment: boolean };
+
+export function getToolComments(user: Session['user'] | undefined, slug: string): Promise<ToolComments> {
+  return call<ToolComments>(`/api/tools/${encodeURIComponent(slug)}/comments`, user);
+}
+
+export type CommentResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'invalid_body' | 'not_found' | 'rate_limited' | 'subscription_required' | 'unauthorized';
+    };
+
+async function commentCall(run: () => Promise<unknown>): Promise<CommentResult> {
+  try {
+    await run();
+    return { ok: true };
+  } catch (err) {
+    if (
+      err instanceof ApiError &&
+      (err.code === 'invalid_body' ||
+        err.code === 'not_found' ||
+        err.code === 'rate_limited' ||
+        err.code === 'subscription_required' ||
+        err.code === 'unauthorized')
+    ) {
+      return { ok: false, reason: err.code };
+    }
+    throw err;
+  }
+}
+
+export function postToolComment(user: Session['user'], slug: string, body: string): Promise<CommentResult> {
+  return commentCall(() =>
+    call(`/api/tools/${encodeURIComponent(slug)}/comments`, user, { method: 'POST', json: { body } }),
+  );
+}
+
+export function deleteToolComment(user: Session['user'], slug: string, id: string): Promise<CommentResult> {
+  return commentCall(() =>
+    call(`/api/tools/${encodeURIComponent(slug)}/comments/${encodeURIComponent(id)}`, user, {
+      method: 'DELETE',
+    }),
+  );
+}
+
 export async function getMe(user: Session['user'] | undefined): Promise<Me | null> {
   if (!user?.googleId) return null;
   return call<Me>('/api/me', user);
