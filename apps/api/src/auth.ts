@@ -2,7 +2,8 @@ import { sql } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { verify } from 'hono/jwt';
 import type { Db } from './db/client.ts';
-import { users } from './db/schema.ts';
+import { userActivity, users } from './db/schema.ts';
+import { monthKey } from './lib/month.ts';
 
 export const JWT_AUDIENCE = 'laforja-api';
 
@@ -76,6 +77,24 @@ async function upsertUser(
   return user;
 }
 
+// Cache por proceso de qué usuarios ya quedaron registrados este mes: sin esto cada request
+// autenticado haría un insert. Va por db para que los tests (una base por app) no se pisen.
+const activitySeen = new WeakMap<Db, { month: string; users: Set<string> }>();
+
+async function recordActivity(db: Db, userId: string): Promise<void> {
+  const month = monthKey();
+  let seen = activitySeen.get(db);
+  if (seen?.month !== month) activitySeen.set(db, (seen = { month, users: new Set() }));
+  if (seen.users.has(userId)) return;
+  try {
+    await db.insert(userActivity).values({ userId, monthKey: month }).onConflictDoNothing();
+    seen.users.add(userId);
+  } catch (err) {
+    // Es una métrica: si falla, el request sigue y se reintenta en el próximo.
+    console.error('auth: no se pudo registrar la actividad', err);
+  }
+}
+
 type AuthResult = { kind: 'anonymous' } | { kind: 'invalid' } | { kind: 'user'; user: AuthUser };
 
 async function authenticate(
@@ -93,7 +112,9 @@ async function authenticate(
     claims = null;
   }
   if (!claims) return { kind: 'invalid' };
-  return { kind: 'user', user: await upsertUser(db, claims, adminEmails) };
+  const user = await upsertUser(db, claims, adminEmails);
+  await recordActivity(db, user.id);
+  return { kind: 'user', user };
 }
 
 export function requireAuth(auth: AuthConfig) {

@@ -6,6 +6,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -177,4 +178,19 @@ export const certificates = pgTable(
     issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique('certificates_user_course_uq').on(t.userId, t.courseId)],
+);
+
+// Un registro por usuario y mes en que usó el sitio logueado: es la base de la retención en el
+// panel. unlocks y progress no alcanzan (los suscriptores no desbloquean y progress solo guarda
+// el último toque de cada lección).
+export const userActivity = pgTable(
+  'user_activity',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    monthKey: text('month_key').notNull(),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.monthKey] }), index('user_activity_month_idx').on(t.monthKey)],
 );

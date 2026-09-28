@@ -7,6 +7,7 @@ import { isUuid, parseCategory, parseTool } from '../lib/admin-input.ts';
 import { monthKey } from '../lib/month.ts';
 import { adminBackupRoutes } from './admin-backups.ts';
 import { adminCourseRoutes } from './admin-courses.ts';
+import { adminMetricsRoutes } from './admin-metrics.ts';
 
 const toolColumns = {
   id: tools.id,
@@ -39,6 +40,7 @@ export function adminRoutes(auth: AuthConfig, backupStateDir?: string) {
   app.use(requireAuth(auth), requireAdmin);
   app.route('/', adminCourseRoutes(db));
   app.route('/', adminBackupRoutes(backupStateDir));
+  app.route('/', adminMetricsRoutes(db));
 
   async function slugTaken(table: typeof tools | typeof categories, slug: string, exceptId?: string) {
     const [row] = await db
