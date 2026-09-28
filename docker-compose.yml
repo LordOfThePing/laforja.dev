@@ -63,6 +63,9 @@ services:
       AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
       API_URL: http://api:4000
       PUBLIC_SITE_URL: ${FRONTEND_URL:?falta FRONTEND_URL}
+      # Sin UMAMI_WEBSITE_ID la web no manda pageviews (ver "Analytics" en docs/despliegue-vps.md).
+      UMAMI_URL: http://umami:3000
+      UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-}
     depends_on:
       api:
         condition: service_healthy
@@ -97,6 +100,58 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks: [internal]
+
+  # Rol y base propios para Umami en el mismo Postgres: no ve las tablas de la app.
+  umami-db:
+    image: postgres:16-alpine
+    profiles: [analytics]
+    environment:
+      PGHOST: postgres
+      PGUSER: laforja
+      PGPASSWORD: ${DB_PASSWORD:?falta DB_PASSWORD}
+      PGDATABASE: laforja
+      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:-}
+    command:
+      - sh
+      - -ec
+      - |
+        test -n "$$UMAMI_DB_PASSWORD" || { echo "falta UMAMI_DB_PASSWORD"; exit 1; }
+        psql -v ON_ERROR_STOP=1 -v pw="$$UMAMI_DB_PASSWORD" <<'SQL'
+        SELECT format('CREATE ROLE umami LOGIN PASSWORD %L', :'pw')
+          WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'umami') \gexec
+        SELECT format('ALTER ROLE umami PASSWORD %L', :'pw') \gexec
+        SELECT 'CREATE DATABASE umami OWNER umami'
+          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'umami') \gexec
+        SQL
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [internal]
+
+  # Analytics de tráfico. La web le manda los pageviews por la red interna; el panel queda en
+  # 127.0.0.1 del VPS (`make stats` abre el túnel SSH).
+  umami:
+    image: ghcr.io/umami-software/umami:3.4.0
+    profiles: [analytics]
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD:-}@postgres:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:-}
+      DISABLE_TELEMETRY: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/heartbeat >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    depends_on:
+      umami-db:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${UMAMI_PORT:-3300}:3000"
     networks: [internal]
 
   # Único punto de entrada público: el ruteo por path (web vs api) se configura en el panel

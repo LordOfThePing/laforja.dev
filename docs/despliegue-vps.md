@@ -3,6 +3,7 @@
 ## Estructura
 
 - **Docker Compose** con `postgres` + `migrate` + `api` + `web` + `backup` + `cloudflared`
+  (+ `umami` para analytics, opcional)
 - **Cloudflare Tunnel** (`cloudflared` dentro del compose) como única entrada
   pública: TLS lo termina Cloudflare, el VPS no abre puertos ni maneja
   certificados. Mismo patrón que los otros proyectos del VPS.
@@ -19,6 +20,8 @@ El archivo real está en la raíz del repo (`docker-compose.yml`). Servicios:
 | `web` | `apps/web/Dockerfile` | build con Bun, runtime Node 22 (`dist/server/entry.mjs`), `127.0.0.1:3000` |
 | `backup` | `ops/backup/Dockerfile` | `pg_dump` diario + rotación + copia opcional a un bucket (ver [Backups](#backups-de-postgres)) |
 | `cloudflared` | `cloudflare/cloudflared` | solo con `COMPOSE_PROFILES=tunnel`; conecta el tunnel con `CLOUDFLARE_TUNNEL_TOKEN` |
+| `umami-db` | `postgres:16-alpine` | solo con el profile `analytics`; one-shot: crea el rol y la base `umami` en el mismo Postgres |
+| `umami` | `ghcr.io/umami-software/umami` | solo con el profile `analytics`; analytics de tráfico, panel en `127.0.0.1:3300` (ver [Analytics](#analytics-umami)) |
 
 Variables: `.env` en la raíz, ver `.env.example`. Compose falla al arrancar si
 falta alguna obligatoria (`DB_PASSWORD`, `AUTH_SECRET`, `MP_ACCESS_TOKEN`,
@@ -175,6 +178,41 @@ ssh -o RemoteCommand=none laforja \
 Para mirar un dump sin tocar producción: restaurarlo en una base aparte
 (`createdb -U laforja prueba` en el contenedor `postgres` y `-d prueba`).
 
+## Analytics (Umami)
+
+Tráfico del sitio con [Umami](https://umami.is) self-hosted, sin script en el
+browser: el **middleware de la web** (`apps/web/src/lib/analytics.ts`) le manda
+cada pageview a `http://umami:3000/api/send` por la red interna, sin esperar la
+respuesta. No hay cookies ni identificador persistente (Umami arma el visitante
+con IP + user-agent + un salt que rota), no hace falta tocar la CSP y los
+bloqueadores de anuncios no lo cortan.
+
+- Cuenta solo `GET` que devuelven HTML con 200. Saltea `/admin`, `/api/`, las
+  imágenes OG, `robots.txt`, `sitemap.xml` y los prefetch (`Sec-Purpose: prefetch`)
+- De la URL manda el path y los `utm_*`; el resto del query (ids de MP, etc.)
+  no sale. Del referer, sin query
+- IP y país salen de `cf-connecting-ip` / `cf-ipcountry` (los pone Cloudflare).
+  Umami descarta los bots por user-agent
+- Sin `UMAMI_WEBSITE_ID`, o con Umami caído, la web sigue igual y no manda nada
+- La base `umami` vive en el mismo Postgres con su propio rol, pero **el backup
+  diario no la incluye** (solo dumpea `laforja`): perderla es perder métricas,
+  no datos de usuarios
+
+### Activarlo (una vez)
+
+1. En `.env.production`: `COMPOSE_PROFILES=tunnel,analytics`,
+   `UMAMI_DB_PASSWORD` y `UMAMI_APP_SECRET` (`openssl rand -hex 24`; la
+   password va dentro de una URL, así que nada de `@ : / #`).
+2. `make env-push` + `make up`. `umami-db` crea el rol y la base (es
+   idempotente: en cada `up` vuelve a fijar la password) y `umami` corre sus
+   migraciones al arrancar.
+3. `make stats` abre un túnel SSH: entrar a `http://localhost:3300` con
+   `admin` / `umami` y **cambiar la password** (Settings → Profile).
+4. Settings → Websites → *Add website* con el dominio del sitio. Copiar el
+   *Website ID* a `UMAMI_WEBSITE_ID`, y `make env-push` + `make up` de nuevo.
+
+El panel no sale por el tunnel de Cloudflare: se entra siempre con `make stats`.
+
 ## Deploy con el Makefile
 
 El `Makefile` de la raíz maneja el VPS por SSH (`make help` lista todo). En
@@ -275,5 +313,6 @@ make seed                         # carga categorías y herramientas
 | `make ps` / `up` / `down` / `restart SERVICE=api` | Manejo de contenedores |
 | `make migrate` / `make seed` | Migraciones / seed a mano |
 | `make psql` / `make shell SERVICE=api` | Consola en la DB o en un contenedor |
+| `make stats` | Túnel SSH al panel de Umami (`http://localhost:3300`) |
 
 Local: `make dev-up`, `make dev-seed`, `make dev-down`, `make test`.

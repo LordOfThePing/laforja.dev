@@ -21,6 +21,7 @@ REPO_URL   ?= https://github.com/LordOfThePing/laforja.dev.git
 BRANCH     ?= main
 ENV_FILE   ?= .env.production
 SERVICE    ?=
+UMAMI_PORT ?= 3300
 
 ON_VPS ?= $(if $(filter $(REMOTE_DIR),$(CURDIR)),1)
 
@@ -38,7 +39,7 @@ RCOMPOSE = $(REMOTE) "cd $(REMOTE_DIR) && docker compose $(1)"
 
 .DEFAULT_GOAL := help
 .PHONY: help setup env-push env-diff local-only check-pushed deploy up down restart ps logs \
-        migrate seed reconcile psql shell backup backups backup-pull dev-up dev-down dev-seed test
+        migrate seed reconcile psql shell backup backups backup-pull stats dev-up dev-down dev-seed test
 
 help: ## Lista los targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-13s %s\n", $$1, $$2}'
@@ -124,6 +125,10 @@ backup-pull: local-only ## Baja el último backup del VPS a ./backups/
 	remote_sum=$$($(REMOTE) "cd $(REMOTE_DIR) && docker compose exec -T backup sha256sum $$name" | cut -d' ' -f1); \
 	test "$$remote_sum" = "$$(sha256sum "$$dest" | cut -d' ' -f1)" || { echo "sha256 no coincide: $$dest"; rm -f "$$dest"; exit 1; }; \
 	echo "OK: $$dest"
+
+stats: local-only ## Túnel SSH al panel de Umami en http://localhost:3300 (UMAMI_PORT=...; Ctrl+C corta)
+	@echo "Panel de Umami en http://localhost:$(UMAMI_PORT) — Ctrl+C para cerrar"
+	ssh $(SSH_OPTS) -o RequestTTY=no -N -L $(UMAMI_PORT):127.0.0.1:$(UMAMI_PORT) $(SSH_HOST)
 
 # --- Local -------------------------------------------------------------------
 

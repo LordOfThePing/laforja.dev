@@ -80,6 +80,8 @@ AUTH_GOOGLE_ID=xxx
 AUTH_GOOGLE_SECRET=xxx
 API_URL=http://api:4000
 PUBLIC_SITE_URL=https://academia.flynnpedroa.engineer
+UMAMI_URL=http://umami:3000   # analytics (opcional, ver despliegue-vps.md)
+UMAMI_WEBSITE_ID=             # vacío = no se mandan pageviews
 
 # apps/api
 AUTH_SECRET=xxx                # misma que web
