@@ -1,4 +1,4 @@
-import type { categories, courses, lessons, modules, tools } from '../db/schema.ts';
+import type { categories, collections, courses, lessons, modules, tools } from '../db/schema.ts';
 
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; field: string };
 
@@ -7,6 +7,8 @@ type CategoryInput = Omit<typeof categories.$inferInsert, 'id'>;
 type CourseInput = Omit<typeof courses.$inferInsert, 'id' | 'createdAt'>;
 type ModuleInput = Pick<typeof modules.$inferInsert, 'title' | 'description'>;
 type LessonInput = Omit<typeof lessons.$inferInsert, 'id' | 'courseId' | 'order'>;
+type CollectionInput = Omit<typeof collections.$inferInsert, 'id' | 'createdAt'>;
+export type CollectionItemInput = ({ toolId: string } | { courseId: string }) & { note: string | null };
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -127,6 +129,16 @@ const courseFields = {
   publishedAt: (b: Record<string, unknown>) => optionalDate(b, 'publishedAt'),
 };
 
+const collectionFields = {
+  slug,
+  title: (b: Record<string, unknown>) => text(b, 'title'),
+  shortDescription: (b: Record<string, unknown>) => text(b, 'shortDescription'),
+  description: (b: Record<string, unknown>) => optionalText(b, 'description'),
+  coverImageUrl: (b: Record<string, unknown>) => optionalUrl(b, 'coverImageUrl'),
+  order: (b: Record<string, unknown>) => optionalInt(b, 'order') ?? 0,
+  publishedAt: (b: Record<string, unknown>) => optionalDate(b, 'publishedAt'),
+};
+
 const moduleFields = {
   title: (b: Record<string, unknown>) => text(b, 'title'),
   description: (b: Record<string, unknown>) => optionalText(b, 'description'),
@@ -150,6 +162,35 @@ export function parseCourse(raw: unknown): ParseResult<CourseInput>;
 export function parseCourse(raw: unknown, partial: true): ParseResult<Partial<CourseInput>>;
 export function parseCourse(raw: unknown, partial = false) {
   return parse(raw, partial, courseFields);
+}
+
+export function parseCollection(raw: unknown): ParseResult<CollectionInput>;
+export function parseCollection(raw: unknown, partial: true): ParseResult<Partial<CollectionInput>>;
+export function parseCollection(raw: unknown, partial = false) {
+  return parse(raw, partial, collectionFields);
+}
+
+// Al agregar un ítem se manda toolId o courseId (exactamente uno) y una nota opcional.
+export function parseCollectionItem(raw: unknown): ParseResult<CollectionItemInput> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, field: 'body' };
+  const body = raw as Record<string, unknown>;
+  try {
+    const note = optionalText(body, 'note');
+    const hasTool = body.toolId !== undefined && body.toolId !== null;
+    const hasCourse = body.courseId !== undefined && body.courseId !== null;
+    if (hasTool === hasCourse) return { ok: false, field: 'target' };
+    return {
+      ok: true,
+      value: hasTool ? { toolId: uuid(body, 'toolId'), note } : { courseId: uuid(body, 'courseId'), note },
+    };
+  } catch (err) {
+    if (err instanceof FieldError) return { ok: false, field: err.field };
+    throw err;
+  }
+}
+
+export function parseCollectionItemNote(raw: unknown): ParseResult<{ note: string | null }> {
+  return parse(raw, false, { note: (b: Record<string, unknown>) => optionalText(b, 'note') });
 }
 
 export function parseModule(raw: unknown): ParseResult<ModuleInput>;

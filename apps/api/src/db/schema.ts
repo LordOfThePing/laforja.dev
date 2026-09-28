@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -12,6 +13,7 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const subscriptionStatus = pgEnum('subscription_status', [
   'none',
@@ -212,5 +214,40 @@ export const toolComments = pgTable(
   (t) => [
     index('tool_comments_tool_idx').on(t.toolId, t.createdAt),
     index('tool_comments_created_idx').on(t.createdAt),
+  ],
+);
+
+// Rutas de aprendizaje: una secuencia curada de herramientas y cursos que ya existen.
+export const collections = pgTable('collections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  shortDescription: text('short_description').notNull(),
+  description: text('description'),
+  coverImageUrl: text('cover_image_url'),
+  order: integer('order').notNull().default(0),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const collectionItems = pgTable(
+  'collection_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    collectionId: uuid('collection_id')
+      .notNull()
+      .references(() => collections.id, { onDelete: 'cascade' }),
+    // Un ítem es una herramienta o un curso, nunca los dos: lo garantiza el check.
+    toolId: uuid('tool_id').references(() => tools.id, { onDelete: 'cascade' }),
+    courseId: uuid('course_id').references(() => courses.id, { onDelete: 'cascade' }),
+    // Por qué este paso va en la ruta: lo que la diferencia de ver el catálogo suelto.
+    note: text('note'),
+    order: integer('order').notNull().default(0),
+  },
+  (t) => [
+    check('collection_items_one_target', sql`num_nonnulls(${t.toolId}, ${t.courseId}) = 1`),
+    unique('collection_items_tool_uq').on(t.collectionId, t.toolId),
+    unique('collection_items_course_uq').on(t.collectionId, t.courseId),
+    index('collection_items_collection_idx').on(t.collectionId, t.order),
   ],
 );

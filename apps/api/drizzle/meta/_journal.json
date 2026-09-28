@@ -43,6 +43,13 @@
       "when": 1790608905649,
       "tag": "0005_tool_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790610169115,
+      "tag": "0006_collections",
+      "breakpoints": true
     }
   ]
 }

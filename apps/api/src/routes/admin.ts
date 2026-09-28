@@ -6,6 +6,7 @@ import { hasSubscriptionAccess } from '../lib/access.ts';
 import { isUuid, parseCategory, parseTool } from '../lib/admin-input.ts';
 import { monthKey } from '../lib/month.ts';
 import { adminBackupRoutes } from './admin-backups.ts';
+import { adminCollectionRoutes } from './admin-collections.ts';
 import { adminCourseRoutes } from './admin-courses.ts';
 import { adminMetricsRoutes } from './admin-metrics.ts';
 
@@ -39,6 +40,7 @@ export function adminRoutes(auth: AuthConfig, backupStateDir?: string) {
   const app = new Hono<AuthEnv>();
   app.use(requireAuth(auth), requireAdmin);
   app.route('/', adminCourseRoutes(db));
+  app.route('/', adminCollectionRoutes(db));
   app.route('/', adminBackupRoutes(backupStateDir));
   app.route('/', adminMetricsRoutes(db));
 

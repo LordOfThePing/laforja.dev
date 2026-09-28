@@ -8,6 +8,7 @@ import type { RateLimitRule } from './lib/rate-limit.ts';
 import type { AuthConfig } from './auth.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { certificatesRoutes } from './routes/certificates.ts';
+import { collectionsRoutes } from './routes/collections.ts';
 import { coursesRoutes } from './routes/courses.ts';
 import { meRoutes } from './routes/me.ts';
 import { subscriptionRoutes } from './routes/subscription.ts';
@@ -75,6 +76,7 @@ export function createApp({
     }
   });
   app.route('/api/tools', toolsRoutes(auth, limits.unlock, limits.comment));
+  app.route('/api/collections', collectionsRoutes(auth));
   app.route('/api/courses', coursesRoutes(auth, limits.progress));
   app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));

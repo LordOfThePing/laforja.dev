@@ -43,7 +43,7 @@ type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 // Renumera 1..n en el orden actual con `id` movido un lugar. Renumerar todo (en vez de
 // swapear dos valores) arregla de paso empates o huecos que hayan quedado de antes.
-function reorder(ids: string[], id: string, direction: 'up' | 'down'): string[] | null {
+export function reorder(ids: string[], id: string, direction: 'up' | 'down'): string[] | null {
   const i = ids.indexOf(id);
   const j = direction === 'up' ? i - 1 : i + 1;
   if (i === -1 || j < 0 || j >= ids.length) return null;
