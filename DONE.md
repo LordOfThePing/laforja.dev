@@ -46,3 +46,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-26 — Certificado de completado en PDF (emisión, `/certificados/:id` pública, PDF con la serif de la marca) — d37df94, abd1502
 - 2026-09-26 — Admin de cursos en `/admin` (cursos, módulos, lecciones, orden y preview) — 57f0c60, 1609f1c, 3251f9c
 - 2026-09-26 — Fix: `toolCount` de categorías en el admin daba siempre 0 — 8a777f2
+- 2026-09-27 — Backups en el panel admin (estado, copia al bucket, dumps, config, «Hacer backup ahora») + log de arranque del servicio backup — 49bbbbd, 5b3d1db (la API quedó en ese commit), 4c1643c
