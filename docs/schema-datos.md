@@ -129,6 +129,25 @@ Los cursos **no** usan el cupo de unlocks: la suscripción abre todo (roadmap v2
 Una lección se ve si el curso es `free`, si la lección es `is_free_preview`, o si el usuario
 tiene suscripción vigente / es admin. El temario (títulos, duraciones) es siempre público.
 
+## Tablas v3 (comunidad)
+
+### `tool_comments`
+Planos, sin respuestas anidadas.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `tool_id` | uuid fk → tools | `on delete cascade` |
+| `user_id` | uuid fk → users | `on delete cascade` |
+| `body` | text | 1–2000 caracteres, recortado |
+| `created_at` | timestamptz | |
+
+**Índices** `(tool_id, created_at)` para leer por herramienta y `(created_at)` para la moderación.
+
+**Acceso**: lee quien puede ver la herramienta (free, desbloqueada o con suscripción). Comenta
+solo quien tiene suscripción vigente o es admin. Borra el autor o un admin. Al público se le
+muestra el primer nombre + inicial del último apellido; el email solo aparece en `/admin/comentarios`.
+
 ## Lógica de "2 gratis por mes"
 
 **Insight importante**: no necesitamos cron. El reset mensual es automático porque `month_key` se deriva de la fecha actual.

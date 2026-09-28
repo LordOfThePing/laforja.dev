@@ -29,7 +29,7 @@ reales. El detalle vive en `TODO.md`.
 
 ## v3 — Comunidad y creación
 
-- [ ] Comentarios en herramientas (solo suscriptores)
+- [x] Comentarios en herramientas (solo suscriptores; moderación en `/admin/comentarios`)
 - [ ] Colecciones / rutas de aprendizaje curadas
 - [x] Admin UI para crear contenido sin tocar código (adelantado a v1: `/admin`)
 - [ ] Newsletter integrada (probablemente Resend)
