@@ -114,9 +114,16 @@ un `schedule` a quien tocó el cron por última vez.
 ## Backups de Postgres
 
 El servicio `backup` del compose (imagen en `ops/backup/`) hace un `pg_dump`
-en formato custom **una vez por día**: cada hora se fija si hay un dump de las
+en formato custom **una vez por día**: cada minuto se fija si hay un dump de las
 últimas ~23 h y si no, lo hace. Un deploy o un reinicio no saltea ni duplica
-días, y el primer backup sale apenas el servicio arranca.
+días, y el primer backup sale apenas el servicio arranca. Al arrancar loguea si
+ya había uno reciente y si la copia fuera del VPS está activada.
+
+En el panel, **Admin → Backups** muestra el último backup (y el error si falló),
+si se copió al bucket, los dumps del VPS y la configuración, y tiene un botón
+«Hacer backup ahora». El servicio deja ese estado en el volumen `backup_state`,
+que la API monta sin ver los dumps ni las credenciales; el botón deja un archivo
+`request` que el servicio toma en menos de un minuto.
 
 - Los dumps quedan en el volumen `pg_backups` (`/backups/laforja-<fecha UTC>.dump`)
   y se borran a los `BACKUP_KEEP_DAYS` días (default 14)

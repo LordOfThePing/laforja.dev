@@ -1,0 +1,188 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import { errorMessage, getBackupStatus, mutate, requireAdmin } from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const result = await mutate(auth.user, '/api/admin/backups/run', 'POST');
+  if (result.ok) return Astro.redirect('/admin/backups?ok=pedido', 303);
+  error = errorMessage(result);
+  Astro.response.status = 400;
+}
+
+const status = await getBackupStatus(auth.user);
+const flash = Astro.url.searchParams.get('ok');
+
+const dateTime = new Intl.DateTimeFormat('es-AR', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Argentina/Buenos_Aires',
+});
+const when = (iso: string) => dateTime.format(new Date(iso));
+
+function bytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  return `${(n / 1024 ** 3).toFixed(2)} GB`;
+}
+
+const stageLabel = { dump: 'falló el dump de la base', offsite: 'falló la copia al bucket', done: '' };
+const offsiteLabel = { off: 'Sin copia afuera', ok: 'Copiado al bucket', failed: 'No se copió al bucket' };
+---
+
+<Admin title="Backups">
+  <div class="admin-bar head">
+    <div>
+      <h1>Backups</h1>
+      <p class="dim lede">Un dump diario de la base, guardado en el VPS y copiado al bucket si está configurado.</p>
+    </div>
+    {status.available && (
+      <form method="post">
+        <button type="submit" class="btn btn--primary" disabled={status.requested || !status.alive}>
+          {status.requested ? 'Backup pedido…' : 'Hacer backup ahora'}
+        </button>
+      </form>
+    )}
+  </div>
+
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+  {flash === 'pedido' && (
+    <p class="admin-notice admin-notice--ok" role="status">
+      Pedido. El servicio lo toma en menos de un minuto; recargá para ver el resultado.
+    </p>
+  )}
+
+  {!status.available ? (
+    <p class="admin-notice">
+      La API no tiene acceso al estado de los backups (falta <code>BACKUP_STATE_DIR</code>). En el VPS lo pone
+      el <code>docker-compose.yml</code>; en local es lo esperable.
+    </p>
+  ) : (
+    <>
+      {!status.alive && (
+        <p class="admin-notice" role="alert">
+          El servicio de backup no está respondiendo
+          {status.lastSeenAt ? ` desde el ${when(status.lastSeenAt)}` : ' (todavía no dio señales)'}. Revisalo
+          con <code>make logs SERVICE=backup</code>.
+        </p>
+      )}
+
+      <section class="cards" aria-label="Estado">
+        <div class="card">
+          <span class="card__l">Último backup</span>
+          {status.lastRun ? (
+            <>
+              <span class:list={['card__v', status.lastRun.ok ? 'ok' : 'bad']}>
+                {status.lastRun.ok ? 'OK' : 'Falló'}
+              </span>
+              <span class="dim">{when(status.lastRun.finishedAt)}{!status.lastRun.ok && ` · ${stageLabel[status.lastRun.stage]}`}</span>
+            </>
+          ) : (
+            <>
+              <span class="card__v">—</span>
+              <span class="dim">Todavía no hay uno registrado desde el panel. Hacé uno ahora para verlo.</span>
+            </>
+          )}
+        </div>
+        <div class="card">
+          <span class="card__l">Copia fuera del VPS</span>
+          {status.lastRun && status.lastRun.stage !== 'dump' ? (
+            <span class:list={['card__v', { ok: status.lastRun.offsite === 'ok', bad: status.lastRun.offsite === 'failed' }]}>
+              {offsiteLabel[status.lastRun.offsite]}
+            </span>
+          ) : (
+            <span class="card__v">—</span>
+          )}
+          <span class="dim mono">{status.config?.bucket ? `${status.config.provider || 's3'} · ${status.config.bucket}` : 'sin bucket'}</span>
+        </div>
+        <div class="card">
+          <span class="card__l">En el VPS</span>
+          <span class="card__v">{status.dumps.length}</span>
+          <span class="dim">
+            dumps · {bytes(status.dumps.reduce((n, d) => n + d.size, 0))}
+            {status.config && ` · se guardan ${status.config.keepDays} días`}
+          </span>
+        </div>
+      </section>
+
+      {status.lastError && (
+        <details class="err" open>
+          <summary>Error de la última corrida</summary>
+          <pre class="mono">{status.lastError}</pre>
+        </details>
+      )}
+
+      <h2 class="sub">Dumps en el VPS</h2>
+      {status.dumps.length === 0 ? (
+        <p class="dim">No hay dumps todavía.</p>
+      ) : (
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>Archivo</th><th>Fecha</th><th>Tamaño</th></tr>
+            </thead>
+            <tbody>
+              {status.dumps.map((d) => (
+                <tr>
+                  <td class="mono">{d.name}</td>
+                  <td class="dim">{when(d.modifiedAt)}</td>
+                  <td class="dim">{bytes(d.size)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2 class="sub">Configuración</h2>
+      <p class="dim">
+        Se cambia en el <code>.env</code> del VPS (<code>BACKUP_KEEP_DAYS</code>, <code>BACKUP_S3_*</code>) y se
+        aplica con <code>make env-push</code> + <code>make up</code>. Las credenciales nunca llegan al panel. Para
+        restaurar, ver «Backups de Postgres» en <code>docs/despliegue-vps.md</code>.
+      </p>
+    </>
+  )}
+</Admin>
+
+<style>
+  .head { margin-top: 0; align-items: flex-end; }
+  .lede { margin-top: 8px; }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-block: 8px 24px;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+  }
+  .card__l { font-size: 13px; color: var(--ink-dim); }
+  .card__v { font-family: var(--font-display); font-size: 28px; line-height: 1.1; }
+  .card .dim { font-size: 13px; overflow-wrap: anywhere; }
+  .ok { color: var(--spark); }
+  .bad { color: #ff8a7a; }
+  .err {
+    margin-bottom: 24px;
+    padding: 12px 16px;
+    border: 1px solid rgba(255,138,122,0.35);
+    border-radius: var(--radius);
+  }
+  .err summary { cursor: pointer; color: #ff8a7a; }
+  .err pre { margin-top: 10px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .sub { margin-block: 32px 12px; }
+  code { font-family: var(--font-mono); font-size: 0.92em; }
+</style>

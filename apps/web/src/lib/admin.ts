@@ -89,6 +89,29 @@ export type AdminStats = {
   tools: { total: number; published: number };
 };
 
+export type BackupRun = {
+  startedAt: string;
+  finishedAt: string;
+  ok: boolean;
+  stage: 'dump' | 'offsite' | 'done';
+  file: string;
+  size: number;
+  offsite: 'off' | 'ok' | 'failed';
+};
+
+export type BackupStatus =
+  | { available: false }
+  | {
+      available: true;
+      alive: boolean;
+      lastSeenAt: string | null;
+      requested: boolean;
+      config: { keepDays: number; bucket: string; provider: string } | null;
+      lastRun: BackupRun | null;
+      lastError: string | null;
+      dumps: { name: string; size: number; modifiedAt: string }[];
+    };
+
 type User = Session['user'];
 
 // Quien no es admin recibe un 404 igual que la API: el panel no se anuncia.
@@ -143,6 +166,8 @@ export const getAdminLesson = (user: User, id: string) =>
 
 export const listCategories = (user: User) =>
   call<{ categories: AdminCategory[] }>('/api/admin/categories', user).then((r) => r.categories);
+
+export const getBackupStatus = (user: User) => call<BackupStatus>('/api/admin/backups', user);
 
 export const listUsers = (user: User) =>
   call<{ users: AdminUser[] }>('/api/admin/users', user).then((r) => r.users);
@@ -273,6 +298,8 @@ export function errorMessage(result: { error: string; field?: string }): string 
     category_in_use: 'La categoría tiene herramientas: movelas o borralas antes.',
     cannot_demote_self: 'No podés sacarte el rol de admin a vos mismo.',
     not_found: 'Ya no existe.',
+    backups_unavailable: 'Los backups no se pueden manejar desde este entorno.',
+    backup_state_unwritable: 'El servicio de backup todavía no preparó su carpeta. Probá en un minuto.',
   };
   return messages[result.error] ?? 'Algo salió mal. Probá de nuevo.';
 }
