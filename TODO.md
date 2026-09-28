@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Analytics livianas y respetuosas (Umami self-hosted) — en curso por @claude — el roadmap v3 pide métricas de desbloqueos; esto cubre tráfico
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
 
 ## Pendiente
@@ -17,7 +18,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### SEO y crecimiento
 
-- Analytics livianas y respetuosas (Plausible/Umami self-hosted) — pendiente — el roadmap v3 pide métricas de desbloqueos; esto cubre tráfico
 - Migrar a `laforja.dev` (hostnames del tunnel, `FRONTEND_URL`, callback de Google, webhook de MP, redirect 301, `site` en `apps/web/astro.config.mjs`: de ahí salen canonical, sitemap y OG; variable `SITE_URL` del workflow Uptime) — pendiente — ver `docs/despliegue-vps.md`
 
 ### v2 — Cursos (ver `docs/roadmap.md`)
