@@ -41,7 +41,12 @@ services:
   api:
     image: laforja-api
     restart: unless-stopped
-    environment: *api-env
+    environment:
+      <<: *api-env
+      BACKUP_STATE_DIR: /backup-state
+    # Solo el estado que deja el servicio backup (no los dumps): lo lee el panel admin.
+    volumes:
+      - backup_state:/backup-state
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -85,8 +90,10 @@ services:
       RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
       # Sin esto rclone intenta crear el bucket y falla con tokens que solo tienen permiso de objetos.
       RCLONE_CONFIG_OFFSITE_NO_CHECK_BUCKET: "true"
+      BACKUP_STATE_DIR: /state
     volumes:
       - pg_backups:/backups
+      - backup_state:/state
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,6 +118,7 @@ services:
 volumes:
   pg_data:
   pg_backups:
+  backup_state:
 
 networks:
   internal:
