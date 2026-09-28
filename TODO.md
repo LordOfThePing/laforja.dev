@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Colecciones / rutas de aprendizaje curadas — en curso por @claude
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
 
 ## Pendiente
@@ -25,5 +26,4 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### v3 — Comunidad
 
-- Colecciones / rutas de aprendizaje curadas — pendiente
 - Newsletter integrada (Resend) — pendiente
