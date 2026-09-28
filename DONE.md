@@ -49,3 +49,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-27 — Backups en el panel admin (estado, copia al bucket, dumps, config, «Hacer backup ahora») + log de arranque del servicio backup — 49bbbbd, 5b3d1db (la API quedó en ese commit), 4c1643c
 - 2026-09-27 — Menú desplegable del nav en mobile (hamburguesa debajo de 780px) — 7407351
 - 2026-09-28 — Analytics livianas con Umami self-hosted (pageviews server-side, sin cookies) — fb9e382, 64f45f7
+- 2026-09-28 — `laforja.dev`: hostnames del tunnel, callback de Google OAuth y webhook de MP (hecho por el usuario)
