@@ -148,6 +148,52 @@ Planos, sin respuestas anidadas.
 solo quien tiene suscripción vigente o es admin. Borra el autor o un admin. Al público se le
 muestra el primer nombre + inicial del último apellido; el email solo aparece en `/admin/comentarios`.
 
+### `collections`
+Rutas de aprendizaje: una secuencia curada de herramientas y cursos que ya existen (`/rutas`).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `slug` | text unique | URLs `/rutas/:slug` |
+| `title` | text | |
+| `short_description` | text | para cards y SEO |
+| `description` | text nullable | para quién es y a dónde llega |
+| `cover_image_url` | text nullable | |
+| `order` | int | orden en `/rutas` |
+| `published_at` | timestamptz nullable | `null` o futura = no publicada |
+| `created_at` | timestamptz | |
+
+### `collection_items`
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid pk | |
+| `collection_id` | uuid fk → collections | `on delete cascade` |
+| `tool_id` | uuid fk → tools nullable | `on delete cascade` |
+| `course_id` | uuid fk → courses nullable | `on delete cascade` |
+| `note` | text nullable | por qué va este paso en la ruta |
+| `order` | int | dentro de la ruta |
+
+**Check** `num_nonnulls(tool_id, course_id) = 1`: cada paso es una herramienta o un curso.
+**Unique** `(collection_id, tool_id)` y `(collection_id, course_id)`: no se repite un paso.
+
+**Visibilidad**: los pasos cuya herramienta o curso no está publicado no se muestran, y una ruta
+publicada sin ningún paso visible no aparece en `/rutas`. Cada paso respeta su propio acceso
+(candado de la herramienta, tier del curso); el progreso de la ruta cuenta cursos terminados.
+
+## Métricas
+
+### `user_activity`
+Un registro por usuario y mes en que usó el sitio logueado; es la base de la retención en
+`/admin/metricas`. Se escribe al autenticar (una vez por mes y proceso, con cache en memoria).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `user_id` | uuid fk → users | `on delete cascade` |
+| `month_key` | text | `YYYY-MM` en hora de Argentina, como `unlocks` |
+| `first_seen_at` | timestamptz | |
+
+**PK** `(user_id, month_key)`. La migración la completó hacia atrás con altas, desbloqueos y progreso.
+
 ## Lógica de "2 gratis por mes"
 
 **Insight importante**: no necesitamos cron. El reset mensual es automático porque `month_key` se deriva de la fecha actual.

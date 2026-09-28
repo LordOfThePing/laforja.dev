@@ -30,10 +30,10 @@ reales. El detalle vive en `TODO.md`.
 ## v3 — Comunidad y creación
 
 - [x] Comentarios en herramientas (solo suscriptores; moderación en `/admin/comentarios`)
-- [ ] Colecciones / rutas de aprendizaje curadas
+- [x] Colecciones / rutas de aprendizaje curadas (`/rutas`; se arman en `/admin/rutas`)
 - [x] Admin UI para crear contenido sin tocar código (adelantado a v1: `/admin`)
 - [ ] Newsletter integrada (probablemente Resend)
-- [ ] Analytics propias: qué se desbloquea más, retención
+- [x] Analytics propias: qué se desbloquea más, retención (`/admin/metricas`)
 
 ## Fuera de scope de v1 (a propósito)
 
