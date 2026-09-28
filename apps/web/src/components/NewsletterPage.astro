@@ -1,0 +1,56 @@
+---
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+
+interface Props {
+  title: string;
+  eyebrow: string;
+  heading: string;
+}
+
+const { title, eyebrow, heading } = Astro.props;
+---
+
+<Base title={`${title} — La Forja`}>
+  <meta slot="head" name="robots" content="noindex" />
+  <Nav />
+  <main class="nl container">
+    <section class="nl__card">
+      <div class="eyebrow">{eyebrow}</div>
+      <h1 class="nl__title display">{heading}</h1>
+      <slot />
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .nl { max-width: 640px; padding-block: clamp(60px, 10vw, 120px); }
+  .nl__card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: clamp(28px, 5vw, 44px);
+    border: 1px solid rgba(255,176,103,0.3);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+    box-shadow: var(--shadow-glow);
+  }
+  .nl__title { font-size: clamp(32px, 6vw, 48px); line-height: 1.05; }
+  .nl__card :global(p) { color: var(--ink-dim); }
+  .nl__card :global(strong) { color: var(--ink); }
+  .nl__card :global(.nl__error) { color: var(--ember-300); font-size: 14px; }
+  .nl__card :global(.nl__form) { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+  .nl__card :global(.nl__form input[type='email']) {
+    flex: 1 1 240px;
+    min-width: 0;
+    padding: 12px 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--ink);
+    font: inherit;
+  }
+  .nl__card :global(.nl__form input[type='email']:focus-visible) { outline: 2px solid var(--ember-500); outline-offset: 1px; }
+</style>

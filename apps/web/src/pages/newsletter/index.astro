@@ -1,0 +1,60 @@
+---
+import NewsletterPage from '~/components/NewsletterPage.astro';
+import { type NewsletterResult, newsletterEnabled, subscribeNewsletter } from '~/lib/api';
+
+let result: NewsletterResult | null = null;
+let email = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const raw = form.get('email');
+  email = typeof raw === 'string' ? raw.trim() : '';
+  let ip: string | null = Astro.request.headers.get('cf-connecting-ip');
+  try {
+    ip ??= Astro.clientAddress;
+  } catch {
+    // Sin adapter que exponga la IP (no pasa con @astrojs/node, pero no vale la pena romper por eso).
+  }
+  result = await subscribeNewsletter(email, ip);
+  if (!result.ok) {
+    Astro.response.status = { invalid_email: 400, not_found: 404, rate_limited: 429, newsletter_disabled: 503, mailer_error: 502 }[
+      result.reason
+    ];
+  }
+}
+
+const enabled = result?.ok || (await newsletterEnabled());
+const errors = {
+  invalid_email: 'Revisá la dirección: no parece un email válido.',
+  rate_limited: 'Demasiados intentos seguidos. Esperá unos minutos y probá de nuevo.',
+  newsletter_disabled: 'La newsletter todavía no está abierta.',
+  mailer_error: 'No pudimos mandar el mail de confirmación. Probá de nuevo en un rato.',
+  not_found: 'Algo salió mal. Probá de nuevo en un rato.',
+} as const;
+---
+
+{result?.ok ? (
+  <NewsletterPage title="Revisá tu mail" eyebrow="Newsletter" heading="Revisá tu mail.">
+    <p>
+      Te mandamos un link a <strong>{email.toLowerCase()}</strong> para confirmar. Hasta que no lo
+      toques no te llega nada. Si no lo ves en unos minutos, mirá en spam o promociones.
+    </p>
+  </NewsletterPage>
+) : (
+  <NewsletterPage title="Newsletter" eyebrow="Newsletter" heading="Lo nuevo de La Forja, en tu mail.">
+    <p>
+      Herramientas y cursos nuevos, y lo que vamos aprendiendo trabajando con agentes. Pocas veces
+      por mes, sin relleno. Te das de baja con un click.
+    </p>
+    {enabled ? (
+      <form method="post" class="nl__form">
+        <label class="sr-only" for="nl-email">Tu email</label>
+        <input id="nl-email" type="email" name="email" required autocomplete="email" placeholder="vos@ejemplo.com" value={email} />
+        <button type="submit" class="btn btn--primary">Suscribirme</button>
+      </form>
+    ) : (
+      <p>Todavía no está abierta. Volvé en unos días.</p>
+    )}
+    {result && !result.ok && <p class="nl__error" role="alert">{errors[result.reason]}</p>}
+  </NewsletterPage>
+)}

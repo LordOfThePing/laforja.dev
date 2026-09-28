@@ -1,0 +1,35 @@
+---
+import NewsletterPage from '~/components/NewsletterPage.astro';
+import { type NewsletterResult, unsubscribeNewsletter } from '~/lib/api';
+
+// Igual que confirmar: la baja es con un click en la página, no con el GET del link. Los clientes
+// de correo que soportan la baja en un click van directo a la api (List-Unsubscribe).
+let token = Astro.url.searchParams.get('token') ?? '';
+let result: NewsletterResult | null = null;
+
+if (Astro.request.method === 'POST') {
+  const raw = (await Astro.request.formData()).get('token');
+  token = typeof raw === 'string' ? raw : '';
+  result = await unsubscribeNewsletter(token);
+  if (!result.ok) Astro.response.status = result.reason === 'not_found' ? 404 : 502;
+}
+---
+
+{result?.ok ? (
+  <NewsletterPage title="Baja confirmada" eyebrow="Newsletter" heading="Listo, no te llega más.">
+    <p>Dimos de baja <strong>{result.email}</strong>. Si fue sin querer, podés volver a anotarte cuando quieras.</p>
+    <div><a href="/newsletter" class="btn btn--ghost">Volver a suscribirme</a></div>
+  </NewsletterPage>
+) : result || !token ? (
+  <NewsletterPage title="Link inválido" eyebrow="Newsletter" heading="Este link no es válido.">
+    <p>Usá el link de «Darme de baja» que viene al pie de cada newsletter.</p>
+  </NewsletterPage>
+) : (
+  <NewsletterPage title="Darte de baja" eyebrow="Newsletter" heading="¿Te das de baja?">
+    <p>Dejás de recibir la newsletter de La Forja. Tu cuenta, si tenés, no cambia.</p>
+    <form method="post" class="nl__form">
+      <input type="hidden" name="token" value={token} />
+      <button type="submit" class="btn btn--primary">Darme de baja</button>
+    </form>
+  </NewsletterPage>
+)}

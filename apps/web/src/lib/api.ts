@@ -58,10 +58,14 @@ function apiUrl(path: string): string {
 export async function call<T>(
   path: string,
   user: Session['user'] | undefined,
-  init: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; json?: unknown } = {},
+  init: {
+    method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    json?: unknown;
+    headers?: Record<string, string>;
+  } = {},
 ): Promise<T> {
   const token = await signApiToken(user);
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...init.headers };
   if (token) headers.authorization = `Bearer ${token}`;
   if (init.json !== undefined) headers['content-type'] = 'application/json';
   const res = await fetch(apiUrl(path), {
@@ -177,6 +181,69 @@ export function deleteToolComment(user: Session['user'], slug: string, id: strin
       method: 'DELETE',
     }),
   );
+}
+
+// El footer lo consulta en cada página: se cachea en memoria para no pegarle a la api siempre.
+// Si la api no contesta se asume apagada, así no se muestra un form que va a fallar.
+const NEWSLETTER_STATUS_TTL_MS = 5 * 60_000;
+let newsletterStatus: { enabled: boolean; at: number } | null = null;
+
+export async function newsletterEnabled(): Promise<boolean> {
+  if (newsletterStatus && Date.now() - newsletterStatus.at < NEWSLETTER_STATUS_TTL_MS) {
+    return newsletterStatus.enabled;
+  }
+  let enabled = false;
+  try {
+    ({ enabled } = await call<{ enabled: boolean }>('/api/newsletter/status', undefined));
+  } catch (err) {
+    console.error('No se pudo consultar el estado de la newsletter', err);
+  }
+  newsletterStatus = { enabled, at: Date.now() };
+  return enabled;
+}
+
+export type NewsletterResult =
+  | { ok: true; email?: string }
+  | { ok: false; reason: 'invalid_email' | 'not_found' | 'rate_limited' | 'newsletter_disabled' | 'mailer_error' };
+
+async function newsletterCall(run: () => Promise<{ email?: string }>): Promise<NewsletterResult> {
+  try {
+    const { email } = await run();
+    return { ok: true, email };
+  } catch (err) {
+    if (
+      err instanceof ApiError &&
+      (err.code === 'invalid_email' ||
+        err.code === 'not_found' ||
+        err.code === 'rate_limited' ||
+        err.code === 'newsletter_disabled' ||
+        err.code === 'mailer_error')
+    ) {
+      return { ok: false, reason: err.code };
+    }
+    throw err;
+  }
+}
+
+// La web le habla a la api por la red interna: sin reenviar la IP del visitante, el rate limit
+// por IP de la api vería a todos como el contenedor de la web. Cloudflare pisa cf-connecting-ip
+// en lo que entra por el tunnel, así que de afuera no se puede falsear.
+export function subscribeNewsletter(email: string, clientIp: string | null): Promise<NewsletterResult> {
+  return newsletterCall(() =>
+    call('/api/newsletter/subscribe', undefined, {
+      method: 'POST',
+      json: { email },
+      headers: clientIp ? { 'cf-connecting-ip': clientIp } : {},
+    }),
+  );
+}
+
+export function confirmNewsletter(token: string): Promise<NewsletterResult> {
+  return newsletterCall(() => call('/api/newsletter/confirm', undefined, { method: 'POST', json: { token } }));
+}
+
+export function unsubscribeNewsletter(token: string): Promise<NewsletterResult> {
+  return newsletterCall(() => call('/api/newsletter/unsubscribe', undefined, { method: 'POST', json: { token } }));
 }
 
 export async function getMe(user: Session['user'] | undefined): Promise<Me | null> {

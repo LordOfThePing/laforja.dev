@@ -1,0 +1,36 @@
+---
+import NewsletterPage from '~/components/NewsletterPage.astro';
+import { type NewsletterResult, confirmNewsletter } from '~/lib/api';
+
+// Confirmar pide un click en la página y no pasa con el GET del link: los antivirus de correo
+// abren los links de los mails solos y confirmarían direcciones que nadie pidió.
+let token = Astro.url.searchParams.get('token') ?? '';
+let result: NewsletterResult | null = null;
+
+if (Astro.request.method === 'POST') {
+  const raw = (await Astro.request.formData()).get('token');
+  token = typeof raw === 'string' ? raw : '';
+  result = await confirmNewsletter(token);
+  if (!result.ok) Astro.response.status = result.reason === 'not_found' ? 404 : 502;
+}
+---
+
+{result?.ok ? (
+  <NewsletterPage title="Suscripción confirmada" eyebrow="Newsletter" heading="Listo, ya estás adentro.">
+    <p>Vas a recibir la newsletter en <strong>{result.email}</strong>. Cada envío trae un link para darte de baja.</p>
+    <div><a href="/" class="btn btn--ghost">Ir al inicio</a></div>
+  </NewsletterPage>
+) : result ? (
+  <NewsletterPage title="Link vencido" eyebrow="Newsletter" heading="Este link ya no sirve.">
+    <p>Puede que ya lo hayas usado o que te hayas dado de baja después. Si querés recibirla, anotate de nuevo.</p>
+    <div><a href="/newsletter" class="btn btn--primary">Suscribirme</a></div>
+  </NewsletterPage>
+) : (
+  <NewsletterPage title="Confirmá tu suscripción" eyebrow="Newsletter" heading="Confirmá tu suscripción.">
+    <p>Un click más y empezás a recibir lo nuevo de La Forja.</p>
+    <form method="post" class="nl__form">
+      <input type="hidden" name="token" value={token} />
+      <button type="submit" class="btn btn--primary">Confirmar</button>
+    </form>
+  </NewsletterPage>
+)}

@@ -1,5 +1,14 @@
 ---
+import { newsletterEnabled } from '~/lib/api';
+
+interface Props {
+  // La 500 lo apaga: si lo que se cayó es la api, el footer no tiene que esperar su timeout.
+  newsletter?: boolean;
+}
+
+const { newsletter = true } = Astro.props;
 const year = new Date().getFullYear();
+const showNewsletter = newsletter && !Astro.url.pathname.startsWith('/newsletter') && (await newsletterEnabled());
 ---
 
 <footer id="faq" class="footer">
@@ -22,6 +31,15 @@ const year = new Date().getFullYear();
           Herramientas curadas para trabajar con agentes.
           Hecho por <a href="https://flynnpedroa.engineer">Flynn Pedroa</a>.
         </p>
+        {showNewsletter && (
+          <form method="post" action="/newsletter" class="footer__nl">
+            <label for="footer-nl-email" class="footer__col-title">Newsletter</label>
+            <div class="footer__nl-row">
+              <input id="footer-nl-email" type="email" name="email" required autocomplete="email" placeholder="vos@ejemplo.com" />
+              <button type="submit" class="btn btn--ghost">Suscribirme</button>
+            </div>
+          </form>
+        )}
       </div>
 
       <div class="footer__col">
@@ -85,6 +103,22 @@ const year = new Date().getFullYear();
   .footer__wordmark { font-size: 28px; letter-spacing: -0.01em; }
   .footer__tag { color: var(--ink-dim); font-size: 14px; }
   .footer__tag a { color: var(--ember-300); text-decoration: underline; text-decoration-color: rgba(255,176,103,0.3); }
+
+  .footer__nl { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .footer__nl-row { display: flex; gap: 8px; }
+  .footer__nl input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--bg-elev);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+  }
+  .footer__nl input:focus-visible { outline: 2px solid var(--ember-500); outline-offset: 1px; }
+  .footer__nl .btn { padding: 10px 16px; font-size: 14px; }
 
   .footer__col { display: flex; flex-direction: column; gap: 12px; }
   .footer__col-title {
