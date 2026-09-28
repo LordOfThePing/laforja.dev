@@ -229,6 +229,15 @@ export type AdminComment = {
 export const listComments = (user: User) =>
   call<{ comments: AdminComment[] }>('/api/admin/comments', user).then((r) => r.comments);
 
+export type AdminNewsletter = {
+  enabled: boolean;
+  counts: { confirmed: number; pending: number; unsubscribed: number };
+  subscribers: { email: string; status: 'pending' | 'confirmed' | 'unsubscribed'; createdAt: string; confirmedAt: string | null }[];
+  issues: { id: string; subject: string; recipientCount: number; sentAt: string }[];
+};
+
+export const getNewsletterAdmin = (user: User) => call<AdminNewsletter>('/api/admin/newsletter', user);
+
 export type MutationResult<T = unknown> = { ok: true; value: T } | { ok: false; error: string; field?: string };
 
 // Los errores esperables (validación, slug repetido, en uso) vuelven como valor para
@@ -371,6 +380,8 @@ const fieldLabels: Record<string, string> = {
   toolId: 'la herramienta',
   courseId: 'el curso',
   note: 'la nota',
+  subject: 'el asunto',
+  body: 'el texto',
 };
 
 export function errorMessage(result: { error: string; field?: string }): string {
@@ -385,6 +396,9 @@ export function errorMessage(result: { error: string; field?: string }): string 
     item_taken: 'Eso ya está en la ruta.',
     backups_unavailable: 'Los backups no se pueden manejar desde este entorno.',
     backup_state_unwritable: 'El servicio de backup todavía no preparó su carpeta. Probá en un minuto.',
+    newsletter_disabled: 'La newsletter está apagada: falta RESEND_API_KEY en la api.',
+    no_recipients: 'No hay suscriptores confirmados todavía.',
+    mailer_error: 'Resend rechazó el envío. Revisá la key y el dominio verificado.',
   };
   return messages[result.error] ?? 'Algo salió mal. Probá de nuevo.';
 }

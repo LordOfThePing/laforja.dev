@@ -1,0 +1,143 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import { formatDate } from '~/lib/api';
+import { errorMessage, getNewsletterAdmin, mutate, requireAdmin } from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let error: string | null = null;
+let notice: string | null = null;
+let subject = '';
+let body = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action');
+  subject = String(form.get('subject') ?? '');
+  body = String(form.get('body') ?? '');
+  const test = action === 'test';
+
+  if (!test && form.get('confirm') !== 'on') {
+    error = 'Tildá la confirmación antes de mandar a todos.';
+    Astro.response.status = 400;
+  } else {
+    const result = await mutate<{ sent: number }>(auth.user, '/api/admin/newsletter/issues', 'POST', {
+      subject,
+      body,
+      test,
+    });
+    if (result.ok && !test) return Astro.redirect('/admin/newsletter?enviado=' + result.value.sent, 303);
+    if (result.ok) {
+      notice = `Te mandamos la prueba a ${auth.me.user.email}.`;
+    } else {
+      error = errorMessage(result);
+      Astro.response.status = 400;
+    }
+  }
+}
+
+const data = await getNewsletterAdmin(auth.user);
+const sentParam = Astro.url.searchParams.get('enviado');
+if (sentParam && !notice) notice = `Newsletter enviada a ${suscriptores(Number(sentParam))}.`;
+
+function suscriptores(n: number) {
+  return n === 1 ? '1 suscriptor' : `${n} suscriptores`;
+}
+
+const statusLabel = { confirmed: 'Confirmado', pending: 'Pendiente', unsubscribed: 'De baja' } as const;
+---
+
+<Admin title="Newsletter">
+  <h1>Newsletter</h1>
+  {data.enabled ? (
+    <p class="dim lede">
+      Doble opt-in: solo reciben los <strong>confirmados</strong>. Cada envío lleva su link de baja y
+      el header para darse de baja en un click desde Gmail y compañía.
+    </p>
+  ) : (
+    <p class="admin-notice" role="status">
+      Está apagada: falta <code>RESEND_API_KEY</code> en la api (y verificar el dominio del remitente en
+      Resend). Mientras tanto no se muestra el form en el sitio. Pasos en <code>docs/despliegue-vps.md</code>.
+    </p>
+  )}
+
+  <dl class="counts">
+    <div><dt>Confirmados</dt><dd>{data.counts.confirmed}</dd></div>
+    <div><dt>Pendientes</dt><dd>{data.counts.pending}</dd></div>
+    <div><dt>De baja</dt><dd>{data.counts.unsubscribed}</dd></div>
+  </dl>
+
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+  {notice && <p class="admin-ok" role="status">{notice}</p>}
+
+  {data.enabled && (
+    <form method="post" class="admin-form compose">
+      <h2>Nuevo envío</h2>
+      <label class="field">
+        <span>Asunto</span>
+        <input name="subject" required maxlength="150" value={subject} />
+      </label>
+      <label class="field">
+        <span>Texto</span>
+        <textarea name="body" required maxlength="20000" rows="12">{body}</textarea>
+        <small>Texto plano. Separá párrafos con una línea en blanco; los links se activan solos.</small>
+      </label>
+      <label class="field field--check">
+        <input type="checkbox" name="confirm" />
+        <span>Confirmo mandarlo a {suscriptores(data.counts.confirmed)}</span>
+      </label>
+      <div class="admin-actions">
+        <button type="submit" name="action" value="test" class="btn btn--ghost">Mandarme una prueba</button>
+        <button type="submit" name="action" value="send" class="btn btn--primary">Enviar a todos</button>
+      </div>
+    </form>
+  )}
+
+  <h2>Envíos</h2>
+  {data.issues.length === 0 ? (
+    <p class="dim">Todavía no se mandó ninguno.</p>
+  ) : (
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Asunto</th><th>Destinatarios</th><th>Fecha</th></tr></thead>
+        <tbody>
+          {data.issues.map((i) => (
+            <tr><td>{i.subject}</td><td>{i.recipientCount}</td><td class="dim">{formatDate(i.sentAt)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <h2>Suscriptores</h2>
+  {data.subscribers.length === 0 ? (
+    <p class="dim">Todavía no hay.</p>
+  ) : (
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Email</th><th>Estado</th><th>Alta</th></tr></thead>
+        <tbody>
+          {data.subscribers.map((s) => (
+            <tr>
+              <td class="mono">{s.email}</td>
+              <td class:list={{ dim: s.status !== 'confirmed' }}>{statusLabel[s.status]}</td>
+              <td class="dim">{formatDate(s.createdAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</Admin>
+
+<style>
+  .lede { margin-block: 8px 24px; max-width: 70ch; }
+  h2 { margin-block: 40px 16px; }
+  .compose h2 { margin-top: 0; }
+  .counts { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 24px; }
+  .counts div { padding: 14px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-elev); min-width: 140px; }
+  .counts dt { color: var(--ink-mute); font-size: 12px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; }
+  .counts dd { font-size: 28px; font-family: var(--font-display); }
+  .admin-ok { color: var(--spark); margin-block: 12px; }
+</style>
