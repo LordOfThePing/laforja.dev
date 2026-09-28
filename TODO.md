@@ -5,6 +5,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ## En curso
 
 - Copia de backups fuera del VPS: activar la subida a R2 y verificarla — en curso por @claude — bucket y token ya creados, `BACKUP_S3_*` cargados
+- Backups en el panel admin: estado, dumps, config y «Hacer backup ahora» + log de arranque en `loop.sh` — en curso por @claude
 
 ## Pendiente
 
