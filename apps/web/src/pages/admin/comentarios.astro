@@ -1,0 +1,68 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import { formatDate } from '~/lib/api';
+import { errorMessage, listComments, mutate, requireAdmin } from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = encodeURIComponent(String(form.get('id') ?? ''));
+  const result = await mutate(auth.user, `/api/admin/comments/${id}`, 'DELETE');
+  // Si ya no estaba (doble click, lo borró el autor), el resultado es el mismo.
+  if (result.ok || result.error === 'not_found') return Astro.redirect('/admin/comentarios', 303);
+  error = errorMessage(result);
+  Astro.response.status = 400;
+}
+
+const comments = await listComments(auth.user);
+---
+
+<Admin title="Comentarios">
+  <h1>Comentarios</h1>
+  <p class="dim lede">
+    Los últimos 200 de todas las herramientas. Comentan solo suscriptores; en el sitio se ve el
+    primer nombre y la inicial, acá también el email.
+  </p>
+
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  {comments.length === 0 ? (
+    <p class="dim">Todavía no hay comentarios.</p>
+  ) : (
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Comentario</th><th>Herramienta</th><th>Autor</th><th>Fecha</th><th></th></tr>
+        </thead>
+        <tbody>
+          {comments.map((c) => (
+            <tr>
+              <td class="body">{c.body}</td>
+              <td><a href={`/herramientas/${c.tool.slug}#comentarios`}>{c.tool.title}</a></td>
+              <td>
+                {c.author.name ?? c.author.email}
+                {c.author.name && <div class="dim mono">{c.author.email}</div>}
+              </td>
+              <td class="dim">{formatDate(c.createdAt)}</td>
+              <td>
+                <form method="post">
+                  <input type="hidden" name="id" value={c.id} />
+                  <button type="submit" class="btn btn--ghost btn--sm">Borrar</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</Admin>
+
+<style>
+  .lede { margin-block: 8px 24px; max-width: 70ch; }
+  .body { max-width: 420px; white-space: pre-line; overflow-wrap: anywhere; }
+</style>

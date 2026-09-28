@@ -183,6 +183,17 @@ export const getBackupStatus = (user: User) => call<BackupStatus>('/api/admin/ba
 export const listUsers = (user: User) =>
   call<{ users: AdminUser[] }>('/api/admin/users', user).then((r) => r.users);
 
+export type AdminComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  tool: { slug: string; title: string };
+  author: { name: string | null; email: string };
+};
+
+export const listComments = (user: User) =>
+  call<{ comments: AdminComment[] }>('/api/admin/comments', user).then((r) => r.comments);
+
 export type MutationResult<T = unknown> = { ok: true; value: T } | { ok: false; error: string; field?: string };
 
 // Los errores esperables (validación, slug repetido, en uso) vuelven como valor para
