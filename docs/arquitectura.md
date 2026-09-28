@@ -60,6 +60,18 @@ Todo lo que está a la derecha de `cloudflared` corre en el docker-compose del V
   agregá su origen en `directives` de `astro.config.mjs` o el browser lo bloquea. En `astro dev`
   la CSP no se aplica: probalo con `bun run build` + `node dist/server/entry.mjs`
 
+### Videos: YouTube «No listado»
+- Los videos de herramientas y lecciones se suben a YouTube como **No listado**, con «Permitir
+  incorporación» activado en YouTube Studio. Se embeben desde `youtube-nocookie.com`
+- **Privado no sirve:** YouTube solo lo reproduce para cuentas invitadas con sesión iniciada; en
+  el iframe cualquier otro ve «Video privado»
+- **Trade-off aceptado:** YouTube no restringe por dominio. El ID solo sale en el HTML cuando la
+  lección/herramienta está desbloqueada, pero quien la desbloquea puede copiar el link y el video
+  se ve fuera del sitio. Para una biblioteca por suscripción alcanza
+- Si se empiezan a filtrar: Vimeo pago (privacidad por dominio) o Cloudflare/Bunny Stream (URLs
+  firmadas que vencen). Cualquiera de los dos cambia el reproductor y obliga a rehacer el
+  tracking de progreso, que hoy usa la IFrame API de YouTube
+
 ## Comunicación entre apps
 
 - Frontend → backend: el **servidor de Astro** (SSR) llama a la API por la red interna
