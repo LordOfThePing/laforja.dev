@@ -1,6 +1,8 @@
 const ID = /^[\w-]{11}$/;
 
-export function youtubeEmbedUrl(url: string | null): string | null {
+type EmbedOptions = { jsApi?: boolean; start?: number };
+
+export function youtubeEmbedUrl(url: string | null, { jsApi = false, start }: EmbedOptions = {}): string | null {
   if (!url) return null;
   let parsed: URL;
   try {
@@ -15,5 +17,9 @@ export function youtubeEmbedUrl(url: string | null): string | null {
     id = parsed.searchParams.get('v') ?? parsed.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)/)?.[1] ?? null;
   }
   if (!id || !ID.test(id)) return null;
-  return `https://www.youtube-nocookie.com/embed/${id}`;
+  const params = new URLSearchParams();
+  if (jsApi) params.set('enablejsapi', '1');
+  if (start && start > 0) params.set('start', String(Math.floor(start)));
+  const query = params.toString() ? `?${params}` : '';
+  return `https://www.youtube-nocookie.com/embed/${id}${query}`;
 }

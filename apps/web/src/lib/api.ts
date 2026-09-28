@@ -297,6 +297,12 @@ export function formatDuration(seconds: number | null): string | null {
   return `${Math.max(1, Math.round(seconds / 60))} min`;
 }
 
+// null si no se sabe cuánto dura: sin la duración cargada en el admin no hay % que mostrar.
+export function watchedPercent(seconds: number, duration: number | null): number | null {
+  if (!duration || duration <= 0) return null;
+  return Math.min(100, Math.round((seconds / duration) * 100));
+}
+
 export function formatLongDuration(seconds: number): string {
   const minutes = Math.max(1, Math.round(seconds / 60));
   if (minutes < 60) return `${minutes} min`;

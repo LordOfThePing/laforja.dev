@@ -21,6 +21,9 @@ export default defineConfig({
     // frame-ancestors y el resto de los headers de seguridad los agrega src/middleware.ts.
     csp: {
       styleDirective: { resources: ["'self'", 'https://fonts.googleapis.com'] },
+      // La IFrame API de YouTube (progreso por % en el reproductor de lecciones) carga su
+      // script desde www.youtube.com.
+      scriptDirective: { resources: ["'self'", 'https://www.youtube.com'] },
       directives: [
         "default-src 'self'",
         "img-src 'self' data: https://*.googleusercontent.com",

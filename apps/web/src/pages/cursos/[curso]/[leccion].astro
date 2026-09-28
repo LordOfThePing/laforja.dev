@@ -11,6 +11,7 @@ import {
   getCourse,
   getLesson,
   saveLessonProgress,
+  watchedPercent,
 } from '~/lib/api';
 import { loginUrl } from '~/lib/redirect';
 import { youtubeEmbedUrl } from '~/lib/youtube';
@@ -25,9 +26,24 @@ type Notice = 'rate_limited' | 'unauthorized';
 let notice: Notice | null = null;
 
 if (Astro.request.method === 'POST') {
-  if (!user) return Astro.redirect(loginUrl(here));
   const form = await Astro.request.formData();
   const action = form.get('action');
+
+  // Lo manda el script del reproductor (fetch/sendBeacon), no un form: responde sin redirect.
+  if (action === 'watch') {
+    if (!user) return new Response(null, { status: 401 });
+    const seconds = Number(form.get('seconds'));
+    // Mismo tope que la API: pasarlo haría que responda invalid_body y acá explote como 500.
+    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 24 * 60 * 60) {
+      return new Response(null, { status: 400 });
+    }
+    const result = await saveLessonProgress(user, courseSlug, lessonSlug, { secondsWatched: seconds });
+    if (result.ok) return new Response(null, { status: 204 });
+    const status = { not_found: 404, rate_limited: 429, unauthorized: 401, subscription_required: 403 }[result.reason];
+    return new Response(null, { status });
+  }
+
+  if (!user) return Astro.redirect(loginUrl(here));
   if (action !== 'complete' && action !== 'uncomplete' && action !== 'complete-next') {
     return new Response(null, { status: 400 });
   }
@@ -65,9 +81,18 @@ try {
 }
 if (!lesson || !course) return new Response(null, { status: 404 });
 
-const embed = lesson.isLocked ? null : youtubeEmbedUrl(lesson.youtubeUrl);
-const paragraphs = lesson.isLocked ? [] : (lesson.contentMd?.split(/\n{2,}/) ?? []);
 const completed = lesson.progress?.completed ?? false;
+const watched = lesson.progress?.secondsWatched ?? 0;
+const track = Boolean(user) && !lesson.isLocked;
+// Retomar solo si quedó a mitad: al principio no vale la pena y cerca del final el video
+// arrancaría terminando.
+const resumeAt =
+  track && !completed && watched > 15 && (lesson.durationSeconds == null || watched < lesson.durationSeconds - 15)
+    ? watched
+    : undefined;
+const embed = lesson.isLocked ? null : youtubeEmbedUrl(lesson.youtubeUrl, { jsApi: track, start: resumeAt });
+const watchedPct = watchedPercent(watched, lesson.durationSeconds);
+const paragraphs = lesson.isLocked ? [] : (lesson.contentMd?.split(/\n{2,}/) ?? []);
 const all = course.modules.flatMap((m) => m.lessons);
 const position = all.findIndex((l) => l.slug === lesson.slug) + 1;
 const moduleTitle = course.modules.find((m) => m.lessons.some((l) => l.slug === lesson.slug))?.title;
@@ -133,9 +158,29 @@ const duration = formatDuration(lesson.durationSeconds);
                   title={`Video: ${lesson.title}`}
                   allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowfullscreen
+                  data-track={track ? '' : undefined}
+                  data-watched={watched}
+                  data-duration={lesson.durationSeconds ?? undefined}
                 ></iframe>
               </div>
             ) : null}
+
+            {embed && track && (
+              <div class="watch">
+                <progress
+                  class="bar watch__bar"
+                  max="100"
+                  value={watchedPct ?? 0}
+                  aria-label="Cuánto viste del video"
+                  data-watch-bar
+                  hidden={watchedPct == null}
+                ></progress>
+                <span class="watch__label mono" data-watch-label>
+                  {watchedPct ? `Viste el ${watchedPct} %` : watched > 0 ? 'Empezaste este video' : 'Sin empezar'}
+                  {resumeAt && ' · retomás donde lo dejaste'}
+                </span>
+              </div>
+            )}
 
             {paragraphs.length > 0 && (
               <section class="player__body">
@@ -238,6 +283,9 @@ const duration = formatDuration(lesson.durationSeconds);
     background: var(--bg-elev);
   }
   .player__video iframe { width: 100%; height: 100%; border: 0; }
+  .watch { display: flex; align-items: center; gap: 12px; margin-top: -14px; color: var(--ink-mute); font-size: 12px; }
+  .watch__bar { flex: 1; max-width: 320px; }
+  .watch__bar[hidden] { display: none; }
   .player__body { display: flex; flex-direction: column; gap: 16px; color: var(--ink-dim); font-size: 17px; max-width: 70ch; }
 
   .player__done { padding-block: 8px; border-top: 1px solid var(--line); padding-top: 24px; }
@@ -299,3 +347,89 @@ const duration = formatDuration(lesson.durationSeconds);
   .gate__title { font-family: var(--font-display); font-size: 30px; line-height: 1.1; font-weight: 400; }
   .gate__text { color: var(--ink-dim); max-width: 520px; }
 </style>
+
+<script>
+  type YTPlayer = { getCurrentTime(): number; getDuration(): number };
+  type YTNamespace = {
+    Player: new (
+      el: HTMLIFrameElement,
+      opts: { events: { onStateChange: (e: { data: number }) => void } },
+    ) => YTPlayer;
+    PlayerState: { PLAYING: number; ENDED: number };
+  };
+  const w = window as Window & { YT?: YTNamespace; onYouTubeIframeAPIReady?: () => void };
+
+  const iframe = document.querySelector<HTMLIFrameElement>('iframe[data-track]');
+  const bar = document.querySelector<HTMLProgressElement>('[data-watch-bar]');
+  const label = document.querySelector<HTMLElement>('[data-watch-label]');
+
+  if (iframe) {
+    const fallbackDuration = Number(iframe.dataset.duration) || 0;
+    let maxSeen = Number(iframe.dataset.watched) || 0;
+    let lastSent = Math.floor(maxSeen);
+    let shownPct = -1;
+    let player: YTPlayer | null = null;
+    let timer: number | undefined;
+
+    const send = (beacon = false) => {
+      const seconds = Math.floor(maxSeen);
+      if (seconds <= lastSent) return;
+      const previous = lastSent;
+      lastSent = seconds;
+      const body = new FormData();
+      body.set('action', 'watch');
+      body.set('seconds', String(seconds));
+      if (beacon) {
+        navigator.sendBeacon(location.pathname, body);
+        return;
+      }
+      fetch(location.pathname, { method: 'POST', body }).then(
+        (res) => { if (!res.ok) lastSent = previous; },
+        () => { lastSent = previous; },
+      );
+    };
+
+    const render = () => {
+      if (!bar || !label || !player) return;
+      const duration = player.getDuration() || fallbackDuration;
+      if (!duration) return;
+      const pct = Math.min(100, Math.round((maxSeen / duration) * 100));
+      if (pct === shownPct) return;
+      shownPct = pct;
+      bar.hidden = false;
+      bar.value = pct;
+      label.textContent = `Viste el ${pct} %`;
+    };
+
+    // El progreso guardado es "hasta dónde llegaste": se queda con el máximo, igual que la API.
+    const tick = () => {
+      if (!player) return;
+      maxSeen = Math.max(maxSeen, player.getCurrentTime());
+      render();
+      if (maxSeen - lastSent >= 15) send();
+    };
+
+    const onStateChange = ({ data }: { data: number }) => {
+      const state = w.YT!.PlayerState;
+      window.clearInterval(timer);
+      if (data === state.PLAYING) {
+        timer = window.setInterval(tick, 1000);
+        return;
+      }
+      if (data === state.ENDED && player) maxSeen = Math.max(maxSeen, player.getDuration());
+      tick();
+      send();
+    };
+
+    w.onYouTubeIframeAPIReady = () => {
+      player = new w.YT!.Player(iframe, { events: { onStateChange } });
+    };
+    const api = document.createElement('script');
+    api.src = 'https://www.youtube.com/iframe_api';
+    document.head.append(api);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') send(true);
+    });
+  }
+</script>
