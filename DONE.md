@@ -50,3 +50,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-27 — Menú desplegable del nav en mobile (hamburguesa debajo de 780px) — 7407351
 - 2026-09-28 — Analytics livianas con Umami self-hosted (pageviews server-side, sin cookies) — fb9e382, 64f45f7
 - 2026-09-28 — `laforja.dev`: hostnames del tunnel, callback de Google OAuth y webhook de MP (hecho por el usuario)
+- 2026-09-28 — Progreso por % de video en el reproductor (IFrame API, retomar, anillo en el temario) — b582117, 5975a63
