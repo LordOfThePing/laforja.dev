@@ -254,6 +254,67 @@ export async function getCourse(
   return res?.course ?? null;
 }
 
+export type CollectionPreview = {
+  slug: string;
+  title: string;
+  shortDescription: string;
+  coverImageUrl: string | null;
+  publishedAt: string;
+  toolCount: number;
+  courseCount: number;
+};
+
+export type CollectionItem =
+  | {
+      kind: 'tool';
+      note: string | null;
+      tool: {
+        slug: string;
+        title: string;
+        shortDescription: string;
+        tier: 'free' | 'premium';
+        durationSeconds: number | null;
+        coverImageUrl: string | null;
+        categoryName: string | null;
+        isLocked: boolean;
+      };
+    }
+  | {
+      kind: 'course';
+      note: string | null;
+      course: {
+        slug: string;
+        title: string;
+        shortDescription: string;
+        tier: 'free' | 'premium';
+        coverImageUrl: string | null;
+        lessonCount: number;
+        durationSeconds: number;
+        progress: CourseProgress | null;
+      };
+    };
+
+export type CollectionDetail = Omit<CollectionPreview, 'toolCount' | 'courseCount'> & {
+  description: string | null;
+  items: CollectionItem[];
+  progress: { coursesCompleted: number; courses: number } | null;
+};
+
+export async function listCollections(): Promise<CollectionPreview[]> {
+  const { collections } = await call<{ collections: CollectionPreview[] }>('/api/collections', undefined);
+  return collections;
+}
+
+export async function getCollection(
+  user: Session['user'] | undefined,
+  slug: string,
+): Promise<CollectionDetail | null> {
+  const res = await orNotFound(
+    call<{ collection: CollectionDetail }>(`/api/collections/${encodeURIComponent(slug)}`, user),
+  );
+  return res?.collection ?? null;
+}
+
 export async function getLesson(
   user: Session['user'] | undefined,
   course: string,

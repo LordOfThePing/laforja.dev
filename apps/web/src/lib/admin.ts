@@ -82,6 +82,28 @@ export type AdminLesson = {
   isFreePreview: boolean;
 };
 
+export type AdminCollection = {
+  id: string;
+  slug: string;
+  title: string;
+  shortDescription: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  order: number;
+  publishedAt: string | null;
+  createdAt: string;
+};
+
+export type AdminCollectionItem = {
+  id: string;
+  kind: 'tool' | 'course';
+  targetId: string;
+  slug: string;
+  title: string;
+  note: string | null;
+  publishedAt: string | null;
+};
+
 export type AdminStats = {
   users: number;
   activeSubscribers: number;
@@ -178,6 +200,19 @@ export const listCategories = (user: User) =>
 
 export const getMetrics = (user: User) => call<AdminMetrics>('/api/admin/metrics', user);
 
+export const listAdminCollections = (user: User) =>
+  call<{ collections: (AdminCollection & { itemCount: number })[] }>('/api/admin/collections', user).then(
+    (r) => r.collections,
+  );
+
+export const getAdminCollection = (user: User, id: string) =>
+  orNull(
+    call<{ collection: AdminCollection & { items: AdminCollectionItem[] } }>(
+      `/api/admin/collections/${encodeURIComponent(id)}`,
+      user,
+    ),
+  ).then((r) => r?.collection ?? null);
+
 export const getBackupStatus = (user: User) => call<BackupStatus>('/api/admin/backups', user);
 
 export const listUsers = (user: User) =>
@@ -263,6 +298,29 @@ export function courseFromForm(form: FormData, current: AdminCourse | null) {
   };
 }
 
+export function collectionFromForm(form: FormData, current: AdminCollection | null) {
+  const title = str(form, 'title');
+  const publish = form.get('published') === 'on';
+  return {
+    slug: str(form, 'slug') || slugify(title),
+    title,
+    shortDescription: str(form, 'shortDescription'),
+    description: str(form, 'description') || null,
+    coverImageUrl: str(form, 'coverImageUrl') || null,
+    order: optionalInt(form, 'order') ?? 0,
+    publishedAt: publish ? (current?.publishedAt ?? new Date().toISOString()) : null,
+  };
+}
+
+// El select del alta manda "tool:<id>" o "course:<id>": un solo control para elegir entre los dos.
+export function collectionItemFromForm(form: FormData) {
+  const [kind, id] = str(form, 'target').split(':');
+  const note = str(form, 'note') || null;
+  if (kind === 'tool' && id) return { toolId: id, note };
+  if (kind === 'course' && id) return { courseId: id, note };
+  return { note };
+}
+
 export function moduleFromForm(form: FormData) {
   return { title: str(form, 'title'), description: str(form, 'description') || null };
 }
@@ -309,6 +367,10 @@ const fieldLabels: Record<string, string> = {
   moduleId: 'el módulo',
   isFreePreview: 'la opción de preview',
   direction: 'la dirección',
+  target: 'qué herramienta o curso agregar',
+  toolId: 'la herramienta',
+  courseId: 'el curso',
+  note: 'la nota',
 };
 
 export function errorMessage(result: { error: string; field?: string }): string {
@@ -320,6 +382,7 @@ export function errorMessage(result: { error: string; field?: string }): string 
     category_in_use: 'La categoría tiene herramientas: movelas o borralas antes.',
     cannot_demote_self: 'No podés sacarte el rol de admin a vos mismo.',
     not_found: 'Ya no existe.',
+    item_taken: 'Eso ya está en la ruta.',
     backups_unavailable: 'Los backups no se pueden manejar desde este entorno.',
     backup_state_unwritable: 'El servicio de backup todavía no preparó su carpeta. Probá en un minuto.',
   };

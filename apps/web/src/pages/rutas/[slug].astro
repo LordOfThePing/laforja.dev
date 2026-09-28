@@ -1,0 +1,192 @@
+---
+import { getSession } from 'auth-astro/server';
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+import { type CollectionDetail, formatDuration, formatLongDuration, getCollection } from '~/lib/api';
+
+const slug = Astro.params.slug ?? '';
+const session = await getSession(Astro.request);
+
+let collection: CollectionDetail | null;
+try {
+  collection = await getCollection(session?.user, slug);
+} catch (err) {
+  console.error(`No se pudo cargar la ruta ${slug}`, err);
+  return new Response('No pudimos cargar la ruta. Probá de nuevo en un rato.', {
+    status: 502,
+    headers: { 'content-type': 'text/plain; charset=utf-8' },
+  });
+}
+if (!collection || collection.items.length === 0) return new Response(null, { status: 404 });
+
+const paragraphs = collection.description?.split(/\n{2,}/) ?? [];
+const steps = collection.items.length === 1 ? '1 paso' : `${collection.items.length} pasos`;
+const courseDone = (c: { lessonCount: number; progress: { completed: number } | null }) =>
+  c.lessonCount > 0 && c.progress?.completed === c.lessonCount;
+---
+
+<Base title={`${collection.title} — Rutas — La Forja`} description={collection.shortDescription}>
+  <Nav />
+  <main class="route container">
+    <a href="/rutas" class="route__back mono">← Todas las rutas</a>
+
+    <header class="route__head">
+      <div class="eyebrow">Ruta · {steps}</div>
+      <h1 class="route__title display">{collection.title}</h1>
+      <p class="route__lede">{collection.shortDescription}</p>
+      {paragraphs.map((p) => <p class="route__desc">{p}</p>)}
+      {collection.progress && (
+        <div class="route__progress">
+          <progress
+            class="bar"
+            max={collection.progress.courses}
+            value={collection.progress.coursesCompleted}
+            aria-label="Cursos terminados de esta ruta"
+          ></progress>
+          <span class="mono">
+            {collection.progress.coursesCompleted}/{collection.progress.courses}{' '}
+            {collection.progress.courses === 1 ? 'curso terminado' : 'cursos terminados'}
+          </span>
+        </div>
+      )}
+    </header>
+
+    <ol class="steps">
+      {collection.items.map((item, i) => {
+        const href = item.kind === 'tool' ? `/herramientas/${item.tool.slug}` : `/cursos/${item.course.slug}`;
+        const target = item.kind === 'tool' ? item.tool : item.course;
+        const done = item.kind === 'course' && courseDone(item.course);
+        return (
+          <li class:list={['step', { 'step--done': done }]}>
+            <span class="step__n mono" aria-hidden="true">{done ? '✓' : i + 1}</span>
+            <article class="step__card">
+              <header class="step__meta">
+                <span class="step__kind mono">{item.kind === 'tool' ? 'Herramienta' : 'Curso'}</span>
+                {item.kind === 'tool' ? (
+                  <>
+                    {item.tool.categoryName && <span class="dim">{item.tool.categoryName}</span>}
+                    {formatDuration(item.tool.durationSeconds) && <span class="dim">{formatDuration(item.tool.durationSeconds)}</span>}
+                    {item.tool.tier === 'free' ? (
+                      <span class="pill pill--spark">Gratis</span>
+                    ) : item.tool.isLocked ? (
+                      <span class="pill pill--ember">Premium</span>
+                    ) : (
+                      <span class="pill pill--spark">Abierta</span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span class="dim">
+                      {item.course.lessonCount === 1 ? '1 lección' : `${item.course.lessonCount} lecciones`} ·{' '}
+                      {formatLongDuration(item.course.durationSeconds)}
+                    </span>
+                    <span class:list={['pill', item.course.tier === 'premium' ? 'pill--ember' : 'pill--spark']}>
+                      {item.course.tier === 'premium' ? 'Con suscripción' : 'Gratis'}
+                    </span>
+                  </>
+                )}
+              </header>
+              <h2 class="step__title">
+                <a href={href}>{target.title}</a>
+              </h2>
+              <p class="step__desc">{target.shortDescription}</p>
+              {item.note && (
+                <p class="step__note">
+                  <span class="mono">Por qué</span>
+                  {item.note}
+                </p>
+              )}
+              {item.kind === 'course' && item.course.progress && item.course.progress.total > 0 && (
+                <div class="step__progress">
+                  <progress class="bar" max={item.course.progress.total} value={item.course.progress.completed} aria-label={`Progreso en ${item.course.title}`}></progress>
+                  <span class="mono">{item.course.progress.completed}/{item.course.progress.total}</span>
+                </div>
+              )}
+            </article>
+          </li>
+        );
+      })}
+    </ol>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .route { max-width: 820px; padding-block: clamp(40px, 7vw, 88px); }
+  .route__back { display: inline-block; color: var(--ink-mute); font-size: 13px; margin-bottom: 32px; }
+  .route__back:hover { color: var(--ember-300); }
+  .route__head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 48px; }
+  .route__title { font-size: clamp(38px, 6vw, 60px); line-height: 1.04; }
+  .route__lede { color: var(--ink); font-size: 19px; }
+  .route__desc { color: var(--ink-dim); max-width: 68ch; }
+  .route__progress { display: flex; align-items: center; gap: 12px; color: var(--ink-mute); font-size: 13px; margin-top: 8px; }
+  .route__progress .bar { max-width: 240px; }
+
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 16px;
+  }
+  /* La línea que une los pasos: sale del número y llega hasta el siguiente. */
+  .step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 44px;
+    bottom: -16px;
+    width: 2px;
+    background: var(--line-strong);
+  }
+  .step__n {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,176,103,0.35);
+    color: var(--ember-300);
+    font-size: 14px;
+    background: var(--bg);
+  }
+  .step--done .step__n { border-color: rgba(125,211,192,0.4); color: var(--spark); }
+  .step__card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    min-width: 0;
+  }
+  .step__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; }
+  .step__kind { color: var(--ember-300); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .step__meta .pill { margin-left: auto; }
+  .step__title { font-family: var(--font-display); font-weight: 400; font-size: clamp(24px, 3.4vw, 30px); line-height: 1.1; }
+  .step__title a { color: var(--ink); }
+  .step__title a:hover { color: var(--ember-300); }
+  .step__desc { color: var(--ink-dim); }
+  .step__note {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border-left: 2px solid var(--ember-500);
+    background: rgba(255,122,0,0.05);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--ink);
+  }
+  .step__note .mono { color: var(--ember-300); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .step__progress { display: flex; align-items: center; gap: 12px; color: var(--ink-mute); font-size: 12px; }
+  .dim { color: var(--ink-mute); }
+
+  @media (max-width: 520px) {
+    .step { grid-template-columns: 28px 1fr; gap: 10px; }
+    .step__n { width: 28px; height: 28px; font-size: 12px; }
+    .step:not(:last-child)::before { left: 13px; top: 32px; }
+    .step__card { padding: 16px; }
+  }
+</style>

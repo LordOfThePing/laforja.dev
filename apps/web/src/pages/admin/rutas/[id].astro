@@ -1,0 +1,214 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import {
+  type AdminCollection,
+  collectionFromForm,
+  collectionItemFromForm,
+  errorMessage,
+  getAdminCollection,
+  listAdminCourses,
+  listAdminTools,
+  mutate,
+  requireAdmin,
+} from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+const id = Astro.params.id ?? '';
+const here = `/admin/rutas/${id}`;
+const collection = await getAdminCollection(auth.user, id);
+if (!collection) return new Response(null, { status: 404 });
+
+let error: string | null = null;
+let values: ReturnType<typeof collectionFromForm> | AdminCollection = collection;
+const flash = Astro.url.searchParams.get('ok');
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const target = encodeURIComponent(String(form.get('target') ?? ''));
+
+  if (action === 'delete-collection') {
+    const result = await mutate(auth.user, `/api/admin/collections/${id}`, 'DELETE');
+    if (result.ok) return Astro.redirect('/admin/rutas?ok=borrada', 303);
+    error = errorMessage(result);
+  } else if (action === 'update-collection') {
+    values = collectionFromForm(form, collection);
+    const result = await mutate(auth.user, `/api/admin/collections/${id}`, 'PATCH', values);
+    if (result.ok) return Astro.redirect(`${here}?ok=guardada`, 303);
+    error = errorMessage(result);
+  } else {
+    const calls: Record<string, () => ReturnType<typeof mutate>> = {
+      'add-item': () => mutate(auth.user, `/api/admin/collections/${id}/items`, 'POST', collectionItemFromForm(form)),
+      'update-item': () =>
+        mutate(auth.user, `/api/admin/collection-items/${target}`, 'PATCH', { note: String(form.get('note') ?? '').trim() || null }),
+      'delete-item': () => mutate(auth.user, `/api/admin/collection-items/${target}`, 'DELETE'),
+      'move-item': () =>
+        mutate(auth.user, `/api/admin/collection-items/${target}/move`, 'POST', { direction: form.get('direction') }),
+    };
+    const run = calls[action];
+    if (!run) return new Response(null, { status: 400 });
+    const result = await run();
+    if (result.ok) return Astro.redirect(`${here}?ok=pasos#pasos`, 303);
+    error = errorMessage(result);
+  }
+  Astro.response.status = 400;
+}
+
+const [tools, courses] = await Promise.all([listAdminTools(auth.user), listAdminCourses(auth.user)]);
+const now = Date.now();
+const isLive = (publishedAt: string | null) => publishedAt !== null && Date.parse(publishedAt) <= now;
+const live = isLive(collection.publishedAt);
+const inRoute = new Set(collection.items.map((i) => `${i.kind}:${i.targetId}`));
+const availableCourses = courses.filter((c) => !inRoute.has(`course:${c.id}`));
+const availableTools = tools.filter((t) => !inRoute.has(`tool:${t.id}`));
+const visibleSteps = collection.items.filter((i) => isLive(i.publishedAt)).length;
+const published = values.publishedAt !== null;
+---
+
+<Admin title={collection.title}>
+  <div class="admin-bar">
+    <h1>{collection.title}</h1>
+    {live && visibleSteps > 0 && <a href={`/rutas/${collection.slug}`} class="btn btn--ghost">Ver en el sitio ↗</a>}
+  </div>
+
+  {flash === 'creada' && <p class="admin-notice admin-notice--ok" role="status">Ruta creada. Ahora agregale pasos.</p>}
+  {flash === 'guardada' && <p class="admin-notice admin-notice--ok" role="status">Cambios guardados.</p>}
+  {flash === 'pasos' && <p class="admin-notice admin-notice--ok" role="status">Pasos actualizados.</p>}
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  <form method="post" class="admin-form block">
+    <input type="hidden" name="action" value="update-collection" />
+    <div class="admin-form__row">
+      <label class="field"><span>Título</span><input name="title" required value={values.title} /></label>
+      <label class="field"><span>Slug</span><input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" class="mono" value={values.slug} /></label>
+    </div>
+    <label class="field"><span>Descripción corta</span><input name="shortDescription" required value={values.shortDescription} /></label>
+    <label class="field">
+      <span>Sobre la ruta</span>
+      <textarea name="description">{values.description ?? ''}</textarea>
+      <small>Para quién es y a dónde llega. Párrafos separados por una línea en blanco.</small>
+    </label>
+    <div class="admin-form__row">
+      <label class="field"><span>Orden en /rutas</span><input name="order" type="number" min="0" step="1" value={values.order} /></label>
+      <label class="field"><span>Portada (URL)</span><input name="coverImageUrl" type="url" value={values.coverImageUrl ?? ''} /></label>
+    </div>
+    <label class="field field--check">
+      <input type="checkbox" name="published" checked={published} />
+      <span>Publicada{visibleSteps === 0 && ' (no se ve hasta que tenga al menos un paso publicado)'}</span>
+    </label>
+    <div class="admin-actions"><button type="submit" class="btn btn--primary">Guardar ruta</button></div>
+  </form>
+
+  <section id="pasos" class="steps">
+    <div class="admin-bar">
+      <h2>Pasos</h2>
+      <span class="dim">{collection.items.length} en total · {visibleSteps} publicados</span>
+    </div>
+
+    {collection.items.length === 0 ? (
+      <p class="dim">Todavía no tiene pasos. Agregá el primero abajo.</p>
+    ) : (
+      <ol class="items">
+        {collection.items.map((item, i) => (
+          <li class="item">
+            <div class="item__head">
+              <span class="item__num mono">{String(i + 1).padStart(2, '0')}</span>
+              <span class="item__kind mono">{item.kind === 'tool' ? 'Herramienta' : 'Curso'}</span>
+              <a href={item.kind === 'tool' ? `/admin/herramientas/${item.targetId}` : `/admin/cursos/${item.targetId}`} class="item__title">
+                {item.title}
+              </a>
+              {!isLive(item.publishedAt) && <span class="tag">No publicado: no se muestra</span>}
+              <form method="post" class="item__tools">
+                <input type="hidden" name="target" value={item.id} />
+                <input type="hidden" name="action" value="move-item" />
+                <button type="submit" name="direction" value="up" class="btn btn--ghost btn--sm" disabled={i === 0} aria-label={`Subir ${item.title}`}>↑</button>
+                <button type="submit" name="direction" value="down" class="btn btn--ghost btn--sm" disabled={i === collection.items.length - 1} aria-label={`Bajar ${item.title}`}>↓</button>
+              </form>
+            </div>
+            <form method="post" class="item__note">
+              <input type="hidden" name="target" value={item.id} />
+              <input name="note" value={item.note ?? ''} placeholder="Por qué va este paso (opcional)" aria-label={`Nota de ${item.title}`} />
+              <button type="submit" name="action" value="update-item" class="btn btn--ghost btn--sm">Guardar nota</button>
+              <button type="submit" name="action" value="delete-item" class="btn btn--ghost btn--sm btn--danger">Quitar</button>
+            </form>
+          </li>
+        ))}
+      </ol>
+    )}
+
+    {availableCourses.length + availableTools.length > 0 ? (
+      <form method="post" class="admin-form block add-item">
+        <input type="hidden" name="action" value="add-item" />
+        <div class="admin-form__row">
+          <label class="field">
+            <span>Agregar paso</span>
+            <select name="target" required>
+              <option value="">Elegí un curso o una herramienta…</option>
+              {availableCourses.length > 0 && (
+                <optgroup label="Cursos">
+                  {availableCourses.map((c) => <option value={`course:${c.id}`}>{c.title}{!isLive(c.publishedAt) && ' (borrador)'}</option>)}
+                </optgroup>
+              )}
+              {availableTools.length > 0 && (
+                <optgroup label="Herramientas">
+                  {availableTools.map((t) => <option value={`tool:${t.id}`}>{t.title}{!isLive(t.publishedAt) && ' (borrador)'}</option>)}
+                </optgroup>
+              )}
+            </select>
+          </label>
+          <label class="field"><span>Por qué va</span><input name="note" placeholder="Opcional" /></label>
+        </div>
+        <div class="admin-actions"><button type="submit" class="btn btn--ghost">+ Agregar al final</button></div>
+      </form>
+    ) : (
+      <p class="dim">Ya están todos los cursos y herramientas en esta ruta.</p>
+    )}
+  </section>
+
+  <details class="danger">
+    <summary>Borrar ruta</summary>
+    <p class="dim">Se borra la ruta y sus pasos. Los cursos y herramientas no se tocan.</p>
+    <form method="post">
+      <button type="submit" name="action" value="delete-collection" class="btn btn--ghost btn--danger">Borrar ruta</button>
+    </form>
+  </details>
+</Admin>
+
+<style>
+  .block { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-elev); }
+  .steps { margin-top: 48px; }
+  .items { list-style: none; display: grid; gap: 10px; margin-bottom: 20px; }
+  .item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev);
+  }
+  .item__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .item__num { color: var(--ember-300); font-size: 12px; }
+  .item__kind { color: var(--ink-mute); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .item__title { color: var(--ink); font-weight: 600; }
+  .item__title:hover { color: var(--ember-300); }
+  .item__tools { display: flex; gap: 4px; margin-left: auto; }
+  .item__tools button:disabled { opacity: 0.3; cursor: default; }
+  .item__note { display: flex; flex-wrap: wrap; gap: 8px; }
+  .item__note input {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+  }
+  .item__note input:focus-visible { outline: none; border-color: var(--ember-500); }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-mute); }
+
+  .danger { margin-top: 40px; color: var(--ink-dim); }
+  .danger summary { cursor: pointer; color: #ff8a7a; width: fit-content; }
+  .danger form, .danger p { margin-top: 10px; }
+</style>

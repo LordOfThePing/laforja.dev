@@ -1,0 +1,47 @@
+---
+import type { CollectionPreview } from '~/lib/api';
+
+interface Props {
+  collection: CollectionPreview;
+}
+
+const { collection } = Astro.props;
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const parts = [
+  collection.courseCount > 0 && plural(collection.courseCount, 'curso', 'cursos'),
+  collection.toolCount > 0 && plural(collection.toolCount, 'herramienta', 'herramientas'),
+].filter(Boolean);
+const steps = collection.courseCount + collection.toolCount;
+---
+
+<article class="rcard">
+  <header class="rcard__head">
+    <span class="pill pill--ember">{plural(steps, 'paso', 'pasos')}</span>
+    <span class="rcard__meta mono">{parts.join(' · ')}</span>
+  </header>
+  <h2 class="rcard__title display">{collection.title}</h2>
+  <p class="rcard__desc">{collection.shortDescription}</p>
+  <a href={`/rutas/${collection.slug}`} class="rcard__link" aria-label={`Ver la ruta ${collection.title}`}></a>
+</article>
+
+<style>
+  .rcard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 26px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    transition: border-color 220ms var(--ease-out), transform 220ms var(--ease-out);
+  }
+  .rcard:hover { border-color: rgba(255,176,103,0.35); transform: translateY(-2px); }
+  .rcard:has(.rcard__link:focus-visible) { outline: 2px solid var(--ember-500); outline-offset: 3px; }
+  .rcard__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .rcard__meta { color: var(--ink-mute); font-size: 12px; }
+  .rcard__title { font-size: clamp(28px, 4vw, 36px); line-height: 1.08; }
+  .rcard__desc { color: var(--ink-dim); }
+  .rcard__link { position: absolute; inset: 0; border-radius: inherit; }
+  .rcard__link:focus-visible { outline: none; }
+</style>

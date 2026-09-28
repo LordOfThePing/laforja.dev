@@ -1,0 +1,88 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import {
+  type AdminCollection,
+  collectionFromForm,
+  errorMessage,
+  listAdminCollections,
+  mutate,
+  requireAdmin,
+} from '~/lib/admin';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let error: string | null = null;
+let draft: ReturnType<typeof collectionFromForm> | null = null;
+const flash = Astro.url.searchParams.get('ok');
+
+if (Astro.request.method === 'POST') {
+  draft = collectionFromForm(await Astro.request.formData(), null);
+  const result = await mutate<{ collection: AdminCollection }>(auth.user, '/api/admin/collections', 'POST', draft);
+  if (result.ok) return Astro.redirect(`/admin/rutas/${result.value.collection.id}?ok=creada`, 303);
+  error = errorMessage(result);
+  Astro.response.status = 400;
+}
+
+const now = Date.now();
+const collections = (await listAdminCollections(auth.user)).map((c) => ({
+  ...c,
+  live: c.publishedAt !== null && Date.parse(c.publishedAt) <= now,
+}));
+---
+
+<Admin title="Rutas">
+  <h1>Rutas</h1>
+  <p class="dim lede">
+    Una ruta ordena cursos y herramientas que ya existen, con una nota de por qué va cada paso. Se ve en
+    <a href="/rutas">/rutas</a> cuando la publicás y tiene al menos un paso publicado.
+  </p>
+
+  {flash === 'borrada' && <p class="admin-notice admin-notice--ok" role="status">Ruta borrada.</p>}
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  {collections.length > 0 && (
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Ruta</th><th>Pasos</th><th>Estado</th><th>Orden</th></tr>
+        </thead>
+        <tbody>
+          {collections.map((c) => (
+            <tr>
+              <td>
+                <a href={`/admin/rutas/${c.id}`}>{c.title}</a>
+                <div class="dim mono">{c.slug}</div>
+              </td>
+              <td class="dim">{c.itemCount}</td>
+              <td>{c.live ? <span class="pill pill--spark">Publicada</span> : <span class="dim">Borrador</span>}</td>
+              <td class="dim">{c.order}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <h2 class="new-title">Nueva ruta</h2>
+  <form method="post" class="admin-form new-route">
+    <div class="admin-form__row">
+      <label class="field"><span>Título</span><input name="title" required value={draft?.title ?? ''} /></label>
+      <label class="field">
+        <span>Slug</span>
+        <input name="slug" pattern="[a-z0-9]+(-[a-z0-9]+)*" class="mono" value={draft?.slug ?? ''} />
+        <small>Vacío = se arma con el título.</small>
+      </label>
+    </div>
+    <label class="field"><span>Descripción corta</span><input name="shortDescription" required value={draft?.shortDescription ?? ''} /></label>
+    <label class="field"><span>Orden</span><input name="order" type="number" min="0" step="1" value={draft?.order ?? collections.length + 1} /></label>
+    <div class="admin-actions"><button type="submit" class="btn btn--primary">Crear y agregar pasos</button></div>
+  </form>
+</Admin>
+
+<style>
+  .lede { margin-block: 8px 24px; }
+  .lede a { color: var(--ember-300); }
+  .new-title { margin-block: 40px 16px; }
+  .new-route { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-elev); }
+</style>

@@ -1,0 +1,54 @@
+---
+import Base from '~/layouts/Base.astro';
+import Nav from '~/components/Nav.astro';
+import Footer from '~/components/Footer.astro';
+import CollectionCard from '~/components/rutas/CollectionCard.astro';
+import { type CollectionPreview, listCollections } from '~/lib/api';
+
+let collections: CollectionPreview[] | null;
+try {
+  collections = await listCollections();
+} catch (err) {
+  console.error('No se pudo cargar /api/collections', err);
+  collections = null;
+  Astro.response.status = 502;
+}
+---
+
+<Base
+  title="Rutas de aprendizaje — La Forja"
+  description="Recorridos armados a mano: qué curso ver y qué herramientas usar, en qué orden y por qué."
+>
+  <Nav />
+  <main class="routes container">
+    <header class="routes__head">
+      <div class="eyebrow">Rutas</div>
+      <h1 class="routes__title display">¿No sabés por dónde empezar? Empezá por acá.</h1>
+      <p class="routes__lede">
+        Cada ruta junta cursos y herramientas del sitio en el orden en que conviene verlos, con una
+        nota de por qué va cada paso.
+      </p>
+    </header>
+
+    {collections === null ? (
+      <p class="routes__empty" role="alert">No pudimos cargar las rutas. Probá de nuevo en un rato.</p>
+    ) : collections.length === 0 ? (
+      <p class="routes__empty">Estamos armando las primeras rutas. Mientras, mirá los <a href="/cursos">cursos</a>.</p>
+    ) : (
+      <div class="routes__grid">
+        {collections.map((collection) => <CollectionCard collection={collection} />)}
+      </div>
+    )}
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .routes { padding-block: clamp(48px, 8vw, 100px); }
+  .routes__head { display: flex; flex-direction: column; gap: 16px; max-width: 720px; margin-bottom: 48px; }
+  .routes__title { font-size: clamp(38px, 6vw, 64px); line-height: 1.04; }
+  .routes__lede { color: var(--ink-dim); font-size: 18px; }
+  .routes__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 20px; }
+  .routes__empty { color: var(--ink-dim); }
+  .routes__empty a { color: var(--ember-300); }
+</style>
