@@ -58,3 +58,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-29 — Errores 502 tapados por Cloudflare (pago en /suscripcion) — 07e7aaf
 - 2026-09-29 — Login con Google roto en `laforja.dev` (403 cross-site de Astro) — f49d49f
 - 2026-09-29 — Pago de MP en producción destrabado: token de prod correcto, webhook (secret) creado desde el MCP de MP, `MP_BACK_URL` configurable (fallback, sin usar) + Worker de redirect en `ops/mp-back-worker/` — 507ccda, 63d3fde, 5ef86d9, 1fc271c
+- 2026-09-29 — Server MCP HTTP en `apps/api` (`/mcp`) para ABM de herramientas y categorías desde Claude Code, con bearer token opcional (`MCP_ADMIN_TOKEN`) y tests

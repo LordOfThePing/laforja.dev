@@ -5,7 +5,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ## En curso
 
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
-- Servidor MCP HTTP dentro de `apps/api` para hacer ABM de herramientas/categorías desde Claude Code — en curso por @claude — endpoints `/mcp` con bearer token (`MCP_ADMIN_TOKEN`) que exponen las mismas operaciones que `/api/admin/tools` y `/api/admin/categories`
 
 ## Pendiente
 
