@@ -5,6 +5,7 @@ Ver `CLAUDE.md` (§2) para el workflow.
 
 ---
 
+- 2026-09-29 — Fix: los estilos del markdown no llegan a los nodos inyectados por `set:html` — pasarlos a `<style is:global>`
 - 2026-09-29 — Pulir markdown de herramienta: mejor CSS de headings/code/listas y prompt copy-paste-ready
 - 2026-09-29 — Página de herramienta: `longDescription` en markdown y `promptBody` opcional
 - 2026-09-25 — Bootstrap del workflow (`CLAUDE.md`, `TODO.md`, `DONE.md`)
