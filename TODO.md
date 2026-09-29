@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Pulir markdown de la página de herramienta y prompt copy-paste-ready — en curso por @claude — CSS de code blocks + reescribir promptBody de la tool de animaciones
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
