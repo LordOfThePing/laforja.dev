@@ -5,6 +5,7 @@ Ver `CLAUDE.md` (§2) para el workflow.
 
 ---
 
+- 2026-09-29 — Input datetime editable para `publishedAt` en el form del admin de herramientas — 64368ca
 - 2026-09-29 — Bloque del prompt colapsado a ~28 líneas con botón "Ver todo el prompt" (el copiar sigue copiando todo) — c3872a0
 - 2026-09-29 — Componente `<Markdown>` reusable + botón lateral "Ir al prompt para el agente" en herramientas
 - 2026-09-29 — Fix: los estilos del markdown no llegan a los nodos inyectados por `set:html` — pasarlos a `<style is:global>`

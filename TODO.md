@@ -4,8 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Agregar input de fecha `publishedAt` editable al form de admin de herramientas — en curso por @claude — hoy el form solo tiene checkbox booleano; no se puede programar/adelantar fecha desde el panel
-
 ## Pendiente
 
 ### v1 — cerrar el MVP
