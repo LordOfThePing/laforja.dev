@@ -83,10 +83,41 @@ const minutes = v?.durationSeconds != null ? Math.round(v.durationSeconds / 60) 
     <small>Separados por coma.</small>
   </label>
 
-  <label class="field field--check">
-    <input type="checkbox" name="published" checked={Boolean(v?.publishedAt)} />
-    <span>Publicada (visible en el catálogo)</span>
-  </label>
+  <div class="admin-form__row">
+    <label class="field field--check">
+      <input type="checkbox" name="published" checked={Boolean(v?.publishedAt)} />
+      <span>Publicada (visible en el catálogo)</span>
+    </label>
+    <label class="field">
+      <span>Fecha de publicación (opcional)</span>
+      <input type="datetime-local" name="publishedAtLocal" data-iso={v?.publishedAt ?? ''} />
+      <input type="hidden" name="publishedAt" value={v?.publishedAt ?? ''} />
+      <small>Vacío = ahora al publicar. Fecha futura = queda programada hasta esa fecha.</small>
+    </label>
+  </div>
+
+  <script is:inline>
+    (() => {
+      const form = document.currentScript?.closest('form');
+      if (!form) return;
+      const local = form.querySelector('input[name="publishedAtLocal"]');
+      const iso = form.querySelector('input[name="publishedAt"]');
+      if (!local || !iso) return;
+      const pad = (n) => String(n).padStart(2, '0');
+      const toLocal = (isoStr) => {
+        const d = new Date(isoStr);
+        if (Number.isNaN(d.getTime())) return '';
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      };
+      const initial = local.dataset.iso;
+      if (initial) local.value = toLocal(initial);
+      // Sin cambios del usuario preservamos el ISO original con sus segundos/milisegundos
+      // (datetime-local trunca a minutos y descolocaría el orden del catálogo por drift).
+      local.addEventListener('input', () => {
+        iso.value = local.value ? new Date(local.value).toISOString() : '';
+      });
+    })();
+  </script>
 
   <div class="admin-actions">
     <button type="submit" class="btn btn--primary">{submitLabel}</button>

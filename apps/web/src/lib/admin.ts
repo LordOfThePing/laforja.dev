@@ -272,6 +272,7 @@ function optionalInt(form: FormData, name: string): number | null {
 export function toolFromForm(form: FormData, current: AdminTool | null) {
   const minutes = optionalInt(form, 'durationMinutes');
   const publish = form.get('published') === 'on';
+  const explicit = str(form, 'publishedAt');
   return {
     slug: str(form, 'slug'),
     title: str(form, 'title'),
@@ -287,8 +288,9 @@ export function toolFromForm(form: FormData, current: AdminTool | null) {
       .filter(Boolean),
     durationSeconds: minutes === null ? null : Math.round(minutes * 60),
     coverImageUrl: str(form, 'coverImageUrl') || null,
-    // Al republicar se conserva la fecha original para no reordenar el catálogo.
-    publishedAt: publish ? (current?.publishedAt ?? new Date().toISOString()) : null,
+    // Si el admin puso una fecha explícita, mandamos esa (permite programar o adelantar);
+    // si no, al republicar se conserva la original para no reordenar el catálogo.
+    publishedAt: publish ? (explicit || current?.publishedAt || new Date().toISOString()) : null,
   };
 }
 
