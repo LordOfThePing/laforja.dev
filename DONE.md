@@ -5,6 +5,7 @@ Ver `CLAUDE.md` (§2) para el workflow.
 
 ---
 
+- 2026-09-29 — Fix filtro por categoría en `ToolGrid` (celdas vacías en desktop) y agregado filtro por tier (Todas / Gratis / Premium)
 - 2026-09-29 — Cargar herramienta "nodeterm" (agentes en canvas infinito) al catálogo, publicada en categoría Diseño y UX/UI
 - 2026-09-29 — Input datetime editable para `publishedAt` en el form del admin de herramientas — 64368ca
 - 2026-09-29 — Bloque del prompt colapsado a ~28 líneas con botón "Ver todo el prompt" (el copiar sigue copiando todo) — c3872a0
