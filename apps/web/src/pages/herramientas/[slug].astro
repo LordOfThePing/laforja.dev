@@ -1,5 +1,6 @@
 ---
 import { getSession } from 'auth-astro/server';
+import { marked } from 'marked';
 import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
@@ -18,6 +19,8 @@ import {
 } from '~/lib/api';
 import { loginUrl } from '~/lib/redirect';
 import { youtubeEmbedUrl } from '~/lib/youtube';
+
+marked.setOptions({ gfm: true, breaks: false });
 
 const slug = Astro.params.slug ?? '';
 const session = await getSession(Astro.request);
@@ -87,7 +90,12 @@ if (!tool) {
 
 const duration = tool ? formatDuration(tool.durationSeconds) : null;
 const embed = tool && !tool.isLocked ? youtubeEmbedUrl(tool.youtubeUrl) : null;
-const paragraphs = tool && !tool.isLocked ? (tool.longDescription?.split(/\n{2,}/) ?? []) : [];
+// longDescription lo escribe un admin (panel o MCP con token); se confía y se renderiza con marked.
+const bodyHtml =
+  tool && !tool.isLocked && tool.longDescription
+    ? await marked.parse(tool.longDescription)
+    : null;
+const promptBody = tool && !tool.isLocked ? tool.promptBody : null;
 const remaining = me?.unlocks.remaining ?? 0;
 const quotaText = remaining === 1 ? 'Te queda' : 'Te quedan';
 const outOfQuota = notice === 'quota_exceeded' || (me !== null && remaining === 0);
@@ -196,21 +204,21 @@ const commentErrors: Record<CommentNotice, string> = {
               </div>
             )}
 
-            {paragraphs.length > 0 && (
-              <section class="tool__body">
-                {paragraphs.map((p) => <p>{p}</p>)}
-              </section>
+            {bodyHtml && (
+              <section class="tool__body markdown" set:html={bodyHtml}></section>
             )}
 
-            <section class="prompt" aria-labelledby="prompt-title">
-              <header class="prompt__head">
-                <h2 id="prompt-title" class="eyebrow">Prompt</h2>
-                <button type="button" class="btn btn--ghost prompt__copy" data-copy-target="prompt-body">
-                  Copiar
-                </button>
-              </header>
-              <pre class="prompt__body"><code id="prompt-body">{tool.promptBody}</code></pre>
-            </section>
+            {promptBody && (
+              <section class="prompt" aria-labelledby="prompt-title">
+                <header class="prompt__head">
+                  <h2 id="prompt-title" class="eyebrow">Prompt para el agente</h2>
+                  <button type="button" class="btn btn--ghost prompt__copy" data-copy-target="prompt-body">
+                    Copiar
+                  </button>
+                </header>
+                <pre class="prompt__body"><code id="prompt-body">{promptBody}</code></pre>
+              </section>
+            )}
 
             {comments && (
               <section id="comentarios" class="comments" aria-labelledby="comments-title">
@@ -347,6 +355,65 @@ const commentErrors: Record<CommentNotice, string> = {
     color: var(--ink-dim);
     margin-bottom: 40px;
   }
+
+  .markdown { display: block; }
+  .markdown > * + * { margin-top: 16px; }
+  .markdown h2 {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 3vw, 30px);
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--ink);
+    margin-top: 32px;
+  }
+  .markdown h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-top: 24px;
+  }
+  .markdown p, .markdown li { color: var(--ink-dim); line-height: 1.7; }
+  .markdown ul, .markdown ol { padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+  .markdown strong { color: var(--ink); }
+  .markdown a {
+    color: var(--ember-300);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .markdown code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    padding: 2px 6px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--ink);
+  }
+  .markdown pre {
+    padding: 18px 20px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+  .markdown pre code {
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+  .markdown blockquote {
+    border-left: 3px solid var(--ember-500);
+    padding-left: 14px;
+    color: var(--ink-dim);
+    font-style: italic;
+  }
+  .markdown hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
 
   .prompt {
     border: 1px solid var(--line-strong);

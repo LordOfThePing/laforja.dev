@@ -35,12 +35,13 @@ const minutes = v?.durationSeconds != null ? Math.round(v.durationSeconds / 60) 
   <label class="field">
     <span>Descripción larga</span>
     <textarea name="longDescription">{v?.longDescription ?? ''}</textarea>
-    <small>Se ve al desbloquear. Separá párrafos con una línea en blanco.</small>
+    <small>Se ve al desbloquear. Acepta markdown: headings (`##`), listas, links y bloques de código con triple backtick.</small>
   </label>
 
   <label class="field">
-    <span>Prompt</span>
-    <textarea name="promptBody" required class="mono">{v?.promptBody ?? ''}</textarea>
+    <span>Prompt (opcional)</span>
+    <textarea name="promptBody" class="mono">{v?.promptBody ?? ''}</textarea>
+    <small>Solo si la herramienta trae un prompt para copiar y pegarle al agente. Si es puro contenido educativo, dejalo vacío.</small>
   </label>
 
   <div class="admin-form__row">

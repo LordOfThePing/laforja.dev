@@ -12,7 +12,7 @@ export type AdminTool = {
   shortDescription: string;
   longDescription: string | null;
   youtubeUrl: string | null;
-  promptBody: string;
+  promptBody: string | null;
   tier: 'free' | 'premium';
   categoryId: string;
   tags: string[];
@@ -278,7 +278,7 @@ export function toolFromForm(form: FormData, current: AdminTool | null) {
     shortDescription: str(form, 'shortDescription'),
     longDescription: str(form, 'longDescription') || null,
     youtubeUrl: str(form, 'youtubeUrl') || null,
-    promptBody: str(form, 'promptBody'),
+    promptBody: str(form, 'promptBody') || null,
     tier: str(form, 'tier'),
     categoryId: str(form, 'categoryId'),
     tags: str(form, 'tags')
@@ -363,7 +363,7 @@ const fieldLabels: Record<string, string> = {
   title: 'el título',
   name: 'el nombre',
   shortDescription: 'la descripción corta',
-  promptBody: 'el prompt',
+  promptBody: 'el prompt (opcional)',
   tier: 'el tier',
   categoryId: 'la categoría',
   youtubeUrl: 'la URL de YouTube',

@@ -21,7 +21,7 @@ export type ToolDetail =
       isLocked: false;
       longDescription: string | null;
       youtubeUrl: string | null;
-      promptBody: string;
+      promptBody: string | null;
     });
 
 export type Quota = { monthKey: string; limit: number; used: number; remaining: number };
