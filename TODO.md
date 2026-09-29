@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Sacar el Worker `ops/mp-back-worker/` y el override `MP_BACK_URL` — en curso por @claude — el Worker ya se borró de Cloudflare
+
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
 
 ## Pendiente
