@@ -4,7 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- `MP_BACK_URL` configurable: MP rechaza el `back_url` en `.engineer` y no se puede pagar — en curso por @claude — retorno vía Worker en `workers.dev` hasta migrar a `laforja.dev`
+- Destrabar el pago de MP en producción — en curso por @claude — `MP_BACK_URL` ya es configurable (507ccda); falta armar un Worker en `workers.dev` que redirija a `${FRONTEND_URL}/dashboard/gracias`, setear `MP_BACK_URL` en `.env.production` del VPS y probar de punta a punta
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
 
 ## Pendiente
