@@ -212,14 +212,20 @@ const commentErrors: Record<CommentNotice, string> = {
             )}
 
             {promptBody && (
-              <section id="prompt" class="prompt" aria-labelledby="prompt-title">
+              <section id="prompt" class="prompt prompt--collapsed" aria-labelledby="prompt-title" data-prompt>
                 <header class="prompt__head">
                   <h2 id="prompt-title" class="eyebrow">Prompt para el agente</h2>
                   <button type="button" class="btn btn--ghost prompt__copy" data-copy-target="prompt-body">
                     Copiar
                   </button>
                 </header>
-                <pre class="prompt__body"><code id="prompt-body">{promptBody}</code></pre>
+                <div class="prompt__body-wrap">
+                  <pre class="prompt__body"><code id="prompt-body">{promptBody}</code></pre>
+                  <div class="prompt__fade" aria-hidden="true"></div>
+                </div>
+                <button type="button" class="prompt__expand" data-prompt-expand>
+                  Ver todo el prompt
+                </button>
               </section>
             )}
 
@@ -311,6 +317,15 @@ const commentErrors: Record<CommentNotice, string> = {
       setTimeout(() => (btn.textContent = 'Copiar'), 1800);
     });
   });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-prompt-expand]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const section = btn.closest<HTMLElement>('[data-prompt]');
+      if (!section) return;
+      section.classList.remove('prompt--collapsed');
+      btn.remove();
+    });
+  });
 </script>
 
 <style>
@@ -371,6 +386,7 @@ const commentErrors: Record<CommentNotice, string> = {
     border-bottom: 1px solid var(--line);
   }
   .prompt__copy { padding: 6px 14px; font-size: 13px; }
+  .prompt__body-wrap { position: relative; }
   .prompt__body {
     padding: 22px;
     font-family: var(--font-mono);
@@ -379,7 +395,38 @@ const commentErrors: Record<CommentNotice, string> = {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--ink);
+    margin: 0;
   }
+  .prompt--collapsed .prompt__body {
+    max-height: calc(28 * 1.7em + 44px);
+    overflow: hidden;
+  }
+  .prompt__fade {
+    display: none;
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 120px;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, var(--bg-elev-2));
+  }
+  .prompt--collapsed .prompt__fade { display: block; }
+  .prompt__expand {
+    display: none;
+    width: 100%;
+    padding: 14px 18px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    background: transparent;
+    color: var(--ember-300);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background 200ms var(--ease-out);
+  }
+  .prompt__expand:hover { background: rgba(255, 122, 0, 0.08); }
+  .prompt--collapsed .prompt__expand { display: block; }
 
   .gate {
     display: flex;
