@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Arreglar filtro por categoría en `ToolGrid` (no oculta las celdas en desktop) y agregar filtro por tier (gratis / premium) — en curso por @claude
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
