@@ -4,8 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Página de herramienta: `longDescription` en markdown y `promptBody` opcional — en curso por @claude — renderer markdown server-side, schema/API/UI, seed + herramienta de animación redistribuida
-
 ## Pendiente
 
 ### v1 — cerrar el MVP
