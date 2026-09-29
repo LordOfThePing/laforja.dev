@@ -5,6 +5,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ## En curso
 
 - Página de herramienta: `longDescription` en markdown y `promptBody` opcional — en curso por @claude — renderer markdown server-side, schema/API/UI, seed + herramienta de animación redistribuida
+- Middleware de la web tira `TypeError: immutable` al setear CSP sobre redirects de Auth.js (500 en `/api/auth/callback/google` en vez de devolver el 302) — en curso por @claude
 
 ## Pendiente
 
