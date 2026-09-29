@@ -251,6 +251,40 @@ lotes de 100, con pausa entre lotes por el rate limit de Resend).
    el estado).
 5. Suscribirse con un mail propio, confirmar y mandarse una prueba.
 
+## Server MCP (ABM desde Claude Code)
+
+La api monta un server [MCP](https://modelcontextprotocol.io/) por HTTP en `/mcp`
+cuando la env `MCP_ADMIN_TOKEN` está seteada. Habla JSON-RPC 2.0 sobre POST y
+expone tools de ABM de herramientas y categorías (las mismas operaciones que
+`/api/admin/tools` y `/api/admin/categories`, pero para un cliente MCP en vez de
+un browser autenticado con Google).
+
+Tools disponibles:
+
+- `list_tools`, `get_tool`, `create_tool`, `update_tool`, `delete_tool`
+- `publish_tool`, `unpublish_tool`
+- `list_categories`, `create_category`, `update_category`, `delete_category`
+
+### Activarlo
+
+1. Generar un token: `openssl rand -hex 32`.
+2. Setearlo en `.env` (dev) o `.env.production` (VPS):
+   `MCP_ADMIN_TOKEN=<el-hex>`.
+3. `make env-push && make up` (o reiniciar la api en local).
+4. El puerto `4000` de la api **solo escucha en `127.0.0.1`**, así que el MCP no
+   queda expuesto: para usarlo contra el VPS desde la máquina local, abrir un
+   túnel SSH: `ssh -L 4000:localhost:4000 <vps>`.
+
+### Registrar en Claude Code
+
+```bash
+claude mcp add --transport http laforja http://localhost:4000/mcp \
+  --header "Authorization: Bearer $MCP_ADMIN_TOKEN"
+```
+
+Las tools aparecen como `mcp__laforja__*` en la próxima sesión. Sin token en la
+env el server no se monta (`/mcp` responde `404`).
+
 ## Deploy con el Makefile
 
 El `Makefile` de la raíz maneja el VPS por SSH (`make help` lista todo). En

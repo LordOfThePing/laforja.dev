@@ -14,6 +14,7 @@ import { FakeMercadoPago } from './fake-mp.ts';
 export const TEST_SECRET = 'secreto-de-test';
 export const TEST_MP_WEBHOOK_SECRET = 'secreto-webhook-mp';
 export const TEST_ADMIN_EMAIL = 'admin@example.com';
+export const TEST_MCP_TOKEN = 'secreto-mcp-token';
 
 export async function createTestApp(
   rateLimits?: Partial<{
@@ -25,7 +26,7 @@ export async function createTestApp(
   }>,
   backupStateDir?: string,
   mailer: FakeMailer | null = new FakeMailer(),
-  overrides: { mpBackUrl?: string } = {},
+  overrides: { mpBackUrl?: string; mcpAdminToken?: string } = {},
 ) {
   const pg = drizzle(new PGlite(), { schema });
   await migrate(pg, { migrationsFolder: './drizzle' });
@@ -43,6 +44,7 @@ export async function createTestApp(
     rateLimits,
     backupStateDir,
     mailer,
+    mcpAdminToken: overrides.mcpAdminToken,
     log: false,
   });
   return { app, db, mp, mailer };

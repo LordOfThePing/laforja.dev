@@ -25,4 +25,7 @@ export const env = {
   // Sin key la newsletter queda apagada. El remitente tiene que ser de un dominio verificado en Resend.
   resendApiKey: process.env.RESEND_API_KEY || undefined,
   newsletterFrom: process.env.NEWSLETTER_FROM || 'La Forja <newsletter@laforja.dev>',
+  // Bearer token del server MCP en /mcp (ABM de herramientas/categorías desde Claude Code u otro cliente).
+  // Vacío = MCP apagado. En prod, bindear el puerto a 127.0.0.1 o poner un token largo y aleatorio.
+  mcpAdminToken: process.env.MCP_ADMIN_TOKEN || undefined,
 };

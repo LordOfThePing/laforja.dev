@@ -11,6 +11,7 @@ import { adminRoutes } from './routes/admin.ts';
 import { certificatesRoutes } from './routes/certificates.ts';
 import { collectionsRoutes } from './routes/collections.ts';
 import { coursesRoutes } from './routes/courses.ts';
+import { mcpRoutes } from './routes/mcp.ts';
 import { meRoutes } from './routes/me.ts';
 import { newsletterRoutes } from './routes/newsletter.ts';
 import { subscriptionRoutes } from './routes/subscription.ts';
@@ -30,6 +31,8 @@ type AppOptions = {
   mailer?: Mailer | null;
   rateLimits?: Partial<RateLimits>;
   backupStateDir?: string;
+  // Sin token, el server MCP no se monta. Ver env.ts (mcpAdminToken).
+  mcpAdminToken?: string;
   log?: boolean;
 };
 
@@ -65,6 +68,7 @@ export function createApp({
   mailer = null,
   rateLimits,
   backupStateDir,
+  mcpAdminToken,
   log = true,
 }: AppOptions) {
   const app = new Hono();
@@ -97,6 +101,7 @@ export function createApp({
   );
   app.route('/api/newsletter', newsletterRoutes({ db, mailer, frontendUrl, limit: limits.newsletter }));
   app.route('/api/admin', adminRoutes(auth, { backupStateDir, mailer, frontendUrl }));
+  if (mcpAdminToken) app.route('/mcp', mcpRoutes(db, mcpAdminToken));
   app.route('/webhooks', webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook }));
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
