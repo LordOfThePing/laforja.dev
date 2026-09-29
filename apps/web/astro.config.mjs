@@ -3,7 +3,9 @@ import react from '@astrojs/react';
 import node from '@astrojs/node';
 import auth from 'auth-astro';
 
-const site = 'https://academia.flynnpedroa.engineer';
+const site = 'https://laforja.dev';
+// Sigue sirviendo por el tunnel hasta que esté el 301; sin esto el login ahí da 403.
+const legacyHost = 'academia.flynnpedroa.engineer';
 
 export default defineConfig({
   output: 'server',
@@ -14,7 +16,11 @@ export default defineConfig({
   security: {
     // Sin allowedDomains, Astro ignora el Host y arma la URL como `localhost`, así que el
     // checkOrigin rechaza con 403 todo POST que llega por el tunnel (incluido el signin de Auth.js).
-    allowedDomains: [{ protocol: 'https', hostname: new URL(site).hostname }, { hostname: 'localhost' }],
+    allowedDomains: [
+      { protocol: 'https', hostname: new URL(site).hostname },
+      { protocol: 'https', hostname: legacyHost },
+      { hostname: 'localhost' },
+    ],
   },
   experimental: {
     // Astro arma la CSP con los hashes de los scripts/estilos inline de cada página.
