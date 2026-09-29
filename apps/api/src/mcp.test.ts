@@ -90,8 +90,9 @@ describe('MCP HTTP', () => {
       (t) => t.name === 'create_tool',
     );
     expect(createTool?.inputSchema.required).toEqual(
-      expect.arrayContaining(['slug', 'title', 'shortDescription', 'promptBody', 'tier', 'categoryId']),
+      expect.arrayContaining(['slug', 'title', 'shortDescription', 'tier', 'categoryId']),
     );
+    expect(createTool?.inputSchema.required).not.toContain('promptBody');
   });
 
   test('tool desconocida: content isError', async () => {

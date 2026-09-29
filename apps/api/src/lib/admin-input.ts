@@ -87,7 +87,7 @@ const toolFields = {
   shortDescription: (b: Record<string, unknown>) => text(b, 'shortDescription'),
   longDescription: (b: Record<string, unknown>) => optionalText(b, 'longDescription'),
   youtubeUrl: (b: Record<string, unknown>) => optionalUrl(b, 'youtubeUrl'),
-  promptBody: (b: Record<string, unknown>) => text(b, 'promptBody'),
+  promptBody: (b: Record<string, unknown>) => optionalText(b, 'promptBody'),
   tier,
   categoryId: (b: Record<string, unknown>) => uuid(b, 'categoryId'),
   tags: (b: Record<string, unknown>) => {

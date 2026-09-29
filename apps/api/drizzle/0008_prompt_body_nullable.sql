@@ -1,0 +1,1 @@
+ALTER TABLE "tools" ALTER COLUMN "prompt_body" DROP NOT NULL;

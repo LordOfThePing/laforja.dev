@@ -54,7 +54,7 @@ export const tools = pgTable('tools', {
   shortDescription: text('short_description').notNull(),
   longDescription: text('long_description'),
   youtubeUrl: text('youtube_url'),
-  promptBody: text('prompt_body').notNull(),
+  promptBody: text('prompt_body'),
   tier: toolTier('tier').notNull().default('premium'),
   categoryId: uuid('category_id')
     .notNull()

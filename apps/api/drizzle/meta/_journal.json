@@ -57,6 +57,13 @@
       "when": 1790616416250,
       "tag": "0007_newsletter",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790702578009,
+      "tag": "0008_prompt_body_nullable",
+      "breakpoints": true
     }
   ]
 }

@@ -120,14 +120,14 @@ const MCP_TOOLS: McpTool[] = [
   {
     name: 'create_tool',
     description:
-      'Crea una herramienta. Campos: slug, title, shortDescription, promptBody, tier ("free"|"premium"), categoryId (UUID), tags (string[]), longDescription?, youtubeUrl?, durationSeconds?, coverImageUrl?, publishedAt? (ISO).',
+      'Crea una herramienta. `longDescription` es el cuerpo educativo (markdown: headings, listas y fenced code blocks). `promptBody` es opcional y sirve solo cuando la herramienta trae un prompt para copiar al agente. Campos: slug, title, shortDescription, tier ("free"|"premium"), categoryId (UUID), tags (string[]), longDescription?, promptBody?, youtubeUrl?, durationSeconds?, coverImageUrl?, publishedAt? (ISO).',
     inputSchema: {
       type: 'object',
       properties: {
         slug: { type: 'string' },
         title: { type: 'string' },
         shortDescription: { type: 'string' },
-        promptBody: { type: 'string' },
+        promptBody: { type: ['string', 'null'] },
         tier: { type: 'string', enum: ['free', 'premium'] },
         categoryId: { type: 'string' },
         tags: { type: 'array', items: { type: 'string' } },
@@ -137,7 +137,7 @@ const MCP_TOOLS: McpTool[] = [
         coverImageUrl: { type: ['string', 'null'] },
         publishedAt: { type: ['string', 'null'], description: 'ISO 8601. null o ausente = borrador.' },
       },
-      required: ['slug', 'title', 'shortDescription', 'promptBody', 'tier', 'categoryId'],
+      required: ['slug', 'title', 'shortDescription', 'tier', 'categoryId'],
       additionalProperties: false,
     },
     handler: async (db, args) => {
@@ -163,7 +163,7 @@ const MCP_TOOLS: McpTool[] = [
         slug: { type: 'string' },
         title: { type: 'string' },
         shortDescription: { type: 'string' },
-        promptBody: { type: 'string' },
+        promptBody: { type: ['string', 'null'] },
         tier: { type: 'string', enum: ['free', 'premium'] },
         categoryId: { type: 'string' },
         tags: { type: 'array', items: { type: 'string' } },
