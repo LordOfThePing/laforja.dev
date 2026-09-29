@@ -55,3 +55,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-28 — Comentarios en herramientas (solo suscriptores) + moderación en `/admin/comentarios` — 999f8ed, 71153d6, 8d5ce5f
 - 2026-09-28 — Rutas de aprendizaje curadas (`/rutas` + `/admin/rutas`) — 172478c, 355e1a1
 - 2026-09-28 — Newsletter con Resend (doble opt-in, baja en un click, envíos desde `/admin/newsletter`; apagada hasta cargar la key) — 5d42a52, 0234c6d, c8ace8d
+- 2026-09-29 — Errores 502 tapados por Cloudflare (pago en /suscripcion) — 07e7aaf
