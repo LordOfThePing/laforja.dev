@@ -91,7 +91,20 @@ El **detalle** de qué se hizo va en el mensaje del commit (y en
   `refactoriza`).
 - Un commit por cambio lógico.
 
-## 4. Estilo de código
+## 4. Deploy
+
+- **Cada push a `main` dispara un deploy** al VPS vía GitHub Actions
+  (`.github/workflows/deploy.yml`).
+- El deploy **corre las migraciones de Drizzle** como parte del pipeline —
+  no hay que correr `bun run db:migrate` a mano, ni pedirle al usuario que
+  lo haga. Con pushear el archivo nuevo en `apps/api/drizzle/` alcanza.
+- Consecuencia práctica: cuando agregás una migración, no la pruebes con
+  "corré `db:migrate` local" — el paso real es `git push` y el deploy la
+  aplica en prod.
+- Si el push a `main` se rechaza (branch protection o similar), avisar al
+  usuario antes de intentar cualquier workaround (ver §1).
+
+## 5. Estilo de código
 
 - Español rioplatense en toda la UI (`vos`, no `tú`).
 - TypeScript estricto.
@@ -101,7 +114,7 @@ El **detalle** de qué se hizo va en el mensaje del commit (y en
   no obvio (invariantes ocultos, workarounds documentados, decisiones que
   sorprenderían al lector).
 
-## 5. Contexto del proyecto
+## 6. Contexto del proyecto
 
 Antes de tocar código, leer siempre:
 
