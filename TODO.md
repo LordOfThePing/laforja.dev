@@ -15,7 +15,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 ### Operación / producción
 
 - Activar la newsletter: cuenta en Resend, verificar `laforja.dev` (SPF/DKIM en Cloudflare), `RESEND_API_KEY` en `.env.production` — pendiente — depende de que `laforja.dev` resuelva; pasos en `docs/despliegue-vps.md` → Newsletter
-- Activar Umami en prod (profile `analytics`, secretos, cambiar password de admin, `UMAMI_WEBSITE_ID`) — pendiente — pasos en `docs/despliegue-vps.md` → Analytics
 
 ### SEO y crecimiento
 

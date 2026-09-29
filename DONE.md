@@ -60,3 +60,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-29 — Pago de MP en producción destrabado: token de prod correcto, webhook (secret) creado desde el MCP de MP, `MP_BACK_URL` configurable (fallback, sin usar) + Worker de redirect en `ops/mp-back-worker/` — 507ccda, 63d3fde, 5ef86d9, 1fc271c
 - 2026-09-29 — Server MCP HTTP en `apps/api` (`/mcp`) para ABM de herramientas y categorías desde Claude Code, con bearer token opcional (`MCP_ADMIN_TOKEN`) y tests
 - 2026-09-29 — Sacado el Worker `ops/mp-back-worker/` (borrado de Cloudflare) y el override `MP_BACK_URL` — 2e1fe87
+- 2026-09-29 — Umami activo en prod (profile `analytics`, sitio `laforja.dev` y `UMAMI_WEBSITE_ID`; hecho por el usuario)
