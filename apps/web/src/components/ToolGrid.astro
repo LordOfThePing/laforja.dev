@@ -14,6 +14,11 @@ try {
 }
 
 const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category.name)))];
+const tiers: { value: 'all' | 'free' | 'premium'; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'free', label: 'Gratis' },
+  { value: 'premium', label: 'Premium' },
+];
 ---
 
 <section id="herramientas" class="grid-section">
@@ -28,18 +33,34 @@ const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category.n
         </p>
       </div>
 
-      {!failed && (<div class="grid-section__filters" role="tablist" aria-label="Filtrar por categoría">
-        {categories.map((cat, i) => (
-          <button
-            class:list={['chip', { 'chip--active': i === 0 }]}
-            data-filter={cat}
-            role="tab"
-            aria-selected={i === 0}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>)}
+      {!failed && (
+        <div class="grid-section__filter-groups">
+          <div class="grid-section__filters" role="tablist" aria-label="Filtrar por categoría">
+            {categories.map((cat, i) => (
+              <button
+                class:list={['chip', { 'chip--active': i === 0 }]}
+                data-cat-filter={cat}
+                role="tab"
+                aria-selected={i === 0}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <div class="grid-section__filters" role="tablist" aria-label="Filtrar por acceso">
+            {tiers.map((t, i) => (
+              <button
+                class:list={['chip', { 'chip--active': i === 0 }]}
+                data-tier-filter={t.value}
+                role="tab"
+                aria-selected={i === 0}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </header>
 
     {failed ? (
@@ -49,7 +70,7 @@ const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category.n
     ) : (
       <div class="grid reveal" id="tool-grid">
         {tools.map((t) => (
-          <div class="grid__cell" data-cat={t.category.name}>
+          <div class="grid__cell" data-cat={t.category.name} data-tier={t.tier}>
             <ToolCard tool={t} />
           </div>
         ))}
@@ -77,6 +98,11 @@ const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category.n
     max-width: 560px;
     margin-top: 12px;
     font-size: 16px;
+  }
+  .grid-section__filter-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
   .grid-section__filters {
     display: flex;
@@ -113,6 +139,7 @@ const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category.n
   }
   .grid__cell { display: contents; }
   .grid__cell > * { transition: opacity 300ms var(--ease-out), transform 300ms var(--ease-out); }
+  .grid__cell.is-hidden,
   .grid__cell.is-hidden > * {
     display: none;
   }
@@ -132,20 +159,40 @@ const categories = ['Todas', ...Array.from(new Set(tools.map((t) => t.category.n
 </style>
 
 <script>
-  const chips = document.querySelectorAll<HTMLButtonElement>('.chip');
+  const catChips = document.querySelectorAll<HTMLButtonElement>('[data-cat-filter]');
+  const tierChips = document.querySelectorAll<HTMLButtonElement>('[data-tier-filter]');
   const cells = document.querySelectorAll<HTMLElement>('.grid__cell');
 
-  chips.forEach((chip) => {
+  let activeCat = 'Todas';
+  let activeTier: 'all' | 'free' | 'premium' = 'all';
+
+  function applyFilters() {
+    cells.forEach((cell) => {
+      const catMatch = activeCat === 'Todas' || cell.dataset.cat === activeCat;
+      const tierMatch = activeTier === 'all' || cell.dataset.tier === activeTier;
+      cell.classList.toggle('is-hidden', !(catMatch && tierMatch));
+    });
+  }
+
+  catChips.forEach((chip) => {
     chip.addEventListener('click', () => {
-      const cat = chip.dataset.filter;
-      chips.forEach((c) => {
+      activeCat = chip.dataset.catFilter ?? 'Todas';
+      catChips.forEach((c) => {
         c.classList.toggle('chip--active', c === chip);
         c.setAttribute('aria-selected', c === chip ? 'true' : 'false');
       });
-      cells.forEach((cell) => {
-        const match = cat === 'Todas' || cell.dataset.cat === cat;
-        cell.classList.toggle('is-hidden', !match);
+      applyFilters();
+    });
+  });
+
+  tierChips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      activeTier = (chip.dataset.tierFilter as typeof activeTier | undefined) ?? 'all';
+      tierChips.forEach((c) => {
+        c.classList.toggle('chip--active', c === chip);
+        c.setAttribute('aria-selected', c === chip ? 'true' : 'false');
       });
+      applyFilters();
     });
   });
 </script>
