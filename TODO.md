@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Fix: los estilos del markdown no llegan a los nodos inyectados por `set:html` — en curso por @claude — pasarlos a `<style is:global>`
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
