@@ -3,6 +3,7 @@ import { getSession } from 'auth-astro/server';
 import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
+import Markdown from '~/components/Markdown.astro';
 import Syllabus from '~/components/cursos/Syllabus.astro';
 import { type CourseDetail, formatLongDuration, getCourse, issueCertificate } from '~/lib/api';
 import { loginUrl } from '~/lib/redirect';
@@ -41,7 +42,6 @@ const resume = lessons.find((l) => !l.isLocked && !l.progress?.completed) ?? fir
 const started = lessons.some((l) => l.progress?.completed || (l.progress?.secondsWatched ?? 0) > 0);
 const allLocked = !firstOpen;
 const hasLocked = lessons.some((l) => l.isLocked);
-const paragraphs = course.description?.split(/\n{2,}/) ?? [];
 const lessonCount = lessons.length === 1 ? '1 lección' : `${lessons.length} lecciones`;
 const done = course.progress && course.progress.total > 0 && course.progress.completed === course.progress.total;
 ---
@@ -106,10 +106,10 @@ const done = course.progress && course.progress.total > 0 && course.progress.com
         <h2 id="temario" class="eyebrow">Temario</h2>
         <Syllabus course={course} />
       </section>
-      {paragraphs.length > 0 && (
+      {course.description && (
         <aside class="course__about" aria-labelledby="sobre">
           <h2 id="sobre" class="eyebrow">Sobre el curso</h2>
-          {paragraphs.map((p) => <p>{p}</p>)}
+          <Markdown source={course.description} />
         </aside>
       )}
     </div>

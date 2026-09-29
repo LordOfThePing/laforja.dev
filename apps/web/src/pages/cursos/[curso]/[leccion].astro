@@ -3,6 +3,7 @@ import { getSession } from 'auth-astro/server';
 import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
+import Markdown from '~/components/Markdown.astro';
 import Syllabus from '~/components/cursos/Syllabus.astro';
 import {
   type CourseDetail,
@@ -92,7 +93,7 @@ const resumeAt =
     : undefined;
 const embed = lesson.isLocked ? null : youtubeEmbedUrl(lesson.youtubeUrl, { jsApi: track, start: resumeAt });
 const watchedPct = watchedPercent(watched, lesson.durationSeconds);
-const paragraphs = lesson.isLocked ? [] : (lesson.contentMd?.split(/\n{2,}/) ?? []);
+const contentMd = lesson.isLocked ? null : lesson.contentMd;
 const all = course.modules.flatMap((m) => m.lessons);
 const position = all.findIndex((l) => l.slug === lesson.slug) + 1;
 const moduleTitle = course.modules.find((m) => m.lessons.some((l) => l.slug === lesson.slug))?.title;
@@ -182,9 +183,9 @@ const duration = formatDuration(lesson.durationSeconds);
               </div>
             )}
 
-            {paragraphs.length > 0 && (
+            {contentMd && (
               <section class="player__body">
-                {paragraphs.map((p) => <p>{p}</p>)}
+                <Markdown source={contentMd} />
               </section>
             )}
 

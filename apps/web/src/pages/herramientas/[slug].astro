@@ -1,9 +1,9 @@
 ---
 import { getSession } from 'auth-astro/server';
-import { marked } from 'marked';
 import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
+import Markdown from '~/components/Markdown.astro';
 import {
   ApiError,
   type Me,
@@ -19,8 +19,6 @@ import {
 } from '~/lib/api';
 import { loginUrl } from '~/lib/redirect';
 import { youtubeEmbedUrl } from '~/lib/youtube';
-
-marked.setOptions({ gfm: true, breaks: false });
 
 const slug = Astro.params.slug ?? '';
 const session = await getSession(Astro.request);
@@ -90,11 +88,7 @@ if (!tool) {
 
 const duration = tool ? formatDuration(tool.durationSeconds) : null;
 const embed = tool && !tool.isLocked ? youtubeEmbedUrl(tool.youtubeUrl) : null;
-// longDescription lo escribe un admin (panel o MCP con token); se confía y se renderiza con marked.
-const bodyHtml =
-  tool && !tool.isLocked && tool.longDescription
-    ? await marked.parse(tool.longDescription)
-    : null;
+const longDescription = tool && !tool.isLocked ? tool.longDescription : null;
 const promptBody = tool && !tool.isLocked ? tool.promptBody : null;
 const remaining = me?.unlocks.remaining ?? 0;
 const quotaText = remaining === 1 ? 'Te queda' : 'Te quedan';
@@ -192,6 +186,13 @@ const commentErrors: Record<CommentNotice, string> = {
           </section>
         ) : (
           <>
+            {promptBody && (
+              <a href="#prompt" class="jump-prompt" aria-label="Ir al prompt para el agente">
+                <span class="jump-prompt__label">Ir al prompt para el agente</span>
+                <span class="jump-prompt__arrow" aria-hidden="true">↓</span>
+              </a>
+            )}
+
             {embed && (
               <div class="tool__video">
                 <iframe
@@ -204,12 +205,14 @@ const commentErrors: Record<CommentNotice, string> = {
               </div>
             )}
 
-            {bodyHtml && (
-              <section class="tool__body markdown" set:html={bodyHtml}></section>
+            {longDescription && (
+              <section class="tool__body">
+                <Markdown source={longDescription} />
+              </section>
             )}
 
             {promptBody && (
-              <section class="prompt" aria-labelledby="prompt-title">
+              <section id="prompt" class="prompt" aria-labelledby="prompt-title">
                 <header class="prompt__head">
                   <h2 id="prompt-title" class="eyebrow">Prompt para el agente</h2>
                   <button type="button" class="btn btn--ghost prompt__copy" data-copy-target="prompt-body">
@@ -358,6 +361,7 @@ const commentErrors: Record<CommentNotice, string> = {
     border-radius: var(--radius-lg);
     background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
     overflow: hidden;
+    scroll-margin-top: 96px;
   }
   .prompt__head {
     display: flex;
@@ -455,82 +459,62 @@ const commentErrors: Record<CommentNotice, string> = {
     text-underline-offset: 3px;
   }
   .comment__delete-btn:hover { color: var(--ember-300); }
-</style>
 
-<!-- Los estilos scopeados de Astro no llegan a nodos inyectados con set:html (markdown),
-     por eso las reglas del cuerpo van en un bloque global. -->
-<style is:global>
-  .markdown { display: block; font-size: 16px; }
-  .markdown > * + * { margin-top: 18px; }
-  .markdown > *:first-child { margin-top: 0; }
-  .markdown h2 {
-    font-family: var(--font-display);
-    font-size: clamp(24px, 3vw, 30px);
-    font-weight: 400;
-    line-height: 1.15;
-    color: var(--ink);
-    padding-top: 20px;
-    border-top: 1px solid var(--line);
-  }
-  .markdown > h2:first-child { padding-top: 0; border-top: 0; }
-  .markdown > * + h2 { margin-top: 40px; }
-  .markdown h3 {
-    font-family: var(--font-display);
-    font-size: 20px;
-    font-weight: 400;
-    line-height: 1.2;
-    color: var(--ink);
-    letter-spacing: 0.01em;
-  }
-  .markdown > * + h3 { margin-top: 28px; }
-  .markdown p, .markdown li { color: var(--ink-dim); line-height: 1.7; }
-  .markdown ul, .markdown ol {
-    padding-left: 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .markdown li::marker { color: var(--ink-mute); }
-  .markdown strong { color: var(--ink); font-weight: 600; }
-  .markdown a {
-    color: var(--ember-300);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-  .markdown a:hover { color: var(--ember-200, var(--ember-300)); }
-  .markdown :not(pre) > code {
+  .jump-prompt {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 176, 103, 0.35);
+    border-right: 0;
+    border-radius: var(--radius) 0 0 var(--radius);
+    background: linear-gradient(180deg, var(--ember-500), var(--ember-600));
+    color: #1a0e00;
     font-family: var(--font-mono);
-    font-size: 0.88em;
-    padding: 2px 7px;
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    color: var(--ember-300);
-    white-space: nowrap;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+    box-shadow: 0 12px 30px -12px var(--ember-glow);
+    transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
   }
-  .markdown pre {
-    padding: 18px 20px;
-    background: var(--bg-elev-2);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
-    overflow-x: auto;
-    line-height: 1.6;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  .jump-prompt:hover {
+    transform: translateY(-50%) translateX(-3px);
+    box-shadow: 0 18px 40px -14px var(--ember-glow);
   }
-  .markdown pre code {
-    font-family: var(--font-mono);
-    font-size: 13.5px;
-    color: var(--ink);
-    background: none;
-    border: 0;
-    padding: 0;
-    white-space: pre;
+  .jump-prompt__label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
   }
-  .markdown blockquote {
-    border-left: 3px solid var(--ember-500);
-    padding: 4px 0 4px 14px;
-    color: var(--ink-dim);
-    font-style: italic;
+  .jump-prompt__arrow {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: var(--font-body);
+    font-size: 14px;
   }
-  .markdown hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
+  /* En pantallas angostas se colapsa a un botón chico abajo a la derecha. */
+  @media (max-width: 720px) {
+    .jump-prompt {
+      top: auto;
+      bottom: 20px;
+      right: 16px;
+      transform: none;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 176, 103, 0.35);
+      border-radius: var(--radius);
+    }
+    .jump-prompt:hover { transform: translateY(-1px); }
+    .jump-prompt__label, .jump-prompt__arrow {
+      writing-mode: horizontal-tb;
+      transform: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .jump-prompt:hover { transform: translateY(-50%); }
+  }
 </style>

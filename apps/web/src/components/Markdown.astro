@@ -1,0 +1,16 @@
+---
+import { marked } from 'marked';
+
+interface Props {
+  source: string | null | undefined;
+}
+
+marked.setOptions({ gfm: true, breaks: false });
+
+const { source } = Astro.props;
+// Se confía en el autor (admin del panel / MCP con token): no se sanea. Si en el futuro
+// hay markdown de usuarios comunes, meter DOMPurify o similar acá.
+const html = source ? await marked.parse(source) : null;
+---
+
+{html && <div class="markdown" set:html={html} />}

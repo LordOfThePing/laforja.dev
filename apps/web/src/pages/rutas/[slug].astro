@@ -3,6 +3,7 @@ import { getSession } from 'auth-astro/server';
 import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
+import Markdown from '~/components/Markdown.astro';
 import { type CollectionDetail, formatDuration, formatLongDuration, getCollection } from '~/lib/api';
 
 const slug = Astro.params.slug ?? '';
@@ -20,7 +21,6 @@ try {
 }
 if (!collection || collection.items.length === 0) return new Response(null, { status: 404 });
 
-const paragraphs = collection.description?.split(/\n{2,}/) ?? [];
 const steps = collection.items.length === 1 ? '1 paso' : `${collection.items.length} pasos`;
 const courseDone = (c: { lessonCount: number; progress: { completed: number } | null }) =>
   c.lessonCount > 0 && c.progress?.completed === c.lessonCount;
@@ -35,7 +35,11 @@ const courseDone = (c: { lessonCount: number; progress: { completed: number } | 
       <div class="eyebrow">Ruta · {steps}</div>
       <h1 class="route__title display">{collection.title}</h1>
       <p class="route__lede">{collection.shortDescription}</p>
-      {paragraphs.map((p) => <p class="route__desc">{p}</p>)}
+      {collection.description && (
+        <div class="route__desc">
+          <Markdown source={collection.description} />
+        </div>
+      )}
       {collection.progress && (
         <div class="route__progress">
           <progress
