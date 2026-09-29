@@ -7,8 +7,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 - `MP_BACK_URL` configurable: MP rechaza el `back_url` en `.engineer` y no se puede pagar — en curso por @claude — retorno vía Worker en `workers.dev` hasta migrar a `laforja.dev`
 - Copia de backups fuera del VPS: verificar la primera subida a R2 — en curso por @claude — bucket, token y `BACKUP_S3_*` listos; falta `make deploy` y «Hacer backup ahora» en Admin → Backups
 
-- Login con Google roto en `laforja.dev` (403 cross-site): `site`/`allowedDomains` de Astro apuntan al dominio viejo — en curso por @claude
-
 ## Pendiente
 
 ### v1 — cerrar el MVP
@@ -22,7 +20,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### SEO y crecimiento
 
-- Migrar a `laforja.dev`: falta `FRONTEND_URL`, redirect 301 del dominio viejo, `site` en `apps/web/astro.config.mjs` (de ahí salen canonical, sitemap y OG) y variable `SITE_URL` del workflow Uptime — pendiente — tunnel, callback de Google y webhook de MP ya configurados; ver `docs/despliegue-vps.md`
+- Migrar a `laforja.dev`: falta `FRONTEND_URL`, redirect 301 del dominio viejo (después sacar `legacyHost` de `apps/web/astro.config.mjs`) y variable `SITE_URL` del workflow Uptime — pendiente — tunnel, callback de Google y webhook de MP ya configurados; ver `docs/despliegue-vps.md`
 
 ### v2 — Cursos (ver `docs/roadmap.md`)
 
