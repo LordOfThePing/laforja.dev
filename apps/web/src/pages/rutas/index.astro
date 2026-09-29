@@ -11,7 +11,7 @@ try {
 } catch (err) {
   console.error('No se pudo cargar /api/collections', err);
   collections = null;
-  Astro.response.status = 502;
+  Astro.response.status = 503;
 }
 ---
 

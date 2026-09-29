@@ -11,7 +11,7 @@ if (Astro.request.method === 'POST') {
   const raw = (await Astro.request.formData()).get('token');
   token = typeof raw === 'string' ? raw : '';
   result = await confirmNewsletter(token);
-  if (!result.ok) Astro.response.status = result.reason === 'not_found' ? 404 : 502;
+  if (!result.ok) Astro.response.status = result.reason === 'not_found' ? 404 : 503;
 }
 ---
 

@@ -12,7 +12,7 @@ try {
 } catch (err) {
   console.error(`No se pudo cargar el certificado ${id}`, err);
   return new Response('No pudimos cargar el certificado. Probá de nuevo en un rato.', {
-    status: 502,
+    status: 503,
     headers: { 'content-type': 'text/plain; charset=utf-8' },
   });
 }

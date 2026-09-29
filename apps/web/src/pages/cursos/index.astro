@@ -14,7 +14,7 @@ try {
 } catch (err) {
   console.error('No se pudo cargar /api/courses', err);
   courses = null;
-  Astro.response.status = 502;
+  Astro.response.status = 503;
 }
 ---
 

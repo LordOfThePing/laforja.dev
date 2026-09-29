@@ -17,7 +17,7 @@ if (Astro.request.method === 'POST') {
   }
   result = await subscribeNewsletter(email, ip);
   if (!result.ok) {
-    Astro.response.status = { invalid_email: 400, not_found: 404, rate_limited: 429, newsletter_disabled: 503, mailer_error: 502 }[
+    Astro.response.status = { invalid_email: 400, not_found: 404, rate_limited: 429, newsletter_disabled: 503, mailer_error: 503 }[
       result.reason
     ];
   }

@@ -77,7 +77,7 @@ try {
 } catch (err) {
   console.error(`No se pudo cargar la herramienta ${slug}`, err);
   return new Response('No pudimos cargar la herramienta. Probá de nuevo en un rato.', {
-    status: 502,
+    status: 503,
     headers: { 'content-type': 'text/plain; charset=utf-8' },
   });
 }

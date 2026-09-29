@@ -17,7 +17,8 @@ if (Astro.request.method === 'POST') {
   if (result.ok) return Astro.redirect(result.initPoint, 303);
   if (result.reason === 'already_subscribed') return Astro.redirect('/dashboard', 303);
   providerError = true;
-  Astro.response.status = 502;
+  // No 502: Cloudflare reemplaza los 502/504 del origen por su propia página y el aviso no se ve.
+  Astro.response.status = 503;
 }
 
 let me: Me | null;
@@ -26,7 +27,7 @@ try {
 } catch (err) {
   console.error('No se pudo cargar /api/me', err);
   return new Response('No pudimos cargar tu cuenta. Probá de nuevo en un rato.', {
-    status: 502,
+    status: 503,
     headers: { 'content-type': 'text/plain; charset=utf-8' },
   });
 }

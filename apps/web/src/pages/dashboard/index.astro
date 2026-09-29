@@ -19,7 +19,7 @@ if (Astro.request.method === 'POST') {
     const result = await cancelSubscription(user);
     if (result.ok) return Astro.redirect('/dashboard?cancelada=1', 303);
     notice = result.reason;
-    Astro.response.status = result.reason === 'payment_provider_error' ? 502 : 409;
+    Astro.response.status = result.reason === 'payment_provider_error' ? 503 : 409;
   }
 } else if (Astro.url.searchParams.has('cancelada')) {
   notice = 'cancelled';
@@ -31,7 +31,7 @@ try {
 } catch (err) {
   console.error('No se pudo cargar /api/me', err);
   return new Response('No pudimos cargar tu cuenta. Probá de nuevo en un rato.', {
-    status: 502,
+    status: 503,
     headers: { 'content-type': 'text/plain; charset=utf-8' },
   });
 }

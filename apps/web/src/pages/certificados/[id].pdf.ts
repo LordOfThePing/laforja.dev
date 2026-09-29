@@ -6,7 +6,7 @@ import { fetchCertificatePdf } from '~/lib/api';
 export const GET: APIRoute = async ({ params }) => {
   const res = await fetchCertificatePdf(params.id ?? '');
   if (res.status === 404) return new Response(null, { status: 404 });
-  if (!res.ok) return new Response('No pudimos generar el PDF. Probá de nuevo en un rato.', { status: 502 });
+  if (!res.ok) return new Response('No pudimos generar el PDF. Probá de nuevo en un rato.', { status: 503 });
 
   const headers = new Headers({ 'content-type': 'application/pdf' });
   for (const name of ['content-disposition', 'cache-control']) {
