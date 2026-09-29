@@ -61,3 +61,4 @@ Ver `CLAUDE.md` (§2) para el workflow.
 - 2026-09-29 — Server MCP HTTP en `apps/api` (`/mcp`) para ABM de herramientas y categorías desde Claude Code, con bearer token opcional (`MCP_ADMIN_TOKEN`) y tests
 - 2026-09-29 — Sacado el Worker `ops/mp-back-worker/` (borrado de Cloudflare) y el override `MP_BACK_URL` — 2e1fe87
 - 2026-09-29 — Umami activo en prod (profile `analytics`, sitio `laforja.dev` y `UMAMI_WEBSITE_ID`; hecho por el usuario)
+- 2026-09-29 — Copia de backups fuera del VPS (R2) verificada en prod
