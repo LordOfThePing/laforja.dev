@@ -15,8 +15,15 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const response = await next();
-  trackPageview(context, response);
+  const original = await next();
+  trackPageview(context, original);
+  // Auth.js devuelve Response.redirect(...) con headers immutable; sin esto el .set() de abajo tira
+  // "TypeError: immutable" y el callback de Google termina en 500 en vez de redirigir.
+  const response = new Response(original.body, {
+    status: original.status,
+    statusText: original.statusText,
+    headers: new Headers(original.headers),
+  });
   const csp = response.headers.get('Content-Security-Policy');
   response.headers.set(
     'Content-Security-Policy',
