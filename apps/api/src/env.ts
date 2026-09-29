@@ -13,6 +13,10 @@ export const env = {
   mpWebhookSecret: required('MP_WEBHOOK_SECRET'),
   port: Number(process.env.PORT ?? 4000),
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+  // MP rechaza el back_url si el dominio no le gusta (TLDs raros, host sin propagar, etc.).
+  // Cuando pasa eso, apuntar MP_BACK_URL a una URL que MP sí acepte (ej. un Worker en
+  // workers.dev) que redirija a /dashboard/gracias. Si no se define, se arma con FRONTEND_URL.
+  mpBackUrl: process.env.MP_BACK_URL || undefined,
   adminEmails: parseAdminEmails(process.env.ADMIN_EMAILS),
   // 0 la desactiva.
   reconcileIntervalHours: Number(process.env.RECONCILE_INTERVAL_HOURS ?? 6),

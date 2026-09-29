@@ -25,6 +25,7 @@ export async function createTestApp(
   }>,
   backupStateDir?: string,
   mailer: FakeMailer | null = new FakeMailer(),
+  overrides: { mpBackUrl?: string } = {},
 ) {
   const pg = drizzle(new PGlite(), { schema });
   await migrate(pg, { migrationsFolder: './drizzle' });
@@ -38,6 +39,7 @@ export async function createTestApp(
     frontendUrl: 'http://localhost:3000',
     mp,
     mpWebhookSecret: TEST_MP_WEBHOOK_SECRET,
+    mpBackUrl: overrides.mpBackUrl,
     rateLimits,
     backupStateDir,
     mailer,

@@ -101,6 +101,19 @@ describe('POST /api/subscription/create', () => {
     expect((await post('/api/subscription/create', token)).status).toBe(409);
   });
 
+  test('MP_BACK_URL override: se manda esa URL en vez de derivarla de FRONTEND_URL', async () => {
+    const { app: overrideApp, mp: overrideMp } = await createTestApp(undefined, undefined, undefined, {
+      mpBackUrl: 'https://mp-back.workers.dev/gracias',
+    });
+    const token = await makeToken({ sub: 'google-back', email: 'back@example.com' });
+    const res = await overrideApp.request('/api/subscription/create', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+    expect(overrideMp.created.at(-1)?.backUrl).toBe('https://mp-back.workers.dev/gracias');
+  });
+
   test('MP caído: 502', async () => {
     const { token } = await newUser();
     mp.failNext = true;

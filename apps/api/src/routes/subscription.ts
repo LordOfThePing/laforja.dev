@@ -10,11 +10,12 @@ export const SUBSCRIPTION_REASON = 'La Forja — Suscripción mensual';
 
 type Options = {
   auth: AuthConfig;
-  frontendUrl: string;
+  // URL absoluta donde MP redirige al usuario al terminar el alta (viene resuelta desde app.ts).
+  backUrl: string;
   mp: MercadoPago;
 };
 
-export function subscriptionRoutes({ auth, frontendUrl, mp }: Options) {
+export function subscriptionRoutes({ auth, backUrl, mp }: Options) {
   const { db } = auth;
   const app = new Hono<AuthEnv>();
   app.use(requireAuth(auth));
@@ -30,7 +31,7 @@ export function subscriptionRoutes({ auth, frontendUrl, mp }: Options) {
       amount: SUBSCRIPTION_PRICE_ARS,
       payerEmail: user.email,
       externalReference: user.id,
-      backUrl: `${frontendUrl}/dashboard/gracias`,
+      backUrl,
     });
 
     return c.json({ initPoint: preapproval.init_point, preapprovalId: preapproval.id });

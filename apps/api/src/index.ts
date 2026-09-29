@@ -14,6 +14,7 @@ const app = createApp({
   frontendUrl: env.frontendUrl,
   mp,
   mpWebhookSecret: env.mpWebhookSecret,
+  mpBackUrl: env.mpBackUrl,
   mailer: env.resendApiKey ? createResendMailer(env.resendApiKey, env.newsletterFrom) : null,
   backupStateDir: env.backupStateDir,
 });

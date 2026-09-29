@@ -24,6 +24,8 @@ type AppOptions = {
   frontendUrl: string;
   mp: MercadoPago;
   mpWebhookSecret: string;
+  // Si no viene, se arma con `${frontendUrl}/dashboard/gracias`. Ver env.ts (mpBackUrl).
+  mpBackUrl?: string;
   // null = newsletter apagada (sin RESEND_API_KEY): los endpoints responden newsletter_disabled.
   mailer?: Mailer | null;
   rateLimits?: Partial<RateLimits>;
@@ -59,6 +61,7 @@ export function createApp({
   frontendUrl,
   mp,
   mpWebhookSecret,
+  mpBackUrl,
   mailer = null,
   rateLimits,
   backupStateDir,
@@ -88,7 +91,10 @@ export function createApp({
   app.route('/api/courses', coursesRoutes(auth, limits.progress));
   app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));
-  app.route('/api/subscription', subscriptionRoutes({ auth, frontendUrl, mp }));
+  app.route(
+    '/api/subscription',
+    subscriptionRoutes({ auth, backUrl: mpBackUrl ?? `${frontendUrl}/dashboard/gracias`, mp }),
+  );
   app.route('/api/newsletter', newsletterRoutes({ db, mailer, frontendUrl, limit: limits.newsletter }));
   app.route('/api/admin', adminRoutes(auth, { backupStateDir, mailer, frontendUrl }));
   app.route('/webhooks', webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook }));
