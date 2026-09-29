@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Cargar herramienta "nodeterm" (agentes en canvas infinito) al catálogo — en curso por @claude
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
