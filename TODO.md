@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Colapsar el bloque de prompt en `/herramientas/:slug` a ~unas decenas de líneas, con botón "Ver todo el prompt" para expandir; el botón Copiar sigue copiando el prompt completo — en curso por @claude
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
