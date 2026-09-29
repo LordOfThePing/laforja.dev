@@ -4,6 +4,9 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Componente `<Markdown>` reusable + estilos en `globals.css`: aplicar a herramientas, lecciones, cursos y rutas — en curso por @claude
+- Botón lateral "IR AL PROMPT PARA EL AGENTE" en la página de herramienta que ancla al prompt — en curso por @claude
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
