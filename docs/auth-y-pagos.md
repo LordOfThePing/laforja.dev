@@ -71,11 +71,6 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 7. MP redirige a `back_url` con `preapproval_id`. `/dashboard/gracias` se
    refresca cada 5 s hasta que el webhook deja la suscripción en `active`
 
-> `back_url` sale de `MP_BACK_URL` si está seteada, o de `${FRONTEND_URL}/dashboard/gracias`
-> si no. MP rechaza `back_url` con hosts que no le gustan (TLDs raros, dominios sin
-> propagar). Si eso pasa, poner `MP_BACK_URL` apuntando a una URL que MP sí acepte —
-> por ejemplo un Worker en `workers.dev` — que redirija a `/dashboard/gracias`.
-
 El backend **no** guarda nada al crear: el usuario queda vinculado recién cuando
 llega el webhook `authorized`, vía `external_reference`.
 

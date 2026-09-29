@@ -79,11 +79,6 @@ En el panel de MP → Webhooks: URL
 *Planes y suscripciones*. La clave secreta que muestra MP va en
 `MP_WEBHOOK_SECRET`.
 
-Si al crear la preapproval MP responde con un error sobre `back_url`, poner en
-`.env` la variable `MP_BACK_URL` apuntando a una URL que MP acepte (por ejemplo
-un Worker en `workers.dev`) que redirija a `${FRONTEND_URL}/dashboard/gracias`.
-Sin `MP_BACK_URL`, se usa `${FRONTEND_URL}/dashboard/gracias` directo.
-
 ### Migrar a `laforja.dev` (más adelante)
 
 Agregar los mismos public hostnames con `laforja.dev` en el mismo tunnel,
