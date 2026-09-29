@@ -1,0 +1,7 @@
+name = "laforja-mp-back"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Override el destino con:  wrangler secret put TARGET_URL  (o desde el panel).
+# Sin la variable, el Worker redirige a https://laforja.dev/dashboard/gracias.
+[vars]
