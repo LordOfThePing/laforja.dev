@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Arreglar workflow Uptime apuntando a `laforja.dev`: cambiar default en `.github/workflows/uptime.yml` y setear `vars.SITE_URL` del repo — en curso por @claude
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
