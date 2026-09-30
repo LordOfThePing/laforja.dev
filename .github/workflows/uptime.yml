@@ -16,7 +16,7 @@ permissions:
 
 env:
   # Variable del repo (Settings → Variables) para no tocar esto al migrar a laforja.dev.
-  SITE_URL: ${{ vars.SITE_URL || 'https://academia.flynnpedroa.engineer' }}
+  SITE_URL: ${{ vars.SITE_URL || 'https://laforja.dev' }}
   ISSUE_LABEL: caida
 
 jobs:
