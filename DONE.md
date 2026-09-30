@@ -5,6 +5,7 @@ Ver `CLAUDE.md` (§2) para el workflow.
 
 ---
 
+- 2026-09-30 — Arreglar workflow Uptime apuntando a `laforja.dev`: default en YAML + `vars.SITE_URL` del repo — 12e718c
 - 2026-09-29 — Fix filtro por categoría en `ToolGrid` (celdas vacías en desktop) y agregado filtro por tier (Todas / Gratis / Premium)
 - 2026-09-29 — Cargar herramienta "nodeterm" (agentes en canvas infinito) al catálogo, publicada en categoría Diseño y UX/UI
 - 2026-09-29 — Input datetime editable para `publishedAt` en el form del admin de herramientas — 64368ca
