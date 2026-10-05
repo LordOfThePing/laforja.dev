@@ -4,8 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Suscripciones tematizadas forja (Aprendiz / Oficial / Maestro) — en curso por @claude — freemium 1 desbloqueo/mes; plan Oficial $6999 ARS 3 herramientas/mes; plan Maestro $19999 ARS acceso total
-
 ## Pendiente
 
 ### v1 — cerrar el MVP
