@@ -9,7 +9,7 @@ Academia de herramientas y prompts para trabajar con agentes de IA. Videos de Yo
 
 ## Idea en una línea
 
-Una biblioteca curada de herramientas agénticas donde cada usuario puede desbloquear **2 recursos gratis por mes**, y una suscripción de **4.000 ARS/mes** vía MercadoPago habilita acceso ilimitado.
+Una biblioteca curada de herramientas agénticas con tres niveles: **Aprendiz** (gratis, 1 desbloqueo por mes), **Oficial** ($6.999 ARS/mes, 3 desbloqueos) y **Maestro** ($19.999 ARS/mes, acceso ilimitado). Pagos vía MercadoPago (Preapproval).
 
 ## Estado
 
@@ -21,7 +21,7 @@ Una biblioteca curada de herramientas agénticas donde cada usuario puede desblo
 - ✅ Auth.js con Google en la web
 - ✅ Web conectada a la API real (catálogo, detalle `/herramientas/:slug`, desbloqueo)
 - ✅ Dashboard (`/dashboard`) y flujo de suscripción en la web (`/suscripcion` → MP → `/dashboard/gracias`)
-- ✅ Unlocks con cupo de 2/mes
+- ✅ Unlocks con cupo mensual según plan (Aprendiz 1, Oficial 3, Maestro ilimitado)
 - ✅ Integración MP Preapproval + webhooks en la API (sin probar contra MP real)
 - ✅ Docker Compose (postgres + migrate + api + web)
 - ✅ Deploy en VPS (Hetzner + Cloudflare Tunnel) — `academia.flynnpedroa.engineer`

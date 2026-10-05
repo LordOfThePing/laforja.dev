@@ -3,7 +3,7 @@ import { getSession } from 'auth-astro/server';
 import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
-import { type Me, createSubscription, formatDate, getMe } from '~/lib/api';
+import { type Me, type Plan, createSubscription, formatDate, getMe } from '~/lib/api';
 import { loginUrl } from '~/lib/redirect';
 
 const session = await getSession(Astro.request);
@@ -13,12 +13,19 @@ if (!user) return Astro.redirect(loginUrl('/suscripcion'));
 let providerError = false;
 
 if (Astro.request.method === 'POST') {
-  const result = await createSubscription(user);
-  if (result.ok) return Astro.redirect(result.initPoint, 303);
-  if (result.reason === 'already_subscribed') return Astro.redirect('/dashboard', 303);
-  providerError = true;
-  // No 502: Cloudflare reemplaza los 502/504 del origen por su propia página y el aviso no se ve.
-  Astro.response.status = 503;
+  const form = await Astro.request.formData();
+  const raw = form.get('plan');
+  const plan: Plan | null = raw === 'basic' || raw === 'pro' ? raw : null;
+  if (plan) {
+    const result = await createSubscription(user, plan);
+    if (result.ok) return Astro.redirect(result.initPoint, 303);
+    if (result.reason === 'already_subscribed') return Astro.redirect('/dashboard', 303);
+    providerError = true;
+    // No 502: Cloudflare reemplaza los 502/504 del origen por su propia página y el aviso no se ve.
+    Astro.response.status = 503;
+  } else {
+    Astro.response.status = 400;
+  }
 }
 
 let me: Me | null;
@@ -33,89 +40,218 @@ try {
 }
 
 const subscribed = me?.subscription.status === 'active' && me.subscription.hasAccess;
+const currentPlan = me?.subscription.plan ?? null;
 const periodEnd = formatDate(me?.subscription.currentPeriodEnd ?? null);
+const payerEmail = me?.user.email ?? user.email;
+
+const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
 ---
 
 <Base title="Suscripción — La Forja">
   <Nav />
   <main class="sub container">
-    {subscribed ? (
-      <section class="panel">
-        <div class="eyebrow">Suscripción</div>
-        <h1 class="panel__title display">Ya sos suscriptor.</h1>
+    <header class="sub__head">
+      <div class="eyebrow">Suscripción</div>
+      <h1 class="sub__title display">Elegí tu plan.</h1>
+      <p class="sub__text">
+        Entrando con Google desbloqueás 1 herramienta por mes. Para abrir más, suscribite.
+      </p>
+    </header>
+
+    {subscribed && currentPlan && (
+      <section class="panel panel--on">
+        <div class="eyebrow">Plan {planLabel[currentPlan]}</div>
         <p class="panel__text">
-          Tenés acceso ilimitado a toda la biblioteca{periodEnd && ` hasta el ${periodEnd}`}, y se renueva
-          solo cada mes.
+          Ya estás suscripto al plan {planLabel[currentPlan]}{periodEnd && `, con acceso hasta el ${periodEnd}`}.
+          Se renueva solo cada mes.
         </p>
         <a href="/dashboard" class="btn btn--ghost">Ir a mi cuenta</a>
       </section>
-    ) : (
-      <section class="panel panel--featured">
-        <div class="eyebrow">Plan Artesano</div>
-        <h1 class="panel__title display">Toda la biblioteca, sin cupo.</h1>
-        <p class="panel__price">
-          <span class="panel__price-num">$4.000</span>
-          <span class="panel__price-per mono">ARS / mes</span>
-        </p>
-        <ul class="panel__feats">
-          <li>Acceso ilimitado a todas las herramientas, sin gastar desbloqueos</li>
-          <li>Cursos y módulos cuando lancen, sin costo extra</li>
-          <li>Cancelás cuando quieras desde tu cuenta y mantenés el acceso hasta fin del período</li>
+    )}
+
+    {providerError && (
+      <p class="sub__error" role="alert">
+        MercadoPago no respondió. Probá de nuevo en unos minutos.
+      </p>
+    )}
+
+    <div class="plans">
+      <article class="plan">
+        <header class="plan__head">
+          <div class="plan__name">Oficial</div>
+          <div class="plan__price">
+            <span class="plan__price-num">$6.999</span>
+            <span class="plan__price-per mono">ARS / mes</span>
+          </div>
+          <p class="plan__tag">Para los que están empezando a laburar con la biblioteca.</p>
+        </header>
+        <ul class="plan__feats">
+          <li><span class="plan__check">✓</span> 3 herramientas por mes</li>
+          <li><span class="plan__check">✓</span> Acceso a todas las herramientas marcadas como <em>free</em></li>
+          <li><span class="plan__check">✓</span> Cancelás cuando quieras, mantenés el acceso hasta fin del período</li>
         </ul>
-
-        {providerError && (
-          <p class="panel__error" role="alert">
-            MercadoPago no respondió. Probá de nuevo en unos minutos.
-          </p>
-        )}
-
-        <form method="post">
-          <button type="submit" class="btn btn--primary">
-            Continuar a MercadoPago
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <form method="post" class="plan__cta">
+          <input type="hidden" name="plan" value="basic" />
+          <button type="submit" class="btn btn--ghost" disabled={subscribed && currentPlan === 'basic'}>
+            {subscribed && currentPlan === 'basic' ? 'Tu plan actual' : 'Suscribirme al Oficial'}
           </button>
         </form>
-        <p class="panel__fine mono">
-          Pago recurrente con MercadoPago a nombre de {me?.user.email ?? user.email}.
-        </p>
-      </section>
-    )}
+      </article>
+
+      <article class="plan plan--featured">
+        <div class="plan__glow" aria-hidden="true"></div>
+        <div class="plan__ribbon">Recomendado</div>
+        <header class="plan__head">
+          <div class="plan__name">Maestro</div>
+          <div class="plan__price">
+            <span class="plan__price-num">$19.999</span>
+            <span class="plan__price-per mono">ARS / mes</span>
+          </div>
+          <p class="plan__tag">Para los que ya la usan todos los días.</p>
+        </header>
+        <ul class="plan__feats">
+          <li><span class="plan__check">✓</span> Acceso ilimitado a toda la biblioteca</li>
+          <li><span class="plan__check">✓</span> Nuevas herramientas cada semana</li>
+          <li><span class="plan__check">✓</span> Cursos y módulos cuando lancen (sin costo extra)</li>
+          <li><span class="plan__check">✓</span> Comentarios y foro de la comunidad</li>
+        </ul>
+        <form method="post" class="plan__cta">
+          <input type="hidden" name="plan" value="pro" />
+          <button type="submit" class="btn btn--primary" disabled={subscribed && currentPlan === 'pro'}>
+            {subscribed && currentPlan === 'pro' ? 'Tu plan actual' : (
+              <>
+                Suscribirme al Maestro
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </>
+            )}
+          </button>
+        </form>
+      </article>
+    </div>
+
+    <p class="sub__fine mono">
+      Pago recurrente con MercadoPago a nombre de {payerEmail}.
+    </p>
   </main>
   <Footer />
 </Base>
 
 <style>
   .sub {
-    max-width: 640px;
+    max-width: 980px;
     padding-block: clamp(48px, 8vw, 100px);
   }
+  .sub__head { text-align: center; margin-bottom: 36px; }
+  .sub__title { font-size: clamp(34px, 6vw, 56px); margin-top: 10px; line-height: 1.05; }
+  .sub__text { margin-top: 12px; color: var(--ink-dim); }
+  .sub__error { color: var(--ember-300); font-size: 14px; text-align: center; margin-bottom: 16px; }
+  .sub__fine { color: var(--ink-mute); font-size: 11.5px; text-align: center; margin-top: 20px; }
+
   .panel {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 18px;
-    padding: clamp(28px, 5vw, 44px);
-    border: 1px solid var(--line);
+    gap: 14px;
+    padding: clamp(20px, 3vw, 28px);
+    margin-bottom: 24px;
+    border: 1px solid rgba(255,176,103,0.3);
     border-radius: var(--radius-lg);
     background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
-  }
-  .panel--featured {
-    border-color: rgba(255,176,103,0.3);
     box-shadow: var(--shadow-glow);
   }
-  .panel__title { font-size: clamp(34px, 6vw, 52px); line-height: 1.05; }
   .panel__text { color: var(--ink-dim); }
-  .panel__price { display: flex; align-items: baseline; gap: 10px; }
-  .panel__price-num { font-family: var(--font-display); font-size: 48px; line-height: 1; }
-  .panel__price-per { color: var(--ink-mute); }
-  .panel__feats {
+
+  .plans {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 780px) {
+    .plans { grid-template-columns: 1fr 1fr; align-items: stretch; }
+  }
+
+  .plan {
+    position: relative;
+    padding: 32px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .plan--featured {
+    border-color: rgba(255,176,103,0.3);
+    background: linear-gradient(180deg, rgba(255,122,0,0.05), rgba(255,122,0,0.01));
+  }
+  .plan__glow {
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(circle at 50% 0%, var(--ember-glow), transparent 55%);
+    filter: blur(60px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .plan > * { position: relative; z-index: 1; }
+
+  .plan__ribbon {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--ember-500), var(--ember-600));
+    color: #1a0e00;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+
+  .plan__name {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--ink);
+  }
+  .plan__price {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .plan__price-num {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 48px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .plan__price-per { color: var(--ink-mute); font-size: 14px; }
+  .plan__tag { margin-top: 8px; color: var(--ink-dim); font-size: 14px; }
+
+  .plan__feats {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    color: var(--ink-dim);
+    gap: 12px;
+    font-size: 14.5px;
+    color: var(--ink);
+    flex: 1;
   }
-  .panel__feats li::before { content: '✓  '; color: var(--ember-300); }
-  .panel__error { color: var(--ember-300); font-size: 14px; }
-  .panel__fine { color: var(--ink-mute); font-size: 11.5px; }
+  .plan__feats li { display: flex; align-items: flex-start; gap: 10px; }
+  .plan__check {
+    color: var(--ember-500);
+    font-weight: 600;
+    width: 20px;
+    display: inline-grid;
+    place-items: center;
+    line-height: 1;
+    padding-top: 3px;
+  }
+
+  .plan__cta { margin: 0; }
+  .plan__cta .btn { width: 100%; justify-content: center; }
+  .plan__cta .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 </style>

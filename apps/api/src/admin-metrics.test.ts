@@ -65,6 +65,11 @@ describe('GET /api/admin/metrics', () => {
     const before = await metrics();
     const a = await newUser();
     const b = await newUser();
+    // b queda en plan Oficial (basic) para poder consumir dos desbloqueos en el mes.
+    await db
+      .update(users)
+      .set({ subscriptionStatus: 'active', subscriptionPlan: 'basic' })
+      .where(eq(users.id, b.id));
     expect((await unlock('code-review-agentico', a.token)).status).toBe(201);
     expect((await unlock('code-review-agentico', b.token)).status).toBe(201);
     expect((await unlock('prompt-debug', b.token)).status).toBe(201);

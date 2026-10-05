@@ -15,6 +15,7 @@ v1 (herramientas + prompts) y v2 (cursos → módulos → lecciones, con progres
 | `role` | enum | `user` / `admin`. Admin ve todo sin cupo y accede a `/admin` |
 | `created_at` | timestamptz | |
 | `subscription_status` | enum | `none` / `active` / `cancelled` / `paused` |
+| `subscription_plan` | enum nullable | `basic` (Oficial, 3/mes) / `pro` (Maestro, ilimitado). `null` sin suscripción |
 | `subscription_id` | text nullable | id de Preapproval de MP |
 | `current_period_end` | timestamptz nullable | hasta cuándo tiene acceso |
 

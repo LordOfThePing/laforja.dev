@@ -5,14 +5,14 @@
 - [x] Landing pública con grid de todas las herramientas (blur en premium)
 - [x] Login con Google (Auth.js)
 - [x] Detalle de herramienta: video + prompt copiable
-- [x] Free tier: 2 unlocks por mes (via `month_key`)
-- [x] Suscripción MP Preapproval (4.000 ARS/mes) — código listo, falta probarla contra MP sandbox
+- [x] Plan Aprendiz (gratis): 1 unlock por mes (via `month_key`)
+- [x] Suscripciones MP Preapproval en dos planes (Oficial $6.999 ARS/mes · Maestro $19.999 ARS/mes) — código listo, falta probarlas contra MP sandbox
 - [x] Webhook MP para activar/renovar/cancelar — ídem
 - [x] Dashboard básico: perfil, suscripción, unlocks del mes
 - [x] Admin: alta de herramientas — resuelto directamente con el panel `/admin` (rol `admin` en `users`)
 - [x] Deploy en producción (VPS + Cloudflare Tunnel, deploy automático desde `main`)
 
-**Criterio de done**: puedo publicar una herramienta desde consola. Un usuario nuevo puede loguearse, ver el grid, desbloquear 2 gratis, pagar la suscripción, y desbloquear ilimitado desde ahí.
+**Criterio de done**: puedo publicar una herramienta desde consola. Un usuario nuevo puede loguearse, ver el grid, desbloquear 1 gratis, suscribirse a Oficial o Maestro, y desbloquear según su plan desde ahí.
 
 **Estado (2026-09-26)**: todo construido y en producción; el criterio de done todavía no se
 cumple porque falta pagar de punta a punta contra MP sandbox. Además, para abrirlo al público

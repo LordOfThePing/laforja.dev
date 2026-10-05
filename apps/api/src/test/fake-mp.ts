@@ -31,6 +31,7 @@ export class FakeMercadoPago implements MercadoPago {
       status: 'pending' as const,
       external_reference: input.externalReference,
       next_payment_date: null,
+      auto_recurring: { transaction_amount: input.amount, currency_id: 'ARS' },
       init_point: `https://mp.test/checkout/${id}`,
     };
     this.created.push(input);

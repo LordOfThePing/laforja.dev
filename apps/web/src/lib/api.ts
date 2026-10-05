@@ -26,6 +26,8 @@ export type ToolDetail =
 
 export type Quota = { monthKey: string; limit: number; used: number; remaining: number };
 
+export type Plan = 'basic' | 'pro';
+
 export type Me = {
   user: {
     id: string;
@@ -34,7 +36,12 @@ export type Me = {
     avatarUrl: string | null;
     role: 'user' | 'admin';
   };
-  subscription: { status: string; currentPeriodEnd: string | null; hasAccess: boolean };
+  subscription: {
+    status: string;
+    plan: Plan | null;
+    currentPeriodEnd: string | null;
+    hasAccess: boolean;
+  };
   unlocks: Quota & { tools: { slug: string; unlockedAt: string }[] };
 };
 
@@ -496,16 +503,22 @@ export function formatLongDuration(seconds: number): string {
 
 export type SubscribeResult =
   | { ok: true; initPoint: string }
-  | { ok: false; reason: 'already_subscribed' | 'payment_provider_error' };
+  | { ok: false; reason: 'already_subscribed' | 'payment_provider_error' | 'invalid_plan' };
 
-export async function createSubscription(user: Session['user']): Promise<SubscribeResult> {
+export async function createSubscription(user: Session['user'], plan: Plan): Promise<SubscribeResult> {
   try {
     const { initPoint } = await call<{ initPoint: string }>('/api/subscription/create', user, {
       method: 'POST',
+      json: { plan },
     });
     return { ok: true, initPoint };
   } catch (err) {
-    if (err instanceof ApiError && (err.code === 'already_subscribed' || err.code === 'payment_provider_error')) {
+    if (
+      err instanceof ApiError &&
+      (err.code === 'already_subscribed' ||
+        err.code === 'payment_provider_error' ||
+        err.code === 'invalid_plan')
+    ) {
       return { ok: false, reason: err.code };
     }
     throw err;

@@ -1,5 +1,5 @@
 ---
-// Pricing: comparación Free vs Suscriptor, con card "featured"
+// Pricing: tres niveles — Aprendiz (gratis), Oficial, Maestro.
 ---
 
 <section id="suscripcion" class="pricing">
@@ -10,35 +10,51 @@
         Empezá gratis. <span class="pricing__title-em">Subí cuando te sirva.</span>
       </h2>
       <p class="pricing__desc">
-        Sin trial, sin tarjeta para arrancar. Pagás cuando ya sabés que la biblioteca te está aportando.
+        Entrás con Google y desbloqueás 1 herramienta por mes. Si querés más, pasás a Oficial o Maestro.
       </p>
     </header>
 
     <div class="pricing__grid">
       <article class="plan reveal">
         <header class="plan__head">
-          <div class="plan__name">Explorador</div>
+          <div class="plan__name">Aprendiz</div>
           <div class="plan__price">
             <span class="plan__price-num">Gratis</span>
           </div>
           <p class="plan__tag">Para probar y ver si va con vos.</p>
         </header>
         <ul class="plan__feats">
-          <li><span class="plan__check">✓</span> 2 herramientas desbloqueadas por mes</li>
+          <li><span class="plan__check">✓</span> 1 herramienta desbloqueada por mes</li>
           <li><span class="plan__check">✓</span> Preview completo del catálogo</li>
-          <li><span class="plan__check">✓</span> Acceso a todas las herramientas marcadas como <em>free</em></li>
-          <li><span class="plan__check plan__check--off">–</span> Cursos y módulos (próximamente)</li>
+          <li><span class="plan__check">✓</span> Acceso a todas las herramientas <em>free</em></li>
         </ul>
         <a href="/login" class="btn btn--ghost plan__cta">Ingresar con Google</a>
+      </article>
+
+      <article class="plan reveal">
+        <header class="plan__head">
+          <div class="plan__name">Oficial</div>
+          <div class="plan__price">
+            <span class="plan__price-num">$6.999</span>
+            <span class="plan__price-per">ARS / mes</span>
+          </div>
+          <p class="plan__tag">Para los que están empezando a laburar con esto.</p>
+        </header>
+        <ul class="plan__feats">
+          <li><span class="plan__check">✓</span> 3 herramientas por mes</li>
+          <li><span class="plan__check">✓</span> Acceso a todas las <em>free</em></li>
+          <li><span class="plan__check">✓</span> Cancelás cuando quieras</li>
+        </ul>
+        <a href="/suscripcion" class="btn btn--ghost plan__cta">Empezar Oficial</a>
       </article>
 
       <article class="plan plan--featured reveal">
         <div class="plan__glow" aria-hidden="true"></div>
         <div class="plan__ribbon">Recomendado</div>
         <header class="plan__head">
-          <div class="plan__name">Artesano</div>
+          <div class="plan__name">Maestro</div>
           <div class="plan__price">
-            <span class="plan__price-num">$4.000</span>
+            <span class="plan__price-num">$19.999</span>
             <span class="plan__price-per">ARS / mes</span>
           </div>
           <p class="plan__tag">Para los que ya trabajan con esto todos los días.</p>
@@ -50,7 +66,7 @@
           <li><span class="plan__check">✓</span> Cancelás cuando quieras, sin preguntas</li>
         </ul>
         <a href="/suscripcion" class="btn btn--primary plan__cta">
-          Empezar suscripción
+          Empezar Maestro
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
         <p class="plan__note mono">Pago vía MercadoPago &middot; suscripción recurrente</p>
@@ -88,11 +104,11 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 20px;
-    max-width: 900px;
+    max-width: 1100px;
     margin: 0 auto;
   }
   @media (min-width: 780px) {
-    .pricing__grid { grid-template-columns: 1fr 1fr; align-items: stretch; }
+    .pricing__grid { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
   }
 
   .plan {
@@ -149,7 +165,7 @@
   }
   .plan__price-num {
     font-family: var(--font-display);
-    font-size: clamp(40px, 5vw, 56px);
+    font-size: clamp(36px, 4vw, 48px);
     line-height: 1;
     letter-spacing: -0.02em;
   }
@@ -170,6 +186,7 @@
     gap: 12px;
     font-size: 14.5px;
     color: var(--ink);
+    flex: 1;
   }
   .plan__feats li {
     display: flex;
@@ -184,9 +201,6 @@
     place-items: center;
     line-height: 1;
     padding-top: 3px;
-  }
-  .plan__check--off {
-    color: var(--ink-mute);
   }
 
   .plan__cta { justify-content: center; margin-top: 4px; }

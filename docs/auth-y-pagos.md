@@ -33,11 +33,19 @@ token válido por 7 días firmado con el `AUTH_SECRET` del `.env`.
 por coma, sin importar mayúsculas) se promueve a `admin` en cada login; sacarlo de
 la lista **no** lo degrada, eso se hace desde `/admin/usuarios`. Un admin:
 
-- ve todas las herramientas premium sin gastar cupo (como un suscriptor)
+- ve todas las herramientas premium sin gastar cupo (como el plan Maestro)
 - accede a `/api/admin/*` y al panel `/admin` de la web
 - no puede sacarse el rol a sí mismo (evita quedarse sin admins)
 
-### Cupo mensual
+### Planes y cupo mensual
+
+Hay tres niveles de acceso (`accessLevel` en `apps/api/src/lib/access.ts`):
+
+| Nivel | Quién | Cupo mensual |
+|---|---|---|
+| `aprendiz` | Logueado sin suscripción vigente | 1 desbloqueo |
+| `oficial` | Suscriptor con `subscription_plan = basic` ($6.999 ARS/mes) | 3 desbloqueos |
+| `maestro` | Admin o suscriptor `pro` ($19.999 ARS/mes) | ilimitado |
 
 `month_key` se calcula en hora de Argentina (`America/Argentina/Buenos_Aires`),
 así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
@@ -46,16 +54,16 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 
 ### Creación
 
-1. Usuario en `/suscripcion` (o desde `/dashboard`) → "Continuar a MercadoPago"
-2. El servidor de la web → `POST /api/subscription/create`
+1. Usuario en `/suscripcion` elige **Oficial** o **Maestro** → "Continuar a MercadoPago"
+2. El servidor de la web → `POST /api/subscription/create` con `{ "plan": "basic" | "pro" }`
 3. Backend crea Preapproval con la API REST de MP (`POST /preapproval`, sin SDK):
    ```json
    {
-     "reason": "La Forja — Suscripción mensual",
+     "reason": "La Forja — Suscripción Oficial",
      "auto_recurring": {
        "frequency": 1,
        "frequency_type": "months",
-       "transaction_amount": 4000,
+       "transaction_amount": 6999,
        "currency_id": "ARS"
      },
      "back_url": "<FRONTEND_URL>/dashboard/gracias",
@@ -64,8 +72,12 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
      "status": "pending"
    }
    ```
-4. Backend responde `{ initPoint, preapprovalId }` (409 `already_subscribed` si
-   ya tiene una suscripción activa)
+   El `reason` y el `transaction_amount` cambian según el plan (Oficial 6999,
+   Maestro 19999). El plan **no se guarda** al crear: el webhook lo deduce del
+   monto cobrado (`planFromAmount` en `apps/api/src/routes/subscription.ts`) al
+   pasar la preapproval a `authorized`.
+4. Backend responde `{ initPoint, preapprovalId, plan }` (409 `already_subscribed` si
+   ya tiene una suscripción activa; 400 `invalid_plan` si el plan no es `basic` ni `pro`)
 5. Frontend redirige al usuario a `initPoint`
 6. Usuario paga en MP
 7. MP redirige a `back_url` con `preapproval_id`. `/dashboard/gracias` se

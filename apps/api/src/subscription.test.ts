@@ -28,10 +28,13 @@ async function newUser() {
   return { token, id: me.user.id };
 }
 
-function post(path: string, token?: string) {
+function post(path: string, token?: string, body?: unknown) {
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  if (body !== undefined) headers['content-type'] = 'application/json';
   return app.request(path, {
     method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
 
@@ -63,8 +66,13 @@ function webhook(
   });
 }
 
-async function subscribe(userId: string, token: string, nextPayment = '2026-10-25T12:00:00.000Z') {
-  const res = await post('/api/subscription/create', token);
+async function subscribe(
+  userId: string,
+  token: string,
+  nextPayment = '2026-10-25T12:00:00.000Z',
+  plan: 'basic' | 'pro' = 'pro',
+) {
+  const res = await post('/api/subscription/create', token, { plan });
   const { preapprovalId } = (await res.json()) as { preapprovalId: string };
   const pre = mp.preapprovals.get(preapprovalId);
   if (!pre) throw new Error('preapproval inexistente');
@@ -80,31 +88,49 @@ describe('POST /api/subscription/create', () => {
     expect((await post('/api/subscription/create')).status).toBe(401);
   });
 
-  test('crea la preapproval y devuelve init_point', async () => {
-    const { token, id } = await newUser();
+  test('sin plan: 400', async () => {
+    const { token } = await newUser();
     const res = await post('/api/subscription/create', token);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'invalid_plan' });
+  });
+
+  test('plan basic: crea la preapproval con el precio de Oficial', async () => {
+    const { token, id } = await newUser();
+    const res = await post('/api/subscription/create', token, { plan: 'basic' });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { initPoint: string; preapprovalId: string };
+    const body = (await res.json()) as { initPoint: string; preapprovalId: string; plan: string };
+    expect(body.plan).toBe('basic');
     expect(body.initPoint).toStartWith('https://mp.test/checkout/');
     expect(mp.created.at(-1)).toEqual({
-      reason: 'La Forja — Suscripción mensual',
-      amount: 4000,
+      reason: 'La Forja — Suscripción Oficial',
+      amount: 6999,
       payerEmail: `s${userSeq}@example.com`,
       externalReference: id,
       backUrl: 'http://localhost:3000/dashboard/gracias',
     });
   });
 
+  test('plan pro: crea la preapproval con el precio de Maestro', async () => {
+    const { token } = await newUser();
+    const res = await post('/api/subscription/create', token, { plan: 'pro' });
+    expect(res.status).toBe(200);
+    expect(mp.created.at(-1)).toMatchObject({
+      reason: 'La Forja — Suscripción Maestro',
+      amount: 19999,
+    });
+  });
+
   test('ya suscripto: 409', async () => {
     const { token, id } = await newUser();
     await subscribe(id, token);
-    expect((await post('/api/subscription/create', token)).status).toBe(409);
+    expect((await post('/api/subscription/create', token, { plan: 'pro' })).status).toBe(409);
   });
 
   test('MP caído: 502', async () => {
     const { token } = await newUser();
     mp.failNext = true;
-    const res = await post('/api/subscription/create', token);
+    const res = await post('/api/subscription/create', token, { plan: 'pro' });
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ error: 'payment_provider_error' });
   });
@@ -127,7 +153,7 @@ describe('webhook subscription_preapproval', () => {
 
   test('firma inválida: 401 y no toca nada', async () => {
     const { token, id } = await newUser();
-    const res = await post('/api/subscription/create', token);
+    const res = await post('/api/subscription/create', token, { plan: 'pro' });
     const { preapprovalId } = (await res.json()) as { preapprovalId: string };
     const pre = mp.preapprovals.get(preapprovalId);
     if (pre) pre.status = 'authorized';
@@ -138,7 +164,7 @@ describe('webhook subscription_preapproval', () => {
 
   test('data.id del query distinto al firmado: 401', async () => {
     const { token } = await newUser();
-    const res = await post('/api/subscription/create', token);
+    const res = await post('/api/subscription/create', token, { plan: 'pro' });
     const { preapprovalId } = (await res.json()) as { preapprovalId: string };
     const status = (await webhook('subscription_preapproval', preapprovalId, { tamperId: 'pre-otro' })).status;
     expect(status).toBe(401);
@@ -162,7 +188,7 @@ describe('webhook subscription_preapproval', () => {
 
   test('cancelar una preapproval vieja no toca la suscripción vigente', async () => {
     const { token, id } = await newUser();
-    const oldRes = await post('/api/subscription/create', token);
+    const oldRes = await post('/api/subscription/create', token, { plan: 'pro' });
     const { preapprovalId: oldId } = (await oldRes.json()) as { preapprovalId: string };
     await subscribe(id, token);
 
@@ -175,7 +201,7 @@ describe('webhook subscription_preapproval', () => {
 
   test('MP falla al consultar: 502 y el reintento procesa', async () => {
     const { token, id } = await newUser();
-    const res = await post('/api/subscription/create', token);
+    const res = await post('/api/subscription/create', token, { plan: 'pro' });
     const { preapprovalId } = (await res.json()) as { preapprovalId: string };
     const pre = mp.preapprovals.get(preapprovalId);
     if (!pre) throw new Error('preapproval inexistente');
@@ -238,6 +264,20 @@ describe('webhook subscription_authorized_payment', () => {
 
     await webhook('subscription_authorized_payment', `ap-${id}`);
     expect((await getUser(id)).subscriptionStatus).toBe('paused');
+  });
+});
+
+describe('plan según el monto de la preapproval', () => {
+  test('authorized con amount 6999: guarda plan basic', async () => {
+    const { token, id } = await newUser();
+    await subscribe(id, token, '2026-10-25T12:00:00.000Z', 'basic');
+    expect((await getUser(id)).subscriptionPlan).toBe('basic');
+  });
+
+  test('authorized con amount 19999: guarda plan pro', async () => {
+    const { token, id } = await newUser();
+    await subscribe(id, token, '2026-10-25T12:00:00.000Z', 'pro');
+    expect((await getUser(id)).subscriptionPlan).toBe('pro');
   });
 });
 

@@ -37,6 +37,7 @@ export type AdminUser = {
   name: string | null;
   role: 'user' | 'admin';
   subscriptionStatus: string;
+  subscriptionPlan: 'basic' | 'pro' | null;
   hasAccess: boolean;
   createdAt: string;
 };

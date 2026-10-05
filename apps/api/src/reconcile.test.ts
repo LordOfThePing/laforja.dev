@@ -21,7 +21,9 @@ beforeEach(async () => {
   mp.preapprovals.clear();
   mp.failNext = false;
   await db.delete(subscriptionEvents);
-  await db.update(users).set({ subscriptionStatus: 'none', subscriptionId: null, currentPeriodEnd: null });
+  await db
+    .update(users)
+    .set({ subscriptionStatus: 'none', subscriptionPlan: null, subscriptionId: null, currentPeriodEnd: null });
 });
 
 let userSeq = 0;
@@ -38,8 +40,20 @@ async function getUser(id: string) {
   return user;
 }
 
-function preapproval(id: string, userId: string, status: Preapproval['status'], nextPayment: string | null) {
-  mp.preapprovals.set(id, { id, status, external_reference: userId, next_payment_date: nextPayment });
+function preapproval(
+  id: string,
+  userId: string,
+  status: Preapproval['status'],
+  nextPayment: string | null,
+  amount = 19999,
+) {
+  mp.preapprovals.set(id, {
+    id,
+    status,
+    external_reference: userId,
+    next_payment_date: nextPayment,
+    auto_recurring: { transaction_amount: amount, currency_id: 'ARS' },
+  });
 }
 
 const GRACE_MS = 3 * 24 * 60 * 60 * 1000;
@@ -163,5 +177,14 @@ describe('reconcileSubscriptions', () => {
     await reconcileSubscriptions(db, mp);
 
     expect((await getUser(userId)).subscriptionId).toBe('pre-nueva');
+  });
+
+  test('deduce el plan desde el amount cobrado', async () => {
+    const userId = await newUser();
+    preapproval('pre-plan', userId, 'authorized', '2026-11-01T00:00:00.000Z', 6999);
+
+    await reconcileSubscriptions(db, mp);
+
+    expect((await getUser(userId)).subscriptionPlan).toBe('basic');
   });
 });

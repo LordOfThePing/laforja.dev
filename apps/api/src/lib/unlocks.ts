@@ -2,9 +2,11 @@ import { and, eq } from 'drizzle-orm';
 import type { AuthUser } from '../auth.ts';
 import type { Db } from '../db/client.ts';
 import { unlocks } from '../db/schema.ts';
-import { hasFullAccess } from './access.ts';
+import { type Access, accessLevel, hasFullAccess } from './access.ts';
 
-export const FREE_UNLOCKS_PER_MONTH = 2;
+// Cupo mensual de desbloqueos por nivel. El plan Maestro no gasta cupo (acceso total).
+export const APRENDIZ_UNLOCKS_PER_MONTH = 1;
+export const OFICIAL_UNLOCKS_PER_MONTH = 3;
 
 export type Viewer = {
   user: AuthUser | null;
@@ -30,10 +32,17 @@ export function canView(tool: { id: string; tier: 'free' | 'premium' }, viewer: 
   return viewer.unlockedToolIds.has(tool.id);
 }
 
-export function quotaSummary(used: number) {
+export function unlockLimitFor(access: Access): number {
+  if (access === 'oficial') return OFICIAL_UNLOCKS_PER_MONTH;
+  return APRENDIZ_UNLOCKS_PER_MONTH;
+}
+
+export function quotaSummary(user: AuthUser, used: number) {
+  const access = accessLevel(user);
+  const limit = unlockLimitFor(access);
   return {
-    limit: FREE_UNLOCKS_PER_MONTH,
+    limit,
     used,
-    remaining: Math.max(0, FREE_UNLOCKS_PER_MONTH - used),
+    remaining: Math.max(0, limit - used),
   };
 }

@@ -22,6 +22,9 @@ export const subscriptionStatus = pgEnum('subscription_status', [
   'paused',
 ]);
 
+// 'basic' = plan Oficial (3 desbloqueos/mes); 'pro' = plan Maestro (acceso total).
+export const subscriptionPlan = pgEnum('subscription_plan', ['basic', 'pro']);
+
 export const toolTier = pgEnum('tool_tier', ['free', 'premium']);
 
 export const userRole = pgEnum('user_role', ['user', 'admin']);
@@ -35,6 +38,7 @@ export const users = pgTable('users', {
   role: userRole('role').notNull().default('user'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   subscriptionStatus: subscriptionStatus('subscription_status').notNull().default('none'),
+  subscriptionPlan: subscriptionPlan('subscription_plan'),
   subscriptionId: text('subscription_id'),
   currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
 });

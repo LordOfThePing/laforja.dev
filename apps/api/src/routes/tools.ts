@@ -16,12 +16,13 @@ import { parseCommentInput, publicAuthorName } from '../lib/comments.ts';
 import { monthKey } from '../lib/month.ts';
 import { type RateLimitRule, rateLimit } from '../lib/rate-limit.ts';
 import {
-  FREE_UNLOCKS_PER_MONTH,
   type Viewer,
   canView,
   quotaSummary,
+  unlockLimitFor,
   unlockedToolIds,
 } from '../lib/unlocks.ts';
+import { accessLevel } from '../lib/access.ts';
 
 const previewColumns = {
   id: tools.id,
@@ -155,7 +156,7 @@ export function toolsRoutes(auth: AuthConfig, unlockLimit: RateLimitRule, commen
         if (row.tier === 'free' || hasFullAccess(user) || unlocked.has(row.id)) {
           return { ok: true as const, used: unlocked.size, created: false };
         }
-        if (unlocked.size >= FREE_UNLOCKS_PER_MONTH) {
+        if (unlocked.size >= unlockLimitFor(accessLevel(user))) {
           return { ok: false as const, used: unlocked.size };
         }
 
@@ -166,7 +167,7 @@ export function toolsRoutes(auth: AuthConfig, unlockLimit: RateLimitRule, commen
         return { ok: true as const, used: unlocked.size + 1, created: true };
       });
 
-      const quota = { monthKey: month, ...quotaSummary(result.used) };
+      const quota = { monthKey: month, ...quotaSummary(user, result.used) };
       if (!result.ok) {
         return c.json({ error: 'quota_exceeded', unlocks: quota }, 403);
       }

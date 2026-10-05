@@ -32,12 +32,13 @@ export function meRoutes(auth: AuthConfig) {
       },
       subscription: {
         status: user.subscriptionStatus,
+        plan: user.subscriptionPlan,
         currentPeriodEnd: user.currentPeriodEnd,
         hasAccess: hasSubscriptionAccess(user),
       },
       unlocks: {
         monthKey: currentMonth,
-        ...quotaSummary(unlockedThisMonth.length),
+        ...quotaSummary(user, unlockedThisMonth.length),
         tools: unlockedThisMonth,
       },
     });

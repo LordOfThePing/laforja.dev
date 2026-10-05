@@ -150,26 +150,28 @@ const commentErrors: Record<CommentNotice, string> = {
               <>
                 <h2 id="gate-title" class="gate__title">Ingresá para abrir esta herramienta</h2>
                 <p class="gate__text">
-                  Con tu cuenta de Google desbloqueás dos herramientas premium gratis por mes.
+                  Con tu cuenta de Google desbloqueás una herramienta premium gratis por mes.
                 </p>
                 <a href={loginUrl(Astro.url.pathname)} class="btn btn--primary">Ingresar con Google</a>
               </>
             )}
             {gate === 'quota' && (
               <>
-                <h2 id="gate-title" class="gate__title">Ya usaste tus 2 desbloqueos de este mes</h2>
+                <h2 id="gate-title" class="gate__title">
+                  {`Ya usaste tus ${me?.unlocks.limit ?? 1} desbloqueos de este mes`}
+                </h2>
                 <p class="gate__text">
                   El cupo se renueva el día 1. Si no querés esperar, con la suscripción
-                  tenés acceso a toda la biblioteca.
+                  abrís más herramientas o accedés a toda la biblioteca.
                 </p>
-                <a href="/suscripcion" class="btn btn--primary">Suscribirme</a>
+                <a href="/suscripcion" class="btn btn--primary">Ver planes</a>
               </>
             )}
             {gate === 'unlock' && (
               <>
                 <h2 id="gate-title" class="gate__title">Desbloqueala con tu cupo mensual</h2>
                 <p class="gate__text">
-                  {quotaText} <strong>{remaining} de {me?.unlocks.limit ?? 2}</strong> desbloqueos
+                  {quotaText} <strong>{remaining} de {me?.unlocks.limit ?? 1}</strong> desbloqueos
                   este mes. Una vez desbloqueada, la tenés hasta fin de mes.
                 </p>
                 {notice === 'rate_limited' && (

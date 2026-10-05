@@ -41,17 +41,26 @@ const { subscription, unlocks } = me;
 const isAdmin = me.user.role === 'admin';
 const periodEnd = formatDate(subscription.currentPeriodEnd);
 const canCancel = subscription.status === 'active' || subscription.status === 'paused';
+const planLabel = subscription.plan === 'basic' ? 'Oficial' : subscription.plan === 'pro' ? 'Maestro' : null;
 
 const statusLabel: Record<string, string> = {
   none: 'Sin suscripción',
-  active: 'Activa',
+  active: planLabel ? `Plan ${planLabel}` : 'Activa',
   paused: 'Pausada — el último cobro falló',
-  cancelled: 'Cancelada',
+  cancelled: planLabel ? `Plan ${planLabel} — cancelada` : 'Cancelada',
 };
 
 let statusDetail: string;
 if (subscription.status === 'active') {
-  statusDetail = periodEnd ? `Se renueva sola. Acceso pago hasta el ${periodEnd}.` : 'Se renueva sola cada mes.';
+  if (subscription.plan === 'basic') {
+    statusDetail = periodEnd
+      ? `3 desbloqueos por mes. Se renueva sola, acceso pago hasta el ${periodEnd}.`
+      : '3 desbloqueos por mes. Se renueva sola cada mes.';
+  } else {
+    statusDetail = periodEnd
+      ? `Acceso ilimitado. Se renueva sola, pago hasta el ${periodEnd}.`
+      : 'Acceso ilimitado. Se renueva sola cada mes.';
+  }
 } else if (subscription.status === 'paused') {
   statusDetail = 'MercadoPago no pudo cobrar la cuota. Revisá el medio de pago en tu cuenta de MercadoPago.';
 } else if (subscription.status === 'cancelled') {
@@ -59,7 +68,7 @@ if (subscription.status === 'active') {
     ? `No se va a renovar. Mantenés el acceso hasta el ${periodEnd}.`
     : 'No se va a renovar.';
 } else {
-  statusDetail = 'Tenés 2 desbloqueos gratis por mes. Con la suscripción, acceso ilimitado.';
+  statusDetail = 'Tenés 1 desbloqueo gratis por mes. Con la suscripción, más herramientas o acceso total.';
 }
 ---
 
@@ -91,7 +100,10 @@ if (subscription.status === 'active') {
         <p class="box__text">{statusDetail}</p>
 
         {!subscription.hasAccess && (
-          <a href="/suscripcion" class="btn btn--primary">Suscribirme por $4.000/mes</a>
+          <a href="/suscripcion" class="btn btn--primary">Ver planes</a>
+        )}
+        {subscription.hasAccess && subscription.plan === 'basic' && (
+          <a href="/suscripcion" class="btn btn--ghost">Pasar a Maestro (ilimitado)</a>
         )}
 
         {canCancel && (
@@ -112,8 +124,8 @@ if (subscription.status === 'active') {
         <h2 id="unlocks-title" class="box__label mono">Desbloqueos de este mes</h2>
         {isAdmin ? (
           <p class="box__text">Como admin no gastás desbloqueos: tenés todo abierto.</p>
-        ) : subscription.hasAccess ? (
-          <p class="box__text">Con la suscripción no gastás desbloqueos: tenés todo abierto.</p>
+        ) : subscription.hasAccess && subscription.plan === 'pro' ? (
+          <p class="box__text">Con el plan Maestro no gastás desbloqueos: tenés todo abierto.</p>
         ) : (
           <>
             <p class="box__status">

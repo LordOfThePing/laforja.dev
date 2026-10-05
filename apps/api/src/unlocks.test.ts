@@ -60,7 +60,7 @@ describe('POST /api/tools/:slug/unlock', () => {
     expect(body.tool.isLocked).toBe(false);
     expect(typeof body.tool.promptBody).toBe('string');
     expect(body.tool).not.toHaveProperty('id');
-    expect(body.unlocks).toMatchObject({ used: 1, remaining: 1, limit: 2 });
+    expect(body.unlocks).toMatchObject({ used: 1, remaining: 0, limit: 1 });
     expect(await countUnlocks(id)).toBe(1);
   });
 
@@ -73,33 +73,53 @@ describe('POST /api/tools/:slug/unlock', () => {
     expect(await countUnlocks(id)).toBe(1);
   });
 
-  test('tercera herramienta en el mes: 403 quota_exceeded', async () => {
+  test('aprendiz: la segunda herramienta en el mes supera el cupo (403)', async () => {
     const { token, id } = await newUser();
     expect((await unlock('code-review-agentico', token)).status).toBe(201);
-    expect((await unlock('prompt-editorial', token)).status).toBe(201);
 
-    const res = await unlock('prompt-debug', token);
+    const res = await unlock('prompt-editorial', token);
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({
       error: 'quota_exceeded',
-      unlocks: { used: 2, remaining: 0 },
+      unlocks: { used: 1, remaining: 0, limit: 1 },
     });
-    expect(await countUnlocks(id)).toBe(2);
+    expect(await countUnlocks(id)).toBe(1);
 
     expect((await unlock('code-review-agentico', token)).status).toBe(200);
   });
 
+  test('plan Oficial (basic): hasta 3 por mes, la cuarta supera el cupo', async () => {
+    const { token, id } = await newUser();
+    await db
+      .update(users)
+      .set({
+        subscriptionStatus: 'active',
+        subscriptionPlan: 'basic',
+        currentPeriodEnd: new Date(Date.now() + 86_400_000),
+      })
+      .where(eq(users.id, id));
+
+    expect((await unlock('code-review-agentico', token)).status).toBe(201);
+    expect((await unlock('prompt-editorial', token)).status).toBe(201);
+    expect((await unlock('prompt-debug', token)).status).toBe(201);
+
+    const res = await unlock('evaluar-outputs', token);
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: 'quota_exceeded',
+      unlocks: { used: 3, remaining: 0, limit: 3 },
+    });
+    expect(await countUnlocks(id)).toBe(3);
+  });
+
   test('unlocks de meses anteriores no cuentan', async () => {
     const { token, id } = await newUser();
-    const [t1, t2] = await db.query.tools.findMany({
+    const [t1] = await db.query.tools.findMany({
       where: (t, { eq }) => eq(t.tier, 'premium'),
-      limit: 2,
+      limit: 1,
     });
-    if (!t1 || !t2) throw new Error('faltan premium en el seed');
-    await db.insert(unlocks).values([
-      { userId: id, toolId: t1.id, monthKey: '2000-01' },
-      { userId: id, toolId: t2.id, monthKey: '2000-01' },
-    ]);
+    if (!t1) throw new Error('faltan premium en el seed');
+    await db.insert(unlocks).values([{ userId: id, toolId: t1.id, monthKey: '2000-01' }]);
     expect((await unlock('prompt-debug', token)).status).toBe(201);
   });
 
@@ -111,26 +131,29 @@ describe('POST /api/tools/:slug/unlock', () => {
     expect(await countUnlocks(id)).toBe(0);
   });
 
-  test('suscriptor: 200 sin consumir cupo, aunque ya haya usado los 2', async () => {
+  test('plan Maestro (pro): 200 sin consumir cupo, aunque ya haya usado el gratis', async () => {
     const { token, id } = await newUser();
     await unlock('code-review-agentico', token);
-    await unlock('prompt-editorial', token);
     await db
       .update(users)
-      .set({ subscriptionStatus: 'active', currentPeriodEnd: new Date(Date.now() + 86_400_000) })
+      .set({
+        subscriptionStatus: 'active',
+        subscriptionPlan: 'pro',
+        currentPeriodEnd: new Date(Date.now() + 86_400_000),
+      })
       .where(eq(users.id, id));
 
     expect((await unlock('prompt-debug', token)).status).toBe(200);
-    expect(await countUnlocks(id)).toBe(2);
+    expect(await countUnlocks(id)).toBe(1);
   });
 
-  test('unlocks concurrentes no superan el cupo', async () => {
+  test('unlocks concurrentes no superan el cupo del aprendiz', async () => {
     const { token, id } = await newUser();
     const slugs = ['code-review-agentico', 'prompt-editorial', 'prompt-debug', 'evaluar-outputs'];
     const statuses = await Promise.all(slugs.map(async (s) => (await unlock(s, token)).status));
-    expect(statuses.filter((s) => s === 201)).toHaveLength(2);
-    expect(statuses.filter((s) => s === 403)).toHaveLength(2);
-    expect(await countUnlocks(id)).toBe(2);
+    expect(statuses.filter((s) => s === 201)).toHaveLength(1);
+    expect(statuses.filter((s) => s === 403)).toHaveLength(3);
+    expect(await countUnlocks(id)).toBe(1);
   });
 });
 
@@ -159,14 +182,25 @@ describe('isLocked según el usuario', () => {
     expect(typeof after.tool.promptBody).toBe('string');
   });
 
-  test('suscriptor: todas abiertas', async () => {
+  test('plan Maestro (pro): todas abiertas', async () => {
     const { token, id } = await newUser();
     await db
       .update(users)
-      .set({ subscriptionStatus: 'active', currentPeriodEnd: null })
+      .set({ subscriptionStatus: 'active', subscriptionPlan: 'pro', currentPeriodEnd: null })
       .where(eq(users.id, id));
     const { tools } = (await (await get('/api/tools', token)).json()) as { tools: { isLocked: boolean }[] };
     expect(tools.every((t) => !t.isLocked)).toBe(true);
+  });
+
+  test('plan Oficial (basic): premium siguen bloqueadas hasta que las desbloquea', async () => {
+    const { token, id } = await newUser();
+    await db
+      .update(users)
+      .set({ subscriptionStatus: 'active', subscriptionPlan: 'basic', currentPeriodEnd: null })
+      .where(eq(users.id, id));
+    const beforeRes = await get('/api/tools', token);
+    const { tools } = (await beforeRes.json()) as { tools: { tier: string; isLocked: boolean }[] };
+    expect(tools.some((t) => t.tier === 'premium' && t.isLocked)).toBe(true);
   });
 
   test('token inválido en endpoint público: 401', async () => {

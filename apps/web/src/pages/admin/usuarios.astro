@@ -25,6 +25,8 @@ const subLabel: Record<string, string> = {
   paused: 'Pausada',
   cancelled: 'Cancelada',
 };
+const planLabel = (p: 'basic' | 'pro' | null) =>
+  p === 'basic' ? 'Oficial' : p === 'pro' ? 'Maestro' : null;
 ---
 
 <Admin title="Usuarios">
@@ -46,7 +48,10 @@ const subLabel: Record<string, string> = {
               {u.name && <div class="dim mono">{u.email}</div>}
             </td>
             <td class="dim">{formatDate(u.createdAt)}</td>
-            <td class:list={{ dim: !u.hasAccess }}>{subLabel[u.subscriptionStatus] ?? u.subscriptionStatus}</td>
+            <td class:list={{ dim: !u.hasAccess }}>
+              {subLabel[u.subscriptionStatus] ?? u.subscriptionStatus}
+              {planLabel(u.subscriptionPlan) && <div class="dim mono">{planLabel(u.subscriptionPlan)}</div>}
+            </td>
             <td>
               {u.id === auth.me.user.id ? (
                 <span class="pill pill--ember">Admin (vos)</span>

@@ -30,9 +30,15 @@ const active = me?.subscription.status === 'active' && me.subscription.hasAccess
       {active ? (
         <>
           <div class="eyebrow">Suscripción activa</div>
-          <h1 class="thanks__title display">Listo. Ya tenés toda la biblioteca.</h1>
+          <h1 class="thanks__title display">
+            {me?.subscription.plan === 'basic'
+              ? 'Listo. Ya sos Oficial.'
+              : 'Listo. Ya sos Maestro.'}
+          </h1>
           <p class="thanks__text">
-            Gracias por bancar La Forja. Cada herramienta está abierta para vos, sin cupo.
+            {me?.subscription.plan === 'basic'
+              ? 'Gracias por bancar La Forja. Tenés 3 desbloqueos por mes.'
+              : 'Gracias por bancar La Forja. Cada herramienta está abierta para vos, sin cupo.'}
           </p>
           <div class="thanks__ctas">
             <a href="/#herramientas" class="btn btn--primary">Ir al catálogo</a>

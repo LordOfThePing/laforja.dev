@@ -192,6 +192,7 @@ export function adminRoutes(auth: AuthConfig, { backupStateDir, mailer, frontend
         name: users.name,
         role: users.role,
         subscriptionStatus: users.subscriptionStatus,
+        subscriptionPlan: users.subscriptionPlan,
         currentPeriodEnd: users.currentPeriodEnd,
         createdAt: users.createdAt,
       })

@@ -22,7 +22,12 @@ function getMe(token?: string) {
 
 type MeResponse = {
   user: { id: string; email: string; name: string | null; avatarUrl: string | null };
-  subscription: { status: string; currentPeriodEnd: string | null; hasAccess: boolean };
+  subscription: {
+    status: string;
+    plan: 'basic' | 'pro' | null;
+    currentPeriodEnd: string | null;
+    hasAccess: boolean;
+  };
   unlocks: { monthKey: string; limit: number; used: number; remaining: number; tools: { slug: string }[] };
 };
 
@@ -69,12 +74,17 @@ describe('GET /api/me', () => {
       name: 'Ana',
       avatarUrl: 'https://example.com/ana.png',
     });
-    expect(body.subscription).toEqual({ status: 'none', currentPeriodEnd: null, hasAccess: false });
+    expect(body.subscription).toEqual({
+      status: 'none',
+      plan: null,
+      currentPeriodEnd: null,
+      hasAccess: false,
+    });
     expect(body.unlocks).toEqual({
       monthKey: monthKey(),
-      limit: 2,
+      limit: 1,
       used: 0,
-      remaining: 2,
+      remaining: 1,
       tools: [],
     });
   });
@@ -105,23 +115,42 @@ describe('GET /api/me', () => {
 
     const body = (await (await getMe(token)).json()) as MeResponse;
     expect(body.unlocks.used).toBe(1);
-    expect(body.unlocks.remaining).toBe(1);
+    expect(body.unlocks.remaining).toBe(0);
     expect(body.unlocks.tools.map((t) => t.slug)).toEqual([t1.slug]);
   });
 
-  test('suscripción activa: hasAccess', async () => {
+  test('suscripción activa (pro): hasAccess + plan Maestro', async () => {
     const token = await makeToken({ sub: 'google-sub', email: 'caro@example.com' });
     await getMe(token);
     const periodEnd = new Date(Date.now() + 86_400_000);
     await db
       .update(users)
-      .set({ subscriptionStatus: 'active', currentPeriodEnd: periodEnd })
+      .set({ subscriptionStatus: 'active', subscriptionPlan: 'pro', currentPeriodEnd: periodEnd })
       .where(eq(users.googleId, 'google-sub'));
 
     const body = (await (await getMe(token)).json()) as MeResponse;
     expect(body.subscription.status).toBe('active');
+    expect(body.subscription.plan).toBe('pro');
     expect(body.subscription.hasAccess).toBe(true);
     expect(body.subscription.currentPeriodEnd).toBe(periodEnd.toISOString());
+  });
+
+  test('suscripción Oficial (basic): hasAccess + cupo de 3', async () => {
+    const token = await makeToken({ sub: 'google-sub-basic', email: 'basic@example.com' });
+    await getMe(token);
+    await db
+      .update(users)
+      .set({
+        subscriptionStatus: 'active',
+        subscriptionPlan: 'basic',
+        currentPeriodEnd: new Date(Date.now() + 86_400_000),
+      })
+      .where(eq(users.googleId, 'google-sub-basic'));
+
+    const body = (await (await getMe(token)).json()) as MeResponse;
+    expect(body.subscription.plan).toBe('basic');
+    expect(body.subscription.hasAccess).toBe(true);
+    expect(body.unlocks.limit).toBe(3);
   });
 });
 
@@ -130,15 +159,16 @@ describe('hasSubscriptionAccess', () => {
   const future = new Date('2026-10-15T12:00:00Z');
   const past = new Date('2026-09-01T12:00:00Z');
 
+  const base = { subscriptionPlan: null } as const;
   const cases: [string, Parameters<typeof hasSubscriptionAccess>[0], boolean][] = [
-    ['none', { subscriptionStatus: 'none', currentPeriodEnd: null }, false],
-    ['active sin fin', { subscriptionStatus: 'active', currentPeriodEnd: null }, true],
-    ['active vigente', { subscriptionStatus: 'active', currentPeriodEnd: future }, true],
-    ['active vencida', { subscriptionStatus: 'active', currentPeriodEnd: past }, false],
-    ['cancelled con período pago', { subscriptionStatus: 'cancelled', currentPeriodEnd: future }, true],
-    ['cancelled vencida', { subscriptionStatus: 'cancelled', currentPeriodEnd: past }, false],
-    ['cancelled sin fin', { subscriptionStatus: 'cancelled', currentPeriodEnd: null }, false],
-    ['paused', { subscriptionStatus: 'paused', currentPeriodEnd: future }, false],
+    ['none', { ...base, subscriptionStatus: 'none', currentPeriodEnd: null }, false],
+    ['active sin fin', { ...base, subscriptionStatus: 'active', currentPeriodEnd: null }, true],
+    ['active vigente', { ...base, subscriptionStatus: 'active', currentPeriodEnd: future }, true],
+    ['active vencida', { ...base, subscriptionStatus: 'active', currentPeriodEnd: past }, false],
+    ['cancelled con período pago', { ...base, subscriptionStatus: 'cancelled', currentPeriodEnd: future }, true],
+    ['cancelled vencida', { ...base, subscriptionStatus: 'cancelled', currentPeriodEnd: past }, false],
+    ['cancelled sin fin', { ...base, subscriptionStatus: 'cancelled', currentPeriodEnd: null }, false],
+    ['paused', { ...base, subscriptionStatus: 'paused', currentPeriodEnd: future }, false],
   ];
   for (const [name, user, expected] of cases) {
     test(name, () => expect(hasSubscriptionAccess(user, now)).toBe(expected));
