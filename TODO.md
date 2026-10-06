@@ -4,8 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Exponer `/mcp` por Cloudflare Tunnel para que otro dev pueda registrar el MCP desde su PC sin SSH — en curso por @claude — agregar public hostname en el panel de Cloudflare + actualizar `docs/despliegue-vps.md`
-
 ## Pendiente
 
 ### v1 — cerrar el MVP

@@ -5,6 +5,7 @@ Ver `CLAUDE.md` (§2) para el workflow.
 
 ---
 
+- 2026-10-06 — Exponer `/mcp` por Cloudflare Tunnel: public hostname `mcp.laforja.dev` → `http://api:4000`, sin Access encima, bearer token como única capa; doc actualizada
 - 2026-10-05 — Suscripciones tematizadas forja: Aprendiz (gratis, 1/mes), Oficial ($6.999/mes, 3/mes), Maestro ($19.999/mes, ilimitado); `subscription_plan` en `users`, dos precios en MP Preapproval
 - 2026-09-30 — Arreglar workflow Uptime apuntando a `laforja.dev`: default en YAML + `vars.SITE_URL` del repo — 12e718c
 - 2026-09-29 — Fix filtro por categoría en `ToolGrid` (celdas vacías en desktop) y agregado filtro por tier (Todas / Gratis / Premium)
