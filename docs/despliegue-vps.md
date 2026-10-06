@@ -52,6 +52,7 @@ habla por la red interna de Docker.
    | `academia.flynnpedroa.engineer` | `/api/*` | `http://api:4000` |
    | `academia.flynnpedroa.engineer` | `/webhooks/*` | `http://api:4000` |
    | `academia.flynnpedroa.engineer` | *(vacío)* | `http://web:3000` |
+   | `mcp.laforja.dev` | `mcp` | `http://api:4000` |
 
    **`/api/auth/*` tiene que ir primero**: es Auth.js de la web, no la api. Si
    cae en la api, el login con Google se rompe.
@@ -266,13 +267,38 @@ Tools disponibles:
 2. Setearlo en `.env` (dev) o `.env.production` (VPS):
    `MCP_ADMIN_TOKEN=<el-hex>`.
 3. `make env-push && make up` (o reiniciar la api en local).
-4. El puerto `4000` de la api **solo escucha en `127.0.0.1`**, así que el MCP no
-   queda expuesto: para usarlo contra el VPS desde la máquina local, abrir un
-   túnel SSH: `ssh -L 4000:localhost:4000 <vps>`.
 
 ### Registrar en Claude Code
 
+Hay dos formas de usarlo, según si tenés acceso SSH al VPS o no:
+
+**A — Pública por Cloudflare Tunnel (cualquier dev con el token).** El tunnel
+tiene un public hostname `mcp.laforja.dev` + path `mcp` → `http://api:4000`
+(ver tabla arriba), así que basta con la URL pública:
+
 ```bash
+claude mcp add --transport http laforja https://mcp.laforja.dev/mcp \
+  --header "Authorization: Bearer <MCP_ADMIN_TOKEN>"
+```
+
+El bearer token es la única defensa, así que no lo pegues en lugares públicos:
+pasalo por un canal seguro (1Password, Bitwarden Send, Signal) y rotalo con
+`openssl rand -hex 32` + `make env-push && make up` si se filtra.
+
+⚠️ **No poner Cloudflare Access encima de `mcp.laforja.dev`.** Access
+redirige con `302` a un login SSO antes de que el request llegue a la api, y
+los clientes MCP (Claude Code) solo mandan headers — no completan el flow de
+browser. Si alguna vez hace falta sumar una capa extra, la opción es un
+*Service Token* de Access y mandar `CF-Access-Client-Id` + `CF-Access-Client-Secret`
+además del bearer.
+
+**B — Local con túnel SSH (solo quien tenga acceso al VPS).** El puerto `4000`
+de la api solo escucha en `127.0.0.1` del VPS, así que también se puede entrar
+por SSH forwarding sin pasar por Cloudflare:
+
+```bash
+ssh -L 4000:localhost:4000 <vps>
+# en otra terminal:
 claude mcp add --transport http laforja http://localhost:4000/mcp \
   --header "Authorization: Bearer $MCP_ADMIN_TOKEN"
 ```
