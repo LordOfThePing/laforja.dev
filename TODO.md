@@ -4,8 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Reenfocar tool 6-casos: nuevo título ("Agente para bot trader") + promptBody específico de trading, preservar slug — en curso por @claude
-
 ## Pendiente
 
 ### v1 — cerrar el MVP

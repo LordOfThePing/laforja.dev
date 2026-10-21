@@ -5,6 +5,7 @@ Ver `CLAUDE.md` (§2) para el workflow.
 
 ---
 
+- 2026-10-20 — Reenfocar tool como producto: título "Agente para armar tu bot trader (6 agentes de IA)" + promptBody específico de bot trader memecoin en Solana (stack, 6 agentes tipados, regla de corte, loop con paper trading, gates para pasar a --live); slug preservado, tier premium y publicado respetados
 - 2026-10-20 — Revertir tool "6-casos-reales" a tier=premium + publicado (había pisado el estado puesto a mano por el usuario; aprendizaje guardado en memoria)
 - 2026-10-20 — Repivotear borrador en laforja.dev a artículo "Cómo los agentes de IA ya hacen plata — 6 casos reales": nuevo slug/título/short/tags, 6 fichas de casos con cifras atribuidas (Medallion, MEV, Yearn, repricing, SEO farms, Klarna), promptBody genérico de diseño; mantiene 3 motion graphics SVG (SMIL) y bloques BEBÉS
 - 2026-10-20 — Enriquecer borrador QuantumOrb en laforja.dev: 3 motion graphics SVG (SMIL) + bloques BEBÉS después de cada parte técnica + promptBody con andamio Python educativo
