@@ -5,6 +5,7 @@ Ver `CLAUDE.md` (§2) para el workflow.
 
 ---
 
+- 2026-10-20 — Enriquecer borrador QuantumOrb en laforja.dev: 3 motion graphics SVG (SMIL) + bloques BEBÉS después de cada parte técnica + promptBody con andamio Python educativo
 - 2026-10-20 — Borrador en laforja.dev: caso de estudio "QuantumOrb — 6 agentes de IA sobre pump.fun" (categoría Herramientas para agentes, tier free, sin publicar)
 - 2026-10-06 — Exponer `/mcp` por Cloudflare Tunnel: public hostname `mcp.laforja.dev` → `http://api:4000`, sin Access encima, bearer token como única capa; doc actualizada
 - 2026-10-05 — Suscripciones tematizadas forja: Aprendiz (gratis, 1/mes), Oficial ($6.999/mes, 3/mes), Maestro ($19.999/mes, ilimitado); `subscription_plan` en `users`, dos precios en MP Preapproval

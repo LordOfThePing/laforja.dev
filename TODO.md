@@ -4,8 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Enriquecer borrador QuantumOrb: motion graphics SVG + explicación técnica/bebé + promptBody — en curso por @claude
-
 ## Pendiente
 
 ### v1 — cerrar el MVP
