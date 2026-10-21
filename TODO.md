@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Volver tier=premium y re-publicar el tool quantumorb/6-casos — en curso por @claude
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
