@@ -4,8 +4,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
-- Repivotear borrador QuantumOrb a artículo "cómo los agentes de IA hacen plata — 6 casos reales" — en curso por @claude
-
 ## Pendiente
 
 ### v1 — cerrar el MVP
