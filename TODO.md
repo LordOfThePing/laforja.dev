@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Publicar borrador en laforja.dev vía MCP: caso de estudio "QuantumOrb — 6 agentes de IA sobre pump.fun" — en curso por @claude
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
