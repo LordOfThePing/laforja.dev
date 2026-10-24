@@ -6,7 +6,10 @@ import type { Db } from './db/client.ts';
 import { type Mailer, MailerError } from './lib/mailer.ts';
 import { type MercadoPago, MercadoPagoError } from './lib/mercadopago.ts';
 import type { RateLimitRule } from './lib/rate-limit.ts';
+import type { Stripe } from './lib/stripe.ts';
+import { StripeError } from './lib/stripe.ts';
 import type { AuthConfig } from './auth.ts';
+import type { Plan } from './routes/subscription.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { certificatesRoutes } from './routes/certificates.ts';
 import { collectionsRoutes } from './routes/collections.ts';
@@ -25,6 +28,13 @@ type AppOptions = {
   frontendUrl: string;
   mp: MercadoPago;
   mpWebhookSecret: string;
+  // Stripe queda apagado si no se pasa (ver index.ts): el endpoint responde 503 provider_disabled
+  // y el webhook /webhooks/stripe no se monta.
+  stripe?: {
+    client: Stripe;
+    webhookSecret: string;
+    prices: Record<Plan, string>;
+  };
   // null = newsletter apagada (sin RESEND_API_KEY): los endpoints responden newsletter_disabled.
   mailer?: Mailer | null;
   rateLimits?: Partial<RateLimits>;
@@ -62,6 +72,7 @@ export function createApp({
   frontendUrl,
   mp,
   mpWebhookSecret,
+  stripe,
   mailer = null,
   rateLimits,
   backupStateDir,
@@ -92,16 +103,35 @@ export function createApp({
   app.route('/api/courses', coursesRoutes(auth, limits.progress));
   app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));
-  app.route('/api/subscription', subscriptionRoutes({ auth, backUrl: `${frontendUrl}/dashboard/gracias`, mp }));
+  app.route(
+    '/api/subscription',
+    subscriptionRoutes({
+      auth,
+      backUrl: `${frontendUrl}/dashboard/gracias`,
+      mp,
+      stripe: stripe
+        ? {
+            client: stripe.client,
+            prices: stripe.prices,
+            successUrl: `${frontendUrl}/dashboard/gracias?stripe_session={CHECKOUT_SESSION_ID}`,
+            cancelUrl: `${frontendUrl}/suscripcion`,
+          }
+        : undefined,
+    }),
+  );
   app.route('/api/newsletter', newsletterRoutes({ db, mailer, frontendUrl, limit: limits.newsletter }));
   app.route('/api/admin', adminRoutes(auth, { backupStateDir, mailer, frontendUrl }));
   if (mcpAdminToken) app.route('/mcp', mcpRoutes(db, mcpAdminToken));
-  app.route('/webhooks', webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook }));
+  app.route(
+    '/webhooks',
+    webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook, stripe }),
+  );
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
   app.onError((err, c) => {
     console.error(err);
     if (err instanceof MercadoPagoError) return c.json({ error: 'payment_provider_error' }, 502);
+    if (err instanceof StripeError) return c.json({ error: 'payment_provider_error' }, 502);
     if (err instanceof MailerError) return c.json({ error: 'mailer_error' }, 502);
     return c.json({ error: 'internal_error' }, 500);
   });

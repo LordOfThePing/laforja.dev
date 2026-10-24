@@ -25,6 +25,10 @@ export const subscriptionStatus = pgEnum('subscription_status', [
 // 'basic' = plan Oficial (3 desbloqueos/mes); 'pro' = plan Maestro (acceso total).
 export const subscriptionPlan = pgEnum('subscription_plan', ['basic', 'pro']);
 
+// MercadoPago cobra en ARS (Argentina); Stripe cobra en USD (internacional).
+// null en users = nunca se suscribió.
+export const paymentProvider = pgEnum('payment_provider', ['mercadopago', 'stripe']);
+
 export const toolTier = pgEnum('tool_tier', ['free', 'premium']);
 
 export const userRole = pgEnum('user_role', ['user', 'admin']);
@@ -39,7 +43,12 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   subscriptionStatus: subscriptionStatus('subscription_status').notNull().default('none'),
   subscriptionPlan: subscriptionPlan('subscription_plan'),
+  // subscription_id guarda el id de la preapproval de MP cuando paymentProvider = 'mercadopago'.
+  // Para Stripe la referencia es stripeSubscriptionId; stripeCustomerId se reusa entre altas.
   subscriptionId: text('subscription_id'),
+  paymentProvider: paymentProvider('payment_provider'),
+  stripeCustomerId: text('stripe_customer_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
   currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
 });
 
@@ -89,7 +98,9 @@ export const unlocks = pgTable(
 export const subscriptionEvents = pgTable('subscription_events', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-  mpEventId: text('mp_event_id').notNull().unique(),
+  // Id del evento prefijado por provider: `mp:<id>` o `stripe:<evt_...>`.
+  // El unique garantiza idempotencia aunque MP o Stripe reintenten el webhook.
+  providerEventId: text('provider_event_id').notNull().unique(),
   eventType: text('event_type').notNull(),
   payload: jsonb('payload').notNull(),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
