@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- `make env-pull`: bajar el .env del VPS a .env.production — en curso por @claude
 
 ## Pendiente
 
