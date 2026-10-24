@@ -62,8 +62,10 @@ habla por la red interna de Docker.
 
 ### Qué agrega Cloudflare en cada request
 
-- `cf-connecting-ip`: IP real del cliente. La api la usa para el rate limit del
-  webhook de MP.
+- `cf-connecting-ip`: IP real del cliente. La api la usa para el rate limit de
+  los webhooks.
+- `cf-ipcountry`: país del cliente. La web lo usa para elegir por defecto entre
+  precios en ARS (MercadoPago) y USD (Stripe).
 - `x-forwarded-proto: https`: Auth.js arma las URLs de callback con https
   (`trustHost: true` en `apps/web/auth.config.ts`).
 
@@ -80,10 +82,34 @@ En el panel de MP → Webhooks: URL
 *Planes y suscripciones*. La clave secreta que muestra MP va en
 `MP_WEBHOOK_SECRET`.
 
+### Stripe (cobro internacional en USD, opcional)
+
+Sin estas dos variables Stripe queda apagado y `/suscripcion` solo ofrece
+MercadoPago. No hace falta crear Products ni Prices: la api crea los products
+`laforja_basic` / `laforja_pro` sola y el monto sale de `/admin/precios`.
+
+1. Dashboard de Stripe → **Developers → API keys** → *Secret key* (`sk_live_...`;
+   para probar, `sk_test_...` con el modo test prendido).
+2. **Developers → Webhooks → Add endpoint**: URL
+   `https://laforja.dev/webhooks/stripe` (o el dominio vigente de
+   `FRONTEND_URL`), eventos `checkout.session.completed`,
+   `customer.subscription.updated` y `customer.subscription.deleted`. Copiar el
+   *Signing secret* (`whsec_...`).
+3. En `.env.production`:
+   ```env
+   STRIPE_SECRET_KEY=sk_live_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   ```
+   `make env-push` y `make deploy` (o `make restart SERVICE=api` si el código ya
+   está desplegado).
+
+Test vs live: las claves y el webhook son por modo. Si se prueba en test y
+después se pasa a live, hay que repetir los pasos 1 y 2 con el modo live.
+
 ### Migrar a `laforja.dev` (más adelante)
 
 Agregar los mismos public hostnames con `laforja.dev` en el mismo tunnel,
-actualizar `FRONTEND_URL`, el callback de Google y la URL del webhook de MP.
+actualizar `FRONTEND_URL`, el callback de Google y las URLs de los webhooks de MP y Stripe.
 Redirect 301 desde el dominio viejo con una Redirect Rule de Cloudflare.
 
 ## Monitoreo de uptime

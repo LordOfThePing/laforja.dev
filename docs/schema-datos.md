@@ -17,6 +17,9 @@ v1 (herramientas + prompts) y v2 (cursos → módulos → lecciones, con progres
 | `subscription_status` | enum | `none` / `active` / `cancelled` / `paused` |
 | `subscription_plan` | enum nullable | `basic` (Oficial, 3/mes) / `pro` (Maestro, ilimitado). `null` sin suscripción |
 | `subscription_id` | text nullable | id de Preapproval de MP |
+| `payment_provider` | enum nullable | `mercadopago` (ARS) / `stripe` (USD). Define dónde se cancela. `null` = nunca se suscribió |
+| `stripe_customer_id` | text nullable | customer de Stripe, se reusa entre altas |
+| `stripe_subscription_id` | text nullable | subscription vigente de Stripe |
 | `current_period_end` | timestamptz nullable | hasta cuándo tiene acceso |
 
 ### `tools`
@@ -60,16 +63,28 @@ Cada vez que un usuario abre una herramienta cuenta como unlock.
 **Unique constraint** `(user_id, tool_id, month_key)` — desbloquear la misma herramienta 2 veces en el mismo mes no cuenta doble.
 
 ### `subscription_events`
-Historial de webhooks de MP para auditoría e idempotencia.
+Historial de webhooks de MP y Stripe (y correcciones del reconcile) para auditoría e idempotencia.
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `id` | uuid pk | |
 | `user_id` | uuid fk → users nullable | |
-| `mp_event_id` | text unique | idempotencia |
+| `provider_event_id` | text unique | idempotencia. Prefijado: `mp:<id>`, `stripe:<evt_...>`, `reconcile:...` |
 | `event_type` | text | |
 | `payload` | jsonb | body crudo del webhook |
 | `received_at` | timestamptz | |
+
+### `plan_prices`
+Precio mensual vigente de cada plan por moneda. Se edita en `/admin/precios`; afecta solo altas nuevas.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `plan` | enum `subscription_plan` | `basic` / `pro` |
+| `currency` | text | `ARS` (MercadoPago) / `USD` (Stripe) |
+| `amount` | integer | en centavos, > 0 |
+| `updated_at` | timestamptz | |
+
+**PK** `(plan, currency)`. La migración `0011` carga las cuatro filas.
 
 ## Tablas v2 (cursos)
 

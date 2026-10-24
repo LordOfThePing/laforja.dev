@@ -44,18 +44,39 @@ Hay tres niveles de acceso (`accessLevel` en `apps/api/src/lib/access.ts`):
 | Nivel | Quién | Cupo mensual |
 |---|---|---|
 | `aprendiz` | Logueado sin suscripción vigente | 1 desbloqueo |
-| `oficial` | Suscriptor con `subscription_plan = basic` ($6.999 ARS/mes) | 3 desbloqueos |
-| `maestro` | Admin o suscriptor `pro` ($19.999 ARS/mes) | ilimitado |
+| `oficial` | Suscriptor con `subscription_plan = basic` | 3 desbloqueos |
+| `maestro` | Admin o suscriptor `pro` | ilimitado |
 
 `month_key` se calcula en hora de Argentina (`America/Argentina/Buenos_Aires`),
 así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
+
+### Precios y providers
+
+Cada plan tiene un precio en **ARS** (lo cobra MercadoPago, Argentina) y otro en
+**USD** (lo cobra Stripe, internacional). Los cuatro montos viven en la tabla
+`plan_prices` (en centavos) y se editan en **/admin/precios**. Valores
+iniciales (migración `0011`): Oficial $6.999 ARS / US$7, Maestro $19.999 ARS /
+US$20.
+
+- Cambiar un precio afecta **solo las altas nuevas**: las suscripciones
+  existentes siguen cobrando el monto con el que se crearon (MP y Stripe fijan
+  el monto en la preapproval / subscription).
+- El plan nunca se deduce del monto: MP lo reconoce por `reason` y Stripe por
+  `metadata.plan` (ver abajo). Así cambiar precios no rompe webhook ni reconcile.
+- La web pide `GET /api/prices` (público) para la home, `/suscripcion` y los
+  términos.
+- `/suscripcion` tiene un toggle **Argentina / Internacional** (solo si Stripe
+  está configurado). La región sale de `?region=ar|intl`; si no viene, del
+  header `CF-IPCountry` que agrega Cloudflare (fuera de AR → internacional).
+- `users.payment_provider` dice por dónde paga cada suscriptor, y define a quién
+  se le pide la cancelación.
 
 ## MercadoPago Preapproval — suscripción
 
 ### Creación
 
 1. Usuario en `/suscripcion` elige **Oficial** o **Maestro** → "Continuar a MercadoPago"
-2. El servidor de la web → `POST /api/subscription/create` con `{ "plan": "basic" | "pro" }`
+2. El servidor de la web → `POST /api/subscription/create` con `{ "plan": "basic" | "pro", "provider": "mercadopago" }` (`provider` es opcional y por defecto es `mercadopago`)
 3. Backend crea Preapproval con la API REST de MP (`POST /preapproval`, sin SDK):
    ```json
    {
@@ -72,10 +93,12 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
      "status": "pending"
    }
    ```
-   El `reason` y el `transaction_amount` cambian según el plan (Oficial 6999,
-   Maestro 19999). El plan **no se guarda** al crear: el webhook lo deduce del
-   monto cobrado (`planFromAmount` en `apps/api/src/routes/subscription.ts`) al
-   pasar la preapproval a `authorized`.
+   El `reason` es fijo por plan y el `transaction_amount` sale de `plan_prices`
+   (ARS). El plan **no se guarda** al crear: el webhook lo deduce del `reason`
+   (`planFromPreapproval` en `apps/api/src/routes/subscription.ts`) al pasar la
+   preapproval a `authorized`. Las preapprovals anteriores a `plan_prices` se
+   reconocen por los montos viejos (6999 / 19999). Al activar se marca
+   `payment_provider = 'mercadopago'`.
 4. Backend responde `{ initPoint, preapprovalId, plan }` (409 `already_subscribed` si
    ya tiene una suscripción activa; 400 `invalid_plan` si el plan no es `basic` ni `pro`)
 5. Frontend redirige al usuario a `initPoint`
@@ -92,7 +115,7 @@ llega el webhook `authorized`, vía `external_reference`.
    HMAC-SHA256 (hex) con `MP_WEBHOOK_SECRET` sobre
    `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` — `data.id` sale del
    **query string** (no del body) y en minúsculas. Firma inválida → `401`.
-2. **Idempotencia**: `mp_event_id` = `id` del body de la notificación. Si ya
+2. **Idempotencia**: `provider_event_id` = `mp:<id del body de la notificación>`. Si ya
    está en `subscription_events` → `200 {"status":"duplicate"}` sin procesar.
 3. El backend **no confía en el body**: consulta el recurso a MP y actúa según
    el estado real. Si MP falla → `502` sin registrar el evento, y el reintento
@@ -147,6 +170,55 @@ A mano, en el VPS: `make reconcile DRY=1` muestra qué cambiaría sin escribir;
 Cualquier error de la API de MP en un endpoint se devuelve como
 `502 {"error":"payment_provider_error"}`.
 
+## Stripe Checkout — suscripción internacional (USD)
+
+Opcional: se prende con `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`. Sin las
+dos, `provider: "stripe"` responde `503 provider_disabled`, `/webhooks/stripe`
+no se monta y la web no muestra el toggle. Igual que con MP, sin SDK
+(`apps/api/src/lib/stripe.ts`).
+
+### Creación
+
+1. `/suscripcion` en modo Internacional → `POST /api/subscription/create` con
+   `{ "plan", "provider": "stripe" }`
+2. Si el usuario no tiene `stripe_customer_id`, se crea el customer y se guarda
+   (se reusa en altas siguientes)
+3. Se crea una **Checkout Session** `mode=subscription` con el precio **inline**
+   (`price_data`: monto USD de `plan_prices`, mensual) sobre un product fijo por
+   plan, `laforja_basic` / `laforja_pro`, que la api crea sola la primera vez.
+   No hay que crear Products ni Prices en el dashboard.
+4. `metadata.user_id` y `metadata.plan` van en la session y en la subscription:
+   con eso el webhook vincula al usuario y sabe el plan
+5. Responde `{ initPoint: <url de Checkout>, sessionId, plan, provider }`. Al
+   pagar, Stripe vuelve a `/dashboard/gracias?stripe_session=...`; si cancela, a
+   `/suscripcion`
+
+### Webhook `POST /webhooks/stripe`
+
+1. **Firma**: header `Stripe-Signature: t=<ts>,v1=<hmac>`; HMAC-SHA256 de
+   `<ts>.<raw body>` con `STRIPE_WEBHOOK_SECRET`, tolerancia de 5 min. Inválida → `401`
+2. **Idempotencia**: `provider_event_id` = `stripe:<evt_...>`
+3. Si Stripe falla al traer la subscription → `502` sin registrar el evento
+
+| Evento | Efecto |
+|---|---|
+| `checkout.session.completed` | Trae la subscription → `active`, `payment_provider = 'stripe'`, `stripe_subscription_id`, plan, `current_period_end` |
+| `customer.subscription.updated` | `active` / `trialing` → `active`; `cancel_at_period_end` → `cancelled` (con acceso hasta fin de período); `past_due` / `unpaid` / `incomplete*` / `paused` → `paused` |
+| `customer.subscription.deleted` | `cancelled` |
+| otros | se guardan y se ignoran |
+
+Igual que con MP, bajar/pausar solo toca al usuario si es su
+`stripe_subscription_id` vigente. `current_period_end` es el de Stripe, sin
+gracia (Stripe cobra y avisa en el momento).
+
+### Reconciliación y cancelación
+
+- `reconcileStripeSubscriptions` corre junto con la de MP: lista las
+  subscriptions `active` de Stripe y consulta una por una las de usuarios
+  locales `active` / `paused` con `payment_provider = 'stripe'` que no aparecieron.
+- Cancelar con `payment_provider = 'stripe'` → `cancel_at_period_end=true` en
+  Stripe: se mantiene el acceso hasta `current_period_end`, igual que MP.
+
 ## Endpoints de la API
 
 | Método | Path | Descripción |
@@ -162,9 +234,11 @@ Cualquier error de la API de MP en un endpoint se devuelve como
 | `POST` | `/api/courses/:slug/certificate` | Requiere auth. Emite el certificado si completó **todas** las lecciones (`201`); si ya lo tenía devuelve el mismo (`200`). `409 not_completed` con `completed` / `total`, o `409 name_required` si la cuenta no tiene nombre. Nombre y título se guardan como snapshot: el certificado no cambia aunque el curso sí |
 | `GET` | `/api/certificates/:id` | Público (es el link que se comparte): `recipientName`, `courseTitle`, `courseSlug`, `issuedAt`, `verifyUrl` |
 | `GET` | `/api/certificates/:id/pdf` | Público. A4 apaisado con Instrument Serif embebida (`apps/api/src/assets/fonts`, OFL). La web lo sirve en `/certificados/:id.pdf` |
-| `POST` | `/api/subscription/create` | Requiere auth. Crea Preapproval, devuelve `{ initPoint, preapprovalId }` |
-| `POST` | `/api/subscription/cancel` | Requiere auth. Cancela en MP, conserva el período pago |
+| `GET` | `/api/prices` | Público. `{ prices: { basic: { ARS, USD }, pro: { ARS, USD } }, providers: { mercadopago, stripe } }`, montos en centavos |
+| `POST` | `/api/subscription/create` | Requiere auth. `{ plan, provider? }`. MP: crea Preapproval, devuelve `{ initPoint, preapprovalId }`. Stripe: crea Checkout Session, devuelve `{ initPoint, sessionId }` |
+| `POST` | `/api/subscription/cancel` | Requiere auth. Cancela en el provider del usuario, conserva el período pago |
 | `POST` | `/webhooks/mercadopago` | Webhook de MP (firma `x-signature`, idempotente) |
+| `POST` | `/webhooks/stripe` | Webhook de Stripe (firma `Stripe-Signature`, idempotente). Solo si Stripe está configurado |
 
 ### Admin (`/api/admin/*`)
 
@@ -181,15 +255,17 @@ Input inválido → `400 {"error":"invalid_input","field":...}`; slug repetido �
 | `PATCH` / `DELETE` | `/api/admin/categories/:id` | Edición / baja (`409 category_in_use` si tiene herramientas) |
 | `GET` | `/api/admin/users` | Últimos 200 usuarios |
 | `PATCH` | `/api/admin/users/:id` | `{ role }`. `409 cannot_demote_self` sobre uno mismo |
+| `GET` / `PUT` | `/api/admin/prices` | Precios vigentes / `{ prices: [{ plan, currency: 'ARS' \| 'USD', amount }] }` en centavos (entero > 0) |
 
 ## Seguridad
 
 - JWT expirable en 7 días, refresh en cada request
 - Webhook MP: validar firma HMAC (header `x-signature`) contra `MP_WEBHOOK_SECRET`
-- Idempotencia: `mp_event_id` unique constraint impide procesar el mismo evento dos veces
+- Webhook Stripe: validar firma HMAC (header `Stripe-Signature`) contra `STRIPE_WEBHOOK_SECRET`
+- Idempotencia: el unique de `provider_event_id` impide procesar el mismo evento dos veces
 - Auth opcional en endpoints públicos: sin header es anónimo, pero un token presente e inválido da `401` (para que el cliente renueve la sesión)
 - `/api/tools/:slug/unlock` toma un lock sobre la fila del usuario (`SELECT … FOR UPDATE`) para que requests concurrentes no superen el cupo
 - Rate limit en memoria (ventana fija; alcanza con una sola instancia de api), responde `429 {"error":"rate_limited"}` + `Retry-After`:
   - `POST /api/tools/:slug/unlock`: 10/min **por usuario** (después de validar el token)
   - `PUT /api/courses/:slug/lessons/:lesson/progress`: 60/min **por usuario** (el reproductor lo manda periódicamente)
-  - `POST /webhooks/mercadopago`: 300/min **por IP**, antes de validar la firma. La IP sale de `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for`; es confiable porque la api solo escucha en `127.0.0.1` detrás del proxy
+  - `POST /webhooks/*` (MP y Stripe): 300/min **por IP**, antes de validar la firma. La IP sale de `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for`; es confiable porque la api solo escucha en `127.0.0.1` detrás del proxy

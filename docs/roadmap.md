@@ -38,7 +38,6 @@ reales. El detalle vive en `TODO.md`.
 ## Fuera de scope de v1 (a propósito)
 
 - Múltiples proveedores OAuth (solo Google)
-- Precios en otras monedas (solo ARS)
 - Plan anual con descuento
 - Refunds / prorateo (MP no lo simplifica)
 - App móvil (la API queda lista para eso, pero no se construye)
