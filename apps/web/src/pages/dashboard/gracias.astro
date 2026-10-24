@@ -20,6 +20,7 @@ try {
 // MP redirige acá apenas se paga, pero la suscripción se activa cuando llega el webhook
 // (auth-y-pagos.md). Mientras tanto la página se refresca sola para no mostrar "pendiente" de más.
 const active = me?.subscription.status === 'active' && me.subscription.hasAccess;
+const providerName = Astro.url.searchParams.has('stripe_session') ? 'Stripe' : 'MercadoPago';
 ---
 
 <Base title="Gracias — La Forja">
@@ -48,7 +49,7 @@ const active = me?.subscription.status === 'active' && me.subscription.hasAccess
       ) : (
         <>
           <div class="eyebrow">Confirmando el pago</div>
-          <h1 class="thanks__title display">¡Gracias! Estamos esperando a MercadoPago.</h1>
+          <h1 class="thanks__title display">¡Gracias! Estamos esperando a {providerName}.</h1>
           <p class="thanks__text">
             Suele tardar unos segundos. Esta página se actualiza sola; si en unos minutos no
             cambia, revisá el estado en tu cuenta.

@@ -3,24 +3,30 @@ import { getSession } from 'auth-astro/server';
 import Base from '~/layouts/Base.astro';
 import Nav from '~/components/Nav.astro';
 import Footer from '~/components/Footer.astro';
-import { type Me, type Plan, createSubscription, formatDate, getMe } from '~/lib/api';
+import { type Me, type Plan, type Provider, createSubscription, formatDate, getMe, getPrices } from '~/lib/api';
+import { PROVIDER_LABEL, REGION_PROVIDER, type Region, formatPrice, regionCurrency, resolveRegion } from '~/lib/pricing';
 import { loginUrl } from '~/lib/redirect';
 
 const session = await getSession(Astro.request);
 const user = session?.user;
-if (!user) return Astro.redirect(loginUrl('/suscripcion'));
+if (!user) return Astro.redirect(loginUrl(`/suscripcion${Astro.url.search}`));
 
-let providerError = false;
+const pricing = await getPrices();
+let region: Region = resolveRegion(Astro.request, Astro.url, pricing);
+let providerError: Provider | null = null;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const raw = form.get('plan');
   const plan: Plan | null = raw === 'basic' || raw === 'pro' ? raw : null;
+  const rawProvider = form.get('provider');
+  const provider: Provider = rawProvider === 'stripe' ? 'stripe' : 'mercadopago';
+  region = provider === 'stripe' ? 'intl' : 'ar';
   if (plan) {
-    const result = await createSubscription(user, plan);
+    const result = await createSubscription(user, plan, provider);
     if (result.ok) return Astro.redirect(result.initPoint, 303);
     if (result.reason === 'already_subscribed') return Astro.redirect('/dashboard', 303);
-    providerError = true;
+    providerError = provider;
     // No 502: Cloudflare reemplaza los 502/504 del origen por su propia página y el aviso no se ve.
     Astro.response.status = 503;
   } else {
@@ -45,6 +51,10 @@ const periodEnd = formatDate(me?.subscription.currentPeriodEnd ?? null);
 const payerEmail = me?.user.email ?? user.email;
 
 const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
+const provider = REGION_PROVIDER[region];
+const currency = regionCurrency(region);
+const price = (plan: Plan) => (pricing ? formatPrice(pricing.prices[plan][currency], currency) : null);
+const showRegions = pricing?.providers.stripe === true;
 ---
 
 <Base title="Suscripción — La Forja">
@@ -71,18 +81,31 @@ const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
 
     {providerError && (
       <p class="sub__error" role="alert">
-        MercadoPago no respondió. Probá de nuevo en unos minutos.
+        {PROVIDER_LABEL[providerError]} no respondió. Probá de nuevo en unos minutos.
       </p>
+    )}
+
+    {showRegions && (
+      <nav class="regions" aria-label="Dónde pagás">
+        <a href="/suscripcion?region=ar" class:list={['regions__opt', { 'regions__opt--on': region === 'ar' }]} aria-current={region === 'ar' ? 'page' : undefined}>
+          Argentina <span class="mono">ARS · MercadoPago</span>
+        </a>
+        <a href="/suscripcion?region=intl" class:list={['regions__opt', { 'regions__opt--on': region === 'intl' }]} aria-current={region === 'intl' ? 'page' : undefined}>
+          Internacional <span class="mono">USD · tarjeta</span>
+        </a>
+      </nav>
     )}
 
     <div class="plans">
       <article class="plan">
         <header class="plan__head">
           <div class="plan__name">Oficial</div>
-          <div class="plan__price">
-            <span class="plan__price-num">$6.999</span>
-            <span class="plan__price-per mono">ARS / mes</span>
-          </div>
+          {price('basic') && (
+            <div class="plan__price">
+              <span class="plan__price-num">{price('basic')}</span>
+              <span class="plan__price-per mono">{currency} / mes</span>
+            </div>
+          )}
           <p class="plan__tag">Para los que están empezando a laburar con la biblioteca.</p>
         </header>
         <ul class="plan__feats">
@@ -92,6 +115,7 @@ const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
         </ul>
         <form method="post" class="plan__cta">
           <input type="hidden" name="plan" value="basic" />
+          <input type="hidden" name="provider" value={provider} />
           <button type="submit" class="btn btn--ghost" disabled={subscribed && currentPlan === 'basic'}>
             {subscribed && currentPlan === 'basic' ? 'Tu plan actual' : 'Suscribirme al Oficial'}
           </button>
@@ -103,10 +127,12 @@ const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
         <div class="plan__ribbon">Recomendado</div>
         <header class="plan__head">
           <div class="plan__name">Maestro</div>
-          <div class="plan__price">
-            <span class="plan__price-num">$19.999</span>
-            <span class="plan__price-per mono">ARS / mes</span>
-          </div>
+          {price('pro') && (
+            <div class="plan__price">
+              <span class="plan__price-num">{price('pro')}</span>
+              <span class="plan__price-per mono">{currency} / mes</span>
+            </div>
+          )}
           <p class="plan__tag">Para los que ya la usan todos los días.</p>
         </header>
         <ul class="plan__feats">
@@ -117,6 +143,7 @@ const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
         </ul>
         <form method="post" class="plan__cta">
           <input type="hidden" name="plan" value="pro" />
+          <input type="hidden" name="provider" value={provider} />
           <button type="submit" class="btn btn--primary" disabled={subscribed && currentPlan === 'pro'}>
             {subscribed && currentPlan === 'pro' ? 'Tu plan actual' : (
               <>
@@ -130,7 +157,8 @@ const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
     </div>
 
     <p class="sub__fine mono">
-      Pago recurrente con MercadoPago a nombre de {payerEmail}.
+      Pago recurrente con {PROVIDER_LABEL[provider]} a nombre de {payerEmail}.
+      {provider === 'stripe' && ' Aceptamos tarjetas de cualquier país.'}
     </p>
   </main>
   <Footer />
@@ -146,6 +174,36 @@ const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
   .sub__text { margin-top: 12px; color: var(--ink-dim); }
   .sub__error { color: var(--ember-300); font-size: 14px; text-align: center; margin-bottom: 16px; }
   .sub__fine { color: var(--ink-mute); font-size: 11.5px; text-align: center; margin-top: 20px; }
+
+  .regions {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    width: fit-content;
+    margin: 0 auto 28px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg-elev);
+  }
+  .regions__opt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 18px;
+    border-radius: 999px;
+    color: var(--ink-dim);
+    font-size: 14px;
+    text-decoration: none;
+    line-height: 1.25;
+  }
+  .regions__opt span { font-size: 10.5px; color: var(--ink-mute); }
+  .regions__opt:hover { color: var(--ink); }
+  .regions__opt--on {
+    background: linear-gradient(180deg, rgba(255,122,0,0.16), rgba(255,122,0,0.06));
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px rgba(255,176,103,0.3);
+  }
 
   .panel {
     display: flex;

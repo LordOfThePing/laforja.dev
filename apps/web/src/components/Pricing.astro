@@ -1,5 +1,15 @@
 ---
 // Pricing: tres niveles — Aprendiz (gratis), Oficial, Maestro.
+import { type Plan, getPrices } from '~/lib/api';
+import { PROVIDER_LABEL, REGION_PROVIDER, formatPrice, regionCurrency, resolveRegion } from '~/lib/pricing';
+
+const pricing = await getPrices();
+const region = resolveRegion(Astro.request, Astro.url, pricing);
+const currency = regionCurrency(region);
+const price = (plan: Plan) => (pricing ? formatPrice(pricing.prices[plan][currency], currency) : null);
+const other = region === 'ar' ? 'intl' : 'ar';
+const otherCurrency = regionCurrency(other);
+const subscribeHref = `/suscripcion?region=${region}`;
 ---
 
 <section id="suscripcion" class="pricing">
@@ -34,10 +44,12 @@
       <article class="plan reveal">
         <header class="plan__head">
           <div class="plan__name">Oficial</div>
-          <div class="plan__price">
-            <span class="plan__price-num">$6.999</span>
-            <span class="plan__price-per">ARS / mes</span>
-          </div>
+          {price('basic') && (
+            <div class="plan__price">
+              <span class="plan__price-num">{price('basic')}</span>
+              <span class="plan__price-per">{currency} / mes</span>
+            </div>
+          )}
           <p class="plan__tag">Para los que están empezando a laburar con esto.</p>
         </header>
         <ul class="plan__feats">
@@ -45,7 +57,7 @@
           <li><span class="plan__check">✓</span> Acceso a todas las <em>free</em></li>
           <li><span class="plan__check">✓</span> Cancelás cuando quieras</li>
         </ul>
-        <a href="/suscripcion" class="btn btn--ghost plan__cta">Empezar Oficial</a>
+        <a href={subscribeHref} class="btn btn--ghost plan__cta">Empezar Oficial</a>
       </article>
 
       <article class="plan plan--featured reveal">
@@ -53,10 +65,12 @@
         <div class="plan__ribbon">Recomendado</div>
         <header class="plan__head">
           <div class="plan__name">Maestro</div>
-          <div class="plan__price">
-            <span class="plan__price-num">$19.999</span>
-            <span class="plan__price-per">ARS / mes</span>
-          </div>
+          {price('pro') && (
+            <div class="plan__price">
+              <span class="plan__price-num">{price('pro')}</span>
+              <span class="plan__price-per">{currency} / mes</span>
+            </div>
+          )}
           <p class="plan__tag">Para los que ya trabajan con esto todos los días.</p>
         </header>
         <ul class="plan__feats">
@@ -65,13 +79,20 @@
           <li><span class="plan__check">✓</span> Cursos y módulos cuando lancen (sin costo extra)</li>
           <li><span class="plan__check">✓</span> Cancelás cuando quieras, sin preguntas</li>
         </ul>
-        <a href="/suscripcion" class="btn btn--primary plan__cta">
+        <a href={subscribeHref} class="btn btn--primary plan__cta">
           Empezar Maestro
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
-        <p class="plan__note mono">Pago vía MercadoPago &middot; suscripción recurrente</p>
+        <p class="plan__note mono">Pago vía {PROVIDER_LABEL[REGION_PROVIDER[region]]} &middot; suscripción recurrente</p>
       </article>
     </div>
+
+    {pricing?.providers.stripe && (
+      <p class="pricing__alt">
+        {region === 'ar' ? '¿Pagás desde fuera de Argentina?' : '¿Estás en Argentina?'}
+        {' '}<a href={`/suscripcion?region=${other}`}>Ver precios en {otherCurrency}</a>
+      </p>
+    )}
   </div>
 </section>
 
@@ -99,6 +120,14 @@
     margin-top: 16px;
     color: var(--ink-dim);
   }
+
+  .pricing__alt {
+    margin-top: 28px;
+    text-align: center;
+    color: var(--ink-mute);
+    font-size: 14px;
+  }
+  .pricing__alt a { color: var(--ember-300); }
 
   .pricing__grid {
     display: grid;

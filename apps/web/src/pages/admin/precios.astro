@@ -1,0 +1,81 @@
+---
+import Admin from '~/layouts/Admin.astro';
+import { errorMessage, getAdminPrices, mutate, pricesFromForm, requireAdmin } from '~/lib/admin';
+import { formatPrice } from '~/lib/pricing';
+
+const auth = await requireAdmin(Astro);
+if (!auth.ok) return auth.response;
+
+let error: string | null = null;
+const flash = Astro.url.searchParams.get('ok');
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const result = await mutate(auth.user, '/api/admin/prices', 'PUT', pricesFromForm(form));
+  if (result.ok) return Astro.redirect('/admin/precios?ok=1', 303);
+  error = errorMessage(result);
+  Astro.response.status = 400;
+}
+
+const { prices } = await getAdminPrices(auth.user);
+
+const plans = [
+  { id: 'basic', label: 'Oficial', detail: '3 desbloqueos por mes' },
+  { id: 'pro', label: 'Maestro', detail: 'Acceso ilimitado' },
+] as const;
+const currencies = [
+  { id: 'ARS', label: 'ARS', provider: 'MercadoPago (Argentina)', step: '1' },
+  { id: 'USD', label: 'USD', provider: 'Stripe (internacional)', step: '0.01' },
+] as const;
+---
+
+<Admin title="Precios">
+  <h1>Precios</h1>
+  <p class="dim lede">
+    Monto mensual de cada plan. Aplica a las suscripciones nuevas: las que ya están activas siguen
+    cobrando el monto con el que se dieron de alta.
+  </p>
+
+  {flash && <p class="admin-notice admin-notice--ok" role="status">Precios guardados.</p>}
+  {error && <p class="admin-notice" role="alert">{error}</p>}
+
+  <form method="post" class="admin-form prices">
+    {plans.map((plan) => (
+      <fieldset class="plan">
+        <legend class="plan__name">{plan.label} <span class="dim">— {plan.detail}</span></legend>
+        <div class="admin-form__row">
+          {currencies.map((cur) => (
+            <label class="field">
+              <span>{cur.label} <span class="dim">· {cur.provider}</span></span>
+              <input
+                name={`${plan.id}_${cur.id}`}
+                type="number"
+                inputmode="decimal"
+                min={cur.step}
+                step={cur.step}
+                required
+                value={prices[plan.id][cur.id] / 100}
+              />
+              <small class="dim mono">Hoy: {formatPrice(prices[plan.id][cur.id], cur.id)} / mes</small>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    ))}
+    <div class="admin-actions"><button type="submit" class="btn btn--primary">Guardar precios</button></div>
+  </form>
+</Admin>
+
+<style>
+  .lede { margin-block: 8px 24px; max-width: 64ch; }
+  .prices { gap: 16px; }
+  .plan {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev);
+    display: grid;
+    gap: 14px;
+  }
+  .plan__name { font-family: var(--font-display); font-size: 18px; padding-inline: 6px; }
+</style>

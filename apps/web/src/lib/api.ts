@@ -27,6 +27,16 @@ export type ToolDetail =
 export type Quota = { monthKey: string; limit: number; used: number; remaining: number };
 
 export type Plan = 'basic' | 'pro';
+export type Provider = 'mercadopago' | 'stripe';
+export type Currency = 'ARS' | 'USD';
+
+export const PROVIDER_CURRENCY: Record<Provider, Currency> = { mercadopago: 'ARS', stripe: 'USD' };
+
+// Montos en centavos. Se editan en el panel admin → Precios.
+export type Prices = {
+  prices: Record<Plan, Record<Currency, number>>;
+  providers: Record<Provider, boolean>;
+};
 
 export type Me = {
   user: {
@@ -39,6 +49,7 @@ export type Me = {
   subscription: {
     status: string;
     plan: Plan | null;
+    provider: Provider | null;
     currentPeriodEnd: string | null;
     hasAccess: boolean;
   };
@@ -501,15 +512,28 @@ export function formatLongDuration(seconds: number): string {
   return m === 0 ? `${h} h` : `${h} h ${m} min`;
 }
 
+export async function getPrices(): Promise<Prices | null> {
+  try {
+    return await call<Prices>('/api/prices', undefined);
+  } catch (err) {
+    console.error('No se pudieron cargar los precios', err);
+    return null;
+  }
+}
+
 export type SubscribeResult =
   | { ok: true; initPoint: string }
-  | { ok: false; reason: 'already_subscribed' | 'payment_provider_error' | 'invalid_plan' };
+  | { ok: false; reason: 'already_subscribed' | 'payment_provider_error' | 'invalid_plan' | 'provider_disabled' };
 
-export async function createSubscription(user: Session['user'], plan: Plan): Promise<SubscribeResult> {
+export async function createSubscription(
+  user: Session['user'],
+  plan: Plan,
+  provider: Provider,
+): Promise<SubscribeResult> {
   try {
     const { initPoint } = await call<{ initPoint: string }>('/api/subscription/create', user, {
       method: 'POST',
-      json: { plan },
+      json: { plan, provider },
     });
     return { ok: true, initPoint };
   } catch (err) {
@@ -517,7 +541,8 @@ export async function createSubscription(user: Session['user'], plan: Plan): Pro
       err instanceof ApiError &&
       (err.code === 'already_subscribed' ||
         err.code === 'payment_provider_error' ||
-        err.code === 'invalid_plan')
+        err.code === 'invalid_plan' ||
+        err.code === 'provider_disabled')
     ) {
       return { ok: false, reason: err.code };
     }

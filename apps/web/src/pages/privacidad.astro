@@ -30,8 +30,9 @@ const mailto = `mailto:${CONTACT_EMAIL}`;
       tu cupo gratuito.
     </li>
     <li>
-      <strong>Suscripción</strong>: el identificador de tu suscripción en MercadoPago, su estado,
-      la fecha hasta la que tenés acceso y las notificaciones de pago que nos envía MercadoPago.
+      <strong>Suscripción</strong>: el identificador de tu suscripción y de cliente en MercadoPago o
+      Stripe, su estado, la fecha hasta la que tenés acceso y las notificaciones de pago que nos
+      envía el proveedor.
       <strong>No recibimos ni guardamos datos de tarjetas</strong>.
     </li>
     <li>
@@ -65,6 +66,11 @@ const mailto = `mailto:${CONTACT_EMAIL}`;
     <li>
       <strong>MercadoPago</strong>, para procesar la suscripción. Le pasamos tu email y un
       identificador interno; el resto de los datos de pago los cargás directamente en MercadoPago.
+    </li>
+    <li>
+      <strong>Stripe</strong> (Estados Unidos), si pagás en dólares desde fuera de Argentina. Le
+      pasamos tu email y un identificador interno; los datos de la tarjeta los cargás directamente
+      en Stripe.
     </li>
     <li>
       <strong>Hetzner</strong>, donde está alojado el servidor y la base de datos (Unión Europea),

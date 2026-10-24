@@ -62,7 +62,9 @@ if (subscription.status === 'active') {
       : 'Acceso ilimitado. Se renueva sola cada mes.';
   }
 } else if (subscription.status === 'paused') {
-  statusDetail = 'MercadoPago no pudo cobrar la cuota. Revisá el medio de pago en tu cuenta de MercadoPago.';
+  statusDetail = subscription.provider === 'stripe'
+    ? 'Stripe no pudo cobrar la cuota. Revisá que tu tarjeta esté vigente: Stripe reintenta el cobro durante unos días.'
+    : 'MercadoPago no pudo cobrar la cuota. Revisá el medio de pago en tu cuenta de MercadoPago.';
 } else if (subscription.status === 'cancelled') {
   statusDetail = subscription.hasAccess && periodEnd
     ? `No se va a renovar. Mantenés el acceso hasta el ${periodEnd}.`
@@ -88,7 +90,9 @@ if (subscription.status === 'active') {
       <p class="dash__notice" role="alert">No encontramos una suscripción activa para cancelar.</p>
     )}
     {notice === 'payment_provider_error' && (
-      <p class="dash__notice" role="alert">MercadoPago no respondió. Probá de nuevo en unos minutos.</p>
+      <p class="dash__notice" role="alert">
+        {subscription.provider === 'stripe' ? 'Stripe' : 'MercadoPago'} no respondió. Probá de nuevo en unos minutos.
+      </p>
     )}
 
     <div class="dash__grid">

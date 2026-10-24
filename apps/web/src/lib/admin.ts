@@ -239,6 +239,22 @@ export type AdminNewsletter = {
 
 export const getNewsletterAdmin = (user: User) => call<AdminNewsletter>('/api/admin/newsletter', user);
 
+export type AdminPrices = Record<'basic' | 'pro', Record<'ARS' | 'USD', number>>;
+
+export const getAdminPrices = (user: User) => call<{ prices: AdminPrices }>('/api/admin/prices', user);
+
+// El form carga montos en unidades (6999, 6.99); la API los guarda en centavos.
+export function pricesFromForm(form: FormData) {
+  const prices = [];
+  for (const plan of ['basic', 'pro'] as const) {
+    for (const currency of ['ARS', 'USD'] as const) {
+      const raw = str(form, `${plan}_${currency}`).replace(',', '.');
+      prices.push({ plan, currency, amount: raw === '' ? Number.NaN : Math.round(Number(raw) * 100) });
+    }
+  }
+  return { prices };
+}
+
 export type MutationResult<T = unknown> = { ok: true; value: T } | { ok: false; error: string; field?: string };
 
 // Los errores esperables (validación, slug repetido, en uso) vuelven como valor para
@@ -246,7 +262,7 @@ export type MutationResult<T = unknown> = { ok: true; value: T } | { ok: false; 
 export async function mutate<T>(
   user: User,
   path: string,
-  method: 'POST' | 'PATCH' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   json?: unknown,
 ): Promise<MutationResult<T>> {
   try {
@@ -362,6 +378,7 @@ export function categoryFromForm(form: FormData) {
 }
 
 const fieldLabels: Record<string, string> = {
+  prices: 'los precios (números mayores a cero, con hasta 2 decimales)',
   slug: 'el slug (solo minúsculas, números y guiones)',
   title: 'el título',
   name: 'el nombre',

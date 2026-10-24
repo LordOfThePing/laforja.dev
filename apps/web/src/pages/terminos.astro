@@ -1,13 +1,22 @@
 ---
 import Legal from '~/layouts/Legal.astro';
+import { type Plan, getPrices } from '~/lib/api';
 import { CONTACT_EMAIL, LEGAL_UPDATED, RESPONSIBLE_NAME } from '~/lib/legal';
+import { formatPrice } from '~/lib/pricing';
 
 const mailto = `mailto:${CONTACT_EMAIL}`;
+const pricing = await getPrices();
+// Los montos salen del panel admin; sin API se muestra el texto genérico para no publicar un precio viejo.
+const priceText = (plan: Plan) =>
+  pricing
+    ? `${formatPrice(pricing.prices[plan].ARS, 'ARS')} ARS por mes` +
+      (pricing.providers.stripe ? ` (o ${formatPrice(pricing.prices[plan].USD, 'USD')} USD por mes si pagás desde fuera de Argentina)` : '')
+    : 'el precio publicado en /suscripcion';
 ---
 
 <Legal
   title="Términos y condiciones"
-  description="Condiciones de uso de La Forja: cuenta, cupo gratuito, suscripción con MercadoPago, cancelación y arrepentimiento."
+  description="Condiciones de uso de La Forja: cuenta, cupo gratuito, suscripción con MercadoPago o Stripe, cancelación y arrepentimiento."
   updated={LEGAL_UPDATED}
 >
   <h2>1. Quiénes somos</h2>
@@ -45,17 +54,18 @@ const mailto = `mailto:${CONTACT_EMAIL}`;
   <h2>4. Suscripciones Oficial y Maestro</h2>
   <ul>
     <li>
-      El plan <strong>Oficial</strong> cuesta <strong>$6.999 ARS por mes</strong>, con impuestos
+      El plan <strong>Oficial</strong> cuesta <strong>{priceText('basic')}</strong>, con impuestos
       incluidos, y permite desbloquear <strong>3 herramientas por mes</strong>.
     </li>
     <li>
-      El plan <strong>Maestro</strong> cuesta <strong>$19.999 ARS por mes</strong>, con impuestos
+      El plan <strong>Maestro</strong> cuesta <strong>{priceText('pro')}</strong>, con impuestos
       incluidos, y da <strong>acceso ilimitado</strong> a toda la biblioteca mientras esté vigente.
     </li>
     <li>
-      El cobro es recurrente y automático a través de <strong>MercadoPago</strong>. Nosotros no
-      vemos ni guardamos los datos de tu tarjeta: los procesa MercadoPago bajo sus propias
-      condiciones.
+      El cobro es recurrente y automático a través de <strong>MercadoPago</strong> (en pesos, desde
+      Argentina) o de <strong>Stripe</strong> (en dólares, con tarjeta desde cualquier país).
+      Nosotros no vemos ni guardamos los datos de tu tarjeta: los procesa el proveedor que elijas
+      bajo sus propias condiciones.
     </li>
     <li>
       Si un cobro es rechazado, el acceso ilimitado se suspende hasta que se regularice el pago.
