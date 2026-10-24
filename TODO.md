@@ -4,6 +4,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Reemplazar Stripe por Lemon Squeezy como provider internacional (USD) — en curso por @claude — Stripe no acepta cuentas de Argentina; LS es merchant of record y paga a banco argentino
 
 ## Pendiente
 
@@ -13,7 +14,6 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### Operación / producción
 
-- Prender Stripe en prod: secret key + webhook `https://laforja.dev/webhooks/stripe` (eventos `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`) → `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` en `.env.production`, `make env-push` + restart api — pendiente (usuario) — pasos en `docs/despliegue-vps.md` → Stripe; revisar montos en `/admin/precios`
 - Activar la newsletter: cuenta en Resend, verificar `laforja.dev` (SPF/DKIM en Cloudflare), `RESEND_API_KEY` en `.env.production` — pendiente — depende de que `laforja.dev` resuelva; pasos en `docs/despliegue-vps.md` → Newsletter
 
 ### SEO y crecimiento
