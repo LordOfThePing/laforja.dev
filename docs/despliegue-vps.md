@@ -116,7 +116,7 @@ como `custom_price`), no del precio cargado en LS.
    LEMONSQUEEZY_VARIANT_BASIC=...
    LEMONSQUEEZY_VARIANT_PRO=...
    ```
-   `make env-push` y `make restart SERVICE=api`.
+   `make env-push` y `make up` (recrea la api con el `.env` nuevo; `make restart` no relee las variables).
 
 **Test mode**: LS tiene un modo test (toggle abajo a la izquierda) con sus
 propias API keys, webhooks y productos. Conviene hacer todo primero en test,

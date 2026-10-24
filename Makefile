@@ -90,7 +90,7 @@ up: ## docker compose up -d en el VPS (sin pull ni build)
 down: ## docker compose down en el VPS (el volumen de Postgres se conserva)
 	$(call RCOMPOSE,down)
 
-restart: ## Reinicia un servicio: make restart SERVICE=api
+restart: ## Reinicia un servicio: make restart SERVICE=api (no relee el .env: para eso, make up)
 	$(call RCOMPOSE,restart $(SERVICE))
 
 ps: ## Estado de los contenedores en el VPS

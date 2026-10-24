@@ -13,7 +13,7 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ### Operación / producción
 
-- Prender Lemon Squeezy en prod: store en USD, producto de suscripción con variants Oficial/Maestro, API key y webhook `https://laforja.dev/webhooks/lemonsqueezy` → 5 variables `LEMONSQUEEZY_*` en `.env.production`, `make env-push` + restart api — pendiente (usuario) — cuenta creada y verificada; pasos en `docs/despliegue-vps.md` → Lemon Squeezy; probar primero en test mode
+- Prender Lemon Squeezy en prod: store en USD, producto de suscripción con variants Oficial/Maestro, API key y webhook `https://laforja.dev/webhooks/lemonsqueezy` → 5 variables `LEMONSQUEEZY_*` en `.env.production`, `make env-push` + `make up` — pendiente (usuario) — cuenta creada y verificada; pasos en `docs/despliegue-vps.md` → Lemon Squeezy; probar primero en test mode
 - Activar la newsletter: cuenta en Resend, verificar `laforja.dev` (SPF/DKIM en Cloudflare), `RESEND_API_KEY` en `.env.production` — pendiente — depende de que `laforja.dev` resuelva; pasos en `docs/despliegue-vps.md` → Newsletter
 
 ### SEO y crecimiento
