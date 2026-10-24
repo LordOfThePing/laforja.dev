@@ -4,6 +4,8 @@ Tareas pendientes y en curso. Ver `CLAUDE.md` (§2) para el workflow.
 
 ## En curso
 
+- Integrar Stripe como segundo payment provider (convive con MP) — pendiente — MP sigue para ARS, Stripe para internacional en USD. Abstraer `PaymentProvider`, agregar `providers/stripe.ts`, columnas `payment_provider` + `stripe_customer_id` + `stripe_subscription_id` en `users`, `POST /webhooks/stripe` con firma + idempotencia, reconciliación, toggle AR/Internacional en `/suscripcion`, vars `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_BASIC` / `STRIPE_PRICE_PRO`, actualizar `docs/auth-y-pagos.md` y `docs/schema-datos.md`. Falta confirmar precios USD y modo de checkout (recomendado: Checkout hosted + precios ~$7 / $20)
+
 ## Pendiente
 
 ### v1 — cerrar el MVP
