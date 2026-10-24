@@ -38,7 +38,7 @@ endif
 RCOMPOSE = $(REMOTE) "cd $(REMOTE_DIR) && docker compose $(1)"
 
 .DEFAULT_GOAL := help
-.PHONY: help setup env-push env-diff local-only check-pushed deploy up down restart ps logs \
+.PHONY: help setup env-push env-pull env-diff local-only check-pushed deploy up down restart ps logs \
         migrate seed reconcile psql shell backup backups backup-pull stats dev-up dev-down dev-seed test
 
 help: ## Lista los targets
@@ -53,6 +53,12 @@ env-push: local-only ## Sube .env.production (o ENV_FILE=...) al VPS como .env (
 	@test -f $(ENV_FILE) || { echo "Falta $(ENV_FILE) (copiá .env.example y completalo)"; exit 1; }
 	scp $(SSH_OPTS) $(ENV_FILE) $(SSH_HOST):$(REMOTE_DIR)/.env.tmp
 	$(REMOTE) "chmod 600 $(REMOTE_DIR)/.env.tmp && mv $(REMOTE_DIR)/.env.tmp $(REMOTE_DIR)/.env"
+
+env-pull: local-only ## Baja el .env del VPS a .env.production (o ENV_FILE=...); el anterior queda en .bak
+	@test ! -f $(ENV_FILE) || cp $(ENV_FILE) $(ENV_FILE).bak
+	scp $(SSH_OPTS) $(SSH_HOST):$(REMOTE_DIR)/.env $(ENV_FILE).tmp
+	@mv $(ENV_FILE).tmp $(ENV_FILE)
+	@echo "$(ENV_FILE) actualizado desde el VPS$$(test -f $(ENV_FILE).bak && echo " (anterior en $(ENV_FILE).bak)")"
 
 env-diff: local-only ## Compara los nombres de variables de .env.production con el .env del VPS (solo nombres)
 	@grep -E '^[A-Z_]+=' $(ENV_FILE) | cut -d= -f1 | sort > "$${TMPDIR:-/tmp}/laforja-env-keys"

@@ -6,6 +6,9 @@ dist/
 .env.local
 .env.*.local
 .env.production
+# Copias que dejan `make env-pull` (.bak) y un scp cortado a mitad (.tmp).
+.env.production.bak
+.env.production.tmp
 .DS_Store
 Thumbs.db
 *.log
