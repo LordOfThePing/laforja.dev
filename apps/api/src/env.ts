@@ -24,10 +24,9 @@ export const env = {
   // Bearer token del server MCP en /mcp (ABM de herramientas/categorías desde Claude Code u otro cliente).
   // Vacío = MCP apagado. En prod, bindear el puerto a 127.0.0.1 o poner un token largo y aleatorio.
   mcpAdminToken: process.env.MCP_ADMIN_TOKEN || undefined,
-  // Stripe (internacional en USD). Sin estas cuatro variables, el provider queda apagado:
+  // Stripe (internacional en USD). Sin estas dos variables, el provider queda apagado:
   // /api/subscription/create con provider='stripe' responde 503 provider_disabled.
+  // Los montos no van acá: salen de plan_prices (panel admin → Precios).
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || undefined,
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || undefined,
-  stripePriceBasic: process.env.STRIPE_PRICE_BASIC || undefined,
-  stripePricePro: process.env.STRIPE_PRICE_PRO || undefined,
 };

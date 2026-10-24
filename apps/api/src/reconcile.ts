@@ -5,7 +5,6 @@ import { type MercadoPago, MercadoPagoError, type Preapproval } from './lib/merc
 import { updateFromPreapproval, userIdFromReference } from './lib/preapproval.ts';
 import { type Stripe, StripeError, type StripeSubscription } from './lib/stripe.ts';
 import { updateFromSubscription, userIdFromSubscription } from './lib/stripe-sync.ts';
-import type { Plan } from './routes/subscription.ts';
 
 const PAGE_SIZE = 50;
 
@@ -143,10 +142,8 @@ export type StripeReconcileChange = {
 export async function reconcileStripeSubscriptions(
   db: Db,
   stripe: Stripe,
-  prices: Record<Plan, string>,
   { dryRun = false }: { dryRun?: boolean } = {},
 ): Promise<{ checked: number; changes: StripeReconcileChange[] }> {
-  const priceToPlan: Record<string, Plan> = { [prices.basic]: 'basic', [prices.pro]: 'pro' };
   const bySubId = new Map<string, StripeSubscription>();
 
   for (const sub of await allActiveStripe(stripe)) {
@@ -178,7 +175,7 @@ export async function reconcileStripeSubscriptions(
   const runId = new Date().toISOString();
   const changes: StripeReconcileChange[] = [];
   for (const sub of bySubId.values()) {
-    const update = updateFromSubscription(sub, priceToPlan);
+    const update = updateFromSubscription(sub);
     if (!update) continue;
     const userId = userIdFromSubscription(sub);
     if (!userId) continue;
@@ -214,7 +211,7 @@ export async function reconcileStripeSubscriptions(
 
 type ReconcilerDeps = {
   mp: MercadoPago;
-  stripe?: { client: Stripe; prices: Record<Plan, string> };
+  stripe?: Stripe;
 };
 
 export function startReconciler(db: Db, deps: ReconcilerDeps, intervalMs: number, firstRunDelayMs = 60_000) {
@@ -229,7 +226,7 @@ export function startReconciler(db: Db, deps: ReconcilerDeps, intervalMs: number
         console.log(`reconcile mp: usuario ${c.userId} (${c.preapprovalId}): ${c.before.subscriptionStatus} → ${c.after.subscriptionStatus}`);
       }
       if (deps.stripe) {
-        const stripeResult = await reconcileStripeSubscriptions(db, deps.stripe.client, deps.stripe.prices);
+        const stripeResult = await reconcileStripeSubscriptions(db, deps.stripe);
         console.log(`reconcile stripe: ${stripeResult.checked} revisadas, ${stripeResult.changes.length} corregidas`);
         for (const c of stripeResult.changes) {
           console.log(`reconcile stripe: usuario ${c.userId} (${c.subscriptionId}): ${c.before.subscriptionStatus} → ${c.after.subscriptionStatus}`);

@@ -106,6 +106,24 @@ export const subscriptionEvents = pgTable('subscription_events', {
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Precio vigente por plan y moneda, editable desde el panel admin. ARS lo cobra MercadoPago y USD
+// Stripe. Cambiarlo afecta solo las altas nuevas: las suscripciones existentes siguen con el monto
+// con el que se crearon. `amount` va en centavos para no arrastrar decimales de punto flotante.
+export const planPrices = pgTable(
+  'plan_prices',
+  {
+    plan: subscriptionPlan('plan').notNull(),
+    currency: text('currency').notNull(),
+    amount: integer('amount').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.plan, t.currency] }),
+    check('plan_prices_currency_ck', sql`${t.currency} in ('ARS', 'USD')`),
+    check('plan_prices_amount_ck', sql`${t.amount} > 0`),
+  ],
+);
+
 export const courses = pgTable('courses', {
   id: uuid('id').primaryKey().defaultRandom(),
   slug: text('slug').notNull().unique(),

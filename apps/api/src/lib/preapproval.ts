@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { users } from '../db/schema.ts';
-import { planFromAmount } from '../routes/subscription.ts';
+import { planFromPreapproval } from '../routes/subscription.ts';
 import type { Preapproval } from './mercadopago.ts';
 
 // MP cobra en next_payment_date y el webhook del cobro llega después; sin este margen el
@@ -29,11 +29,12 @@ export function updateFromPreapproval(pre: Preapproval): UserUpdate | null {
   if (!userId) return null;
 
   if (pre.status === 'authorized') {
-    // El plan sale del monto cobrado: si MP devuelve un amount desconocido conservamos
-    // el plan actual del usuario (set no incluye subscriptionPlan).
-    const plan = planFromAmount(pre.auto_recurring?.transaction_amount ?? null);
+    // Si no se reconoce el plan conservamos el actual del usuario (set no incluye subscriptionPlan).
+    const plan = planFromPreapproval(pre);
     const set: Partial<typeof users.$inferInsert> = {
       subscriptionStatus: 'active',
+      // Un usuario que venía de Stripe y se pasa a MP tiene que cancelar por MP de acá en más.
+      paymentProvider: 'mercadopago',
       subscriptionId: pre.id,
       currentPeriodEnd: periodEnd(pre),
     };

@@ -4,36 +4,32 @@ import { type AuthConfig, type AuthEnv, requireAuth } from '../auth.ts';
 import { users } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import type { MercadoPago } from '../lib/mercadopago.ts';
+import { PROVIDER_CURRENCY, loadPrices } from '../lib/prices.ts';
 import type { Stripe } from '../lib/stripe.ts';
 
 // Plan Oficial (basic): 3 desbloqueos/mes. Plan Maestro (pro): acceso ilimitado.
-export const OFICIAL_PRICE_ARS = 6999;
-export const MAESTRO_PRICE_ARS = 19999;
-
-// USD para Stripe (internacional). Son los montos de referencia; el precio real sale del
-// price_id configurado en Stripe (STRIPE_PRICE_BASIC/PRO), que puede diferir si cambia.
-export const OFICIAL_PRICE_USD = 7;
-export const MAESTRO_PRICE_USD = 20;
-
+// Los montos viven en la tabla plan_prices (editable desde el panel admin, ver lib/prices.ts).
 export type Plan = 'basic' | 'pro';
 export type PaymentProvider = 'mercadopago' | 'stripe';
-
-export const PLAN_PRICES: Record<Plan, number> = {
-  basic: OFICIAL_PRICE_ARS,
-  pro: MAESTRO_PRICE_ARS,
-};
 
 export const PLAN_REASONS: Record<Plan, string> = {
   basic: 'La Forja — Suscripción Oficial',
   pro: 'La Forja — Suscripción Maestro',
 };
 
-// Precios → plan: así webhook y reconcile deducen el plan desde la preapproval de MP sin
-// necesidad de guardar estado intermedio al crear.
-export function planFromAmount(amount: number | null | undefined): Plan | null {
-  if (amount === OFICIAL_PRICE_ARS) return 'basic';
-  if (amount === MAESTRO_PRICE_ARS) return 'pro';
-  return null;
+// Montos ARS que estaban hardcodeados antes de plan_prices: las preapprovals de esa época se
+// siguen reconociendo por monto si el reason no matchea.
+const LEGACY_ARS_AMOUNTS: Record<number, Plan> = { 6999: 'basic', 19999: 'pro' };
+
+// El plan sale del reason (fijo por plan) y no del monto: así cambiar el precio desde el panel no
+// rompe el reconocimiento de las preapprovals viejas ni de las nuevas.
+export function planFromPreapproval(pre: {
+  reason?: string | null;
+  auto_recurring?: { transaction_amount?: number | null } | null;
+}): Plan | null {
+  for (const plan of ['basic', 'pro'] as const) if (pre.reason === PLAN_REASONS[plan]) return plan;
+  const amount = pre.auto_recurring?.transaction_amount;
+  return amount != null ? (LEGACY_ARS_AMOUNTS[amount] ?? null) : null;
 }
 
 function parsePlan(raw: unknown): Plan | null {
@@ -47,8 +43,6 @@ function parseProvider(raw: unknown): PaymentProvider | null {
 
 export type StripeConfig = {
   client: Stripe;
-  // priceId por plan: viene de env (STRIPE_PRICE_BASIC/PRO).
-  prices: Record<Plan, string>;
   successUrl: string;
   cancelUrl: string;
 };
@@ -91,8 +85,12 @@ export function subscriptionRoutes({ auth, backUrl, mp, stripe }: Options) {
         await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, user.id));
       }
 
+      const prices = await loadPrices(db);
       const session = await stripe.client.createCheckoutSession({
-        priceId: stripe.prices[plan],
+        plan,
+        productName: PLAN_REASONS[plan],
+        amount: prices[plan][PROVIDER_CURRENCY.stripe],
+        currency: PROVIDER_CURRENCY.stripe,
         customerId,
         customerEmail: user.email,
         userId: user.id,
@@ -103,9 +101,11 @@ export function subscriptionRoutes({ auth, backUrl, mp, stripe }: Options) {
       return c.json({ initPoint: session.url, sessionId: session.id, plan, provider });
     }
 
+    const prices = await loadPrices(db);
     const preapproval = await mp.createPreapproval({
       reason: PLAN_REASONS[plan],
-      amount: PLAN_PRICES[plan],
+      // MP recibe el monto en unidades, no en centavos.
+      amount: prices[plan][PROVIDER_CURRENCY.mercadopago] / 100,
       payerEmail: user.email,
       externalReference: user.id,
       backUrl,

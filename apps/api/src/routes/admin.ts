@@ -4,6 +4,7 @@ import { type AuthConfig, type AuthEnv, requireAdmin, requireAuth } from '../aut
 import { categories, toolComments, tools, unlocks, users } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import { isUuid, parseCategory, parseTool } from '../lib/admin-input.ts';
+import { loadPrices, parsePrices, savePrices } from '../lib/prices.ts';
 import { monthKey } from '../lib/month.ts';
 import { adminBackupRoutes } from './admin-backups.ts';
 import { adminCollectionRoutes } from './admin-collections.ts';
@@ -48,6 +49,15 @@ export function adminRoutes(auth: AuthConfig, { backupStateDir, mailer, frontend
   app.route('/', adminBackupRoutes(backupStateDir));
   app.route('/', adminMetricsRoutes(db));
   app.route('/', adminNewsletterRoutes(db, mailer, frontendUrl));
+
+  app.get('/prices', async (c) => c.json({ prices: await loadPrices(db) }));
+
+  app.put('/prices', async (c) => {
+    const prices = parsePrices(await readJson(c));
+    if (!prices) return invalid(c, 'prices');
+    await savePrices(db, prices);
+    return c.json({ prices: await loadPrices(db) });
+  });
 
   async function slugTaken(table: typeof tools | typeof categories, slug: string, exceptId?: string) {
     const [row] = await db

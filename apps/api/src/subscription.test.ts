@@ -142,6 +142,7 @@ describe('webhook subscription_preapproval', () => {
     const preId = await subscribe(id, token, '2026-10-25T12:00:00.000Z');
     const user = await getUser(id);
     expect(user.subscriptionId).toBe(preId);
+    expect(user.paymentProvider).toBe('mercadopago');
     expect(user.currentPeriodEnd?.toISOString()).toBe('2026-10-28T12:00:00.000Z');
 
     const [event] = await db
@@ -267,14 +268,14 @@ describe('webhook subscription_authorized_payment', () => {
   });
 });
 
-describe('plan según el monto de la preapproval', () => {
-  test('authorized con amount 6999: guarda plan basic', async () => {
+describe('plan según la preapproval', () => {
+  test('authorized del plan Oficial: guarda plan basic', async () => {
     const { token, id } = await newUser();
     await subscribe(id, token, '2026-10-25T12:00:00.000Z', 'basic');
     expect((await getUser(id)).subscriptionPlan).toBe('basic');
   });
 
-  test('authorized con amount 19999: guarda plan pro', async () => {
+  test('authorized del plan Maestro: guarda plan pro', async () => {
     const { token, id } = await newUser();
     await subscribe(id, token, '2026-10-25T12:00:00.000Z', 'pro');
     expect((await getUser(id)).subscriptionPlan).toBe('pro');

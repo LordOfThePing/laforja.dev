@@ -34,26 +34,19 @@ export function mapStatus(sub: StripeSubscription): 'active' | 'paused' | 'cance
   return 'paused';
 }
 
-export function planFromPriceId(
-  sub: StripeSubscription,
-  priceToPlan: Record<string, Plan>,
-): Plan | null {
-  const priceId = sub.items.data[0]?.price?.id;
-  if (!priceId) return null;
-  return priceToPlan[priceId] ?? null;
+export function planFromSubscription(sub: StripeSubscription): Plan | null {
+  const plan = sub.metadata?.plan;
+  return plan === 'basic' || plan === 'pro' ? plan : null;
 }
 
 /**
  * Traduce una suscripción de Stripe a un update sobre `users`. Devuelve null si no se puede
  * identificar al usuario (metadata.user_id ausente o inválido). El caller resuelve por qué.
  *
- * El plan se setea solo si el price_id está mapeado: si Stripe devuelve un price desconocido
- * conservamos el plan actual (igual que con MP y amounts no reconocidos).
+ * El plan se setea solo si metadata.plan es válido: si no, conservamos el plan actual (igual que
+ * con MP y reasons no reconocidos).
  */
-export function updateFromSubscription(
-  sub: StripeSubscription,
-  priceToPlan: Record<string, Plan>,
-): UserUpdate | null {
+export function updateFromSubscription(sub: StripeSubscription): UserUpdate | null {
   const userId = userIdFromSubscription(sub);
   if (!userId) return null;
 
@@ -61,7 +54,7 @@ export function updateFromSubscription(
   if (!status) return null;
 
   if (status === 'active') {
-    const plan = planFromPriceId(sub, priceToPlan);
+    const plan = planFromSubscription(sub);
     const set: Partial<typeof users.$inferInsert> = {
       subscriptionStatus: 'active',
       paymentProvider: 'stripe',

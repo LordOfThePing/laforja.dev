@@ -33,6 +33,7 @@ export function meRoutes(auth: AuthConfig) {
       subscription: {
         status: user.subscriptionStatus,
         plan: user.subscriptionPlan,
+        provider: user.paymentProvider,
         currentPeriodEnd: user.currentPeriodEnd,
         hasAccess: hasSubscriptionAccess(user),
       },

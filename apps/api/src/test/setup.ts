@@ -10,11 +10,13 @@ import * as schema from '../db/schema.ts';
 import { seed } from '../db/seed-data.ts';
 import { FakeMailer } from './fake-mailer.ts';
 import { FakeMercadoPago } from './fake-mp.ts';
+import { FakeStripe } from './fake-stripe.ts';
 
 export const TEST_SECRET = 'secreto-de-test';
 export const TEST_MP_WEBHOOK_SECRET = 'secreto-webhook-mp';
 export const TEST_ADMIN_EMAIL = 'admin@example.com';
 export const TEST_MCP_TOKEN = 'secreto-mcp-token';
+export const TEST_STRIPE_WEBHOOK_SECRET = 'whsec_test';
 
 export async function createTestApp(
   rateLimits?: Partial<{
@@ -26,13 +28,15 @@ export async function createTestApp(
   }>,
   backupStateDir?: string,
   mailer: FakeMailer | null = new FakeMailer(),
-  overrides: { mcpAdminToken?: string } = {},
+  // stripe: true monta Stripe con un FakeStripe; sin eso queda apagado, como en prod sin variables.
+  overrides: { mcpAdminToken?: string; stripe?: boolean } = {},
 ) {
   const pg = drizzle(new PGlite(), { schema });
   await migrate(pg, { migrationsFolder: './drizzle' });
   const db = pg as unknown as Db;
   await seed(db);
   const mp = new FakeMercadoPago();
+  const stripe = overrides.stripe ? new FakeStripe() : undefined;
   const app = createApp({
     db,
     authSecret: TEST_SECRET,
@@ -40,13 +44,14 @@ export async function createTestApp(
     frontendUrl: 'http://localhost:3000',
     mp,
     mpWebhookSecret: TEST_MP_WEBHOOK_SECRET,
+    stripe: stripe ? { client: stripe, webhookSecret: TEST_STRIPE_WEBHOOK_SECRET } : undefined,
     rateLimits,
     backupStateDir,
     mailer,
     mcpAdminToken: overrides.mcpAdminToken,
     log: false,
   });
-  return { app, db, mp, mailer };
+  return { app, db, mp, mailer, stripe };
 }
 
 export function makeToken(

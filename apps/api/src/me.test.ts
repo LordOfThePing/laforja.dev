@@ -25,6 +25,7 @@ type MeResponse = {
   subscription: {
     status: string;
     plan: 'basic' | 'pro' | null;
+    provider: 'mercadopago' | 'stripe' | null;
     currentPeriodEnd: string | null;
     hasAccess: boolean;
   };
@@ -77,6 +78,7 @@ describe('GET /api/me', () => {
     expect(body.subscription).toEqual({
       status: 'none',
       plan: null,
+      provider: null,
       currentPeriodEnd: null,
       hasAccess: false,
     });

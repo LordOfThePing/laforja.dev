@@ -7,7 +7,8 @@ export type Preapproval = {
   status: PreapprovalStatus;
   external_reference: string | null;
   next_payment_date: string | null;
-  // El monto cobrado identifica el plan al que corresponde la suscripción (ver `planFromAmount`).
+  // reason identifica el plan (ver `planFromPreapproval`); el monto solo para preapprovals viejas.
+  reason?: string | null;
   auto_recurring?: { transaction_amount?: number | null; currency_id?: string | null } | null;
   init_point?: string;
 };

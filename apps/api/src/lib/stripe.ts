@@ -47,7 +47,11 @@ export type StripeSubscriptionList = {
 };
 
 export type CreateCheckoutInput = {
-  priceId: string;
+  plan: 'basic' | 'pro';
+  productName: string;
+  // En centavos, con la moneda en mayúsculas (como en plan_prices).
+  amount: number;
+  currency: string;
   customerId?: string;
   customerEmail: string;
   userId: string;
@@ -94,6 +98,19 @@ function encodeForm(params: Record<string, unknown>): string {
 }
 
 export function createStripe(secretKey: string): Stripe {
+  // Un product fijo por plan con id propio: así no hay que crear nada en el dashboard y el precio
+  // va inline en cada Checkout (price_data), tomado de plan_prices.
+  const knownProducts = new Set<string>();
+  async function ensureProduct(id: string, name: string): Promise<void> {
+    if (knownProducts.has(id)) return;
+    try {
+      await call('POST', '/products', { id, name });
+    } catch (err) {
+      if (!(err instanceof StripeError && err.status === 400 && err.body.includes('resource_already_exists'))) throw err;
+    }
+    knownProducts.add(id);
+  }
+
   async function call<T>(method: 'GET' | 'POST' | 'DELETE', path: string, body?: Record<string, unknown>): Promise<T> {
     const url = method === 'GET' && body ? `${STRIPE_API}${path}?${encodeForm(body)}` : `${STRIPE_API}${path}`;
     const res = await fetch(url, {
@@ -112,20 +129,34 @@ export function createStripe(secretKey: string): Stripe {
     createCustomer: (email, userId) =>
       call<StripeCustomer>('POST', '/customers', { email, metadata: { user_id: userId } }),
 
-    createCheckoutSession: (input) =>
-      call<StripeCheckoutSession>('POST', '/checkout/sessions', {
+    createCheckoutSession: async (input) => {
+      const product = `laforja_${input.plan}`;
+      await ensureProduct(product, input.productName);
+      return call<StripeCheckoutSession>('POST', '/checkout/sessions', {
         mode: 'subscription',
         // El customer se reusa entre altas para que Stripe no cree uno nuevo cada vez.
         ...(input.customerId ? { customer: input.customerId } : { customer_email: input.customerEmail }),
-        line_items: [{ price: input.priceId, quantity: 1 }],
+        line_items: [
+          {
+            price_data: {
+              product,
+              currency: input.currency.toLowerCase(),
+              unit_amount: input.amount,
+              recurring: { interval: 'month' },
+            },
+            quantity: 1,
+          },
+        ],
         success_url: input.successUrl,
         cancel_url: input.cancelUrl,
         // El webhook usa estos ids para vincular la subscription al usuario (si Stripe pierde el
         // link entre session y customer).
-        metadata: { user_id: input.userId },
-        subscription_data: { metadata: { user_id: input.userId } },
+        metadata: { user_id: input.userId, plan: input.plan },
+        // El plan va en la metadata de la subscription porque el price inline cambia con cada alta.
+        subscription_data: { metadata: { user_id: input.userId, plan: input.plan } },
         client_reference_id: input.userId,
-      }),
+      });
+    },
 
     getCheckoutSession: (id) =>
       call<StripeCheckoutSession>('GET', `/checkout/sessions/${encodeURIComponent(id)}`),

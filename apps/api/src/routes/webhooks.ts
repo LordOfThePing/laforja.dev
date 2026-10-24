@@ -8,8 +8,9 @@ import { type UserUpdate, periodEnd, updateFromPreapproval, userIdFromReference 
 import { type RateLimitRule, clientIp, rateLimit } from '../lib/rate-limit.ts';
 import type { Stripe, StripeEvent, StripeSubscription } from '../lib/stripe.ts';
 import { verifyStripeSignature } from '../lib/stripe.ts';
-import { type UserUpdate as StripeUserUpdate, updateFromSubscription } from '../lib/stripe-sync.ts';
-import type { Plan } from './subscription.ts';
+import { type UserUpdate as StripeUserUpdate, updateFromSubscription, userIdFromSubscription } from '../lib/stripe-sync.ts';
+
+type StripeResolved = { update: StripeUserUpdate | null; userId: string | null };
 
 type Options = {
   db: Db;
@@ -19,7 +20,6 @@ type Options = {
   stripe?: {
     client: Stripe;
     webhookSecret: string;
-    prices: Record<Plan, string>;
   };
 };
 
@@ -56,30 +56,25 @@ async function resolveUpdate(
 
 // Resuelve el update a aplicar a `users` según el evento de Stripe. checkout.session.completed
 // trae la session en data.object: hay que ir a buscar la subscription para tener current_period_end
-// y el price_id. subscription.updated/deleted ya traen la subscription entera en data.object.
-async function resolveStripeUpdate(
-  stripe: Stripe,
-  prices: Record<Plan, string>,
-  event: StripeEvent,
-): Promise<StripeUserUpdate | null> {
-  const priceToPlan: Record<string, Plan> = { [prices.basic]: 'basic', [prices.pro]: 'pro' };
+// y la metadata. subscription.updated/deleted ya traen la subscription entera en data.object.
+async function resolveStripeUpdate(stripe: Stripe, event: StripeEvent): Promise<StripeResolved> {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as {
       subscription?: string | null;
       mode?: string;
     };
-    if (session.mode !== 'subscription' || !session.subscription) return null;
+    if (session.mode !== 'subscription' || !session.subscription) return { update: null, userId: null };
     const sub = await stripe.getSubscription(session.subscription);
-    return updateFromSubscription(sub, priceToPlan);
+    return { update: updateFromSubscription(sub), userId: userIdFromSubscription(sub) };
   }
 
   if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
     const sub = event.data.object as unknown as StripeSubscription;
-    return updateFromSubscription(sub, priceToPlan);
+    return { update: updateFromSubscription(sub), userId: userIdFromSubscription(sub) };
   }
 
-  return null;
+  return { update: null, userId: null };
 }
 
 export function webhookRoutes({ db, mp, webhookSecret, limit, stripe }: Options) {
@@ -167,12 +162,15 @@ export function webhookRoutes({ db, mp, webhookSecret, limit, stripe }: Options)
 
       // Igual que MP: resolver fuera de la transacción. Si Stripe falla al traer la subscription
       // respondemos 500 y el reintento de Stripe lo reprocesa.
-      const update = await resolveStripeUpdate(stripe.client, stripe.prices, event);
+      const { update, userId } = await resolveStripeUpdate(stripe.client, event);
 
       const status = await db.transaction(async (tx) => {
+        const [owner] = userId
+          ? await tx.select({ id: users.id }).from(users).where(eq(users.id, userId))
+          : [];
         const inserted = await tx
           .insert(subscriptionEvents)
-          .values({ providerEventId, eventType: event.type, userId: null, payload: event })
+          .values({ providerEventId, eventType: event.type, userId: owner?.id ?? null, payload: event })
           .onConflictDoNothing()
           .returning({ id: subscriptionEvents.id });
         if (inserted.length === 0) return 'duplicate';

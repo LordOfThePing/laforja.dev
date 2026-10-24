@@ -9,7 +9,6 @@ import type { RateLimitRule } from './lib/rate-limit.ts';
 import type { Stripe } from './lib/stripe.ts';
 import { StripeError } from './lib/stripe.ts';
 import type { AuthConfig } from './auth.ts';
-import type { Plan } from './routes/subscription.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { certificatesRoutes } from './routes/certificates.ts';
 import { collectionsRoutes } from './routes/collections.ts';
@@ -17,6 +16,7 @@ import { coursesRoutes } from './routes/courses.ts';
 import { mcpRoutes } from './routes/mcp.ts';
 import { meRoutes } from './routes/me.ts';
 import { newsletterRoutes } from './routes/newsletter.ts';
+import { pricesRoutes } from './routes/prices.ts';
 import { subscriptionRoutes } from './routes/subscription.ts';
 import { toolsRoutes } from './routes/tools.ts';
 import { webhookRoutes } from './routes/webhooks.ts';
@@ -33,7 +33,6 @@ type AppOptions = {
   stripe?: {
     client: Stripe;
     webhookSecret: string;
-    prices: Record<Plan, string>;
   };
   // null = newsletter apagada (sin RESEND_API_KEY): los endpoints responden newsletter_disabled.
   mailer?: Mailer | null;
@@ -103,6 +102,7 @@ export function createApp({
   app.route('/api/courses', coursesRoutes(auth, limits.progress));
   app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));
+  app.route('/api/prices', pricesRoutes(db, { stripeEnabled: stripe !== undefined }));
   app.route(
     '/api/subscription',
     subscriptionRoutes({
@@ -112,7 +112,6 @@ export function createApp({
       stripe: stripe
         ? {
             client: stripe.client,
-            prices: stripe.prices,
             successUrl: `${frontendUrl}/dashboard/gracias?stripe_session={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${frontendUrl}/suscripcion`,
           }
