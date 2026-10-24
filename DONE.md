@@ -5,6 +5,7 @@ Ver `CLAUDE.md` (§2) para el workflow.
 
 ---
 
+- 2026-10-24 — Reemplazar Stripe por Lemon Squeezy como provider internacional (USD) — d834e94, 1857dc4, 87a7df3
 - 2026-10-24 — Integrar Stripe como segundo payment provider (USD, convive con MP) + precios configurables ARS/USD desde /admin/precios — 36e45c7, 10540de, eda463b, ec5ffb5
 - 2026-10-20 — Reenfocar tool como producto: título "Agente para armar tu bot trader (6 agentes de IA)" + promptBody específico de bot trader memecoin en Solana (stack, 6 agentes tipados, regla de corte, loop con paper trading, gates para pasar a --live); slug preservado, tier premium y publicado respetados
 - 2026-10-20 — Revertir tool "6-casos-reales" a tier=premium + publicado (había pisado el estado puesto a mano por el usuario; aprendizaje guardado en memoria)
