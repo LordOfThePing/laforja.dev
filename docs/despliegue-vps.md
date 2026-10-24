@@ -65,7 +65,7 @@ habla por la red interna de Docker.
 - `cf-connecting-ip`: IP real del cliente. La api la usa para el rate limit de
   los webhooks.
 - `cf-ipcountry`: país del cliente. La web lo usa para elegir por defecto entre
-  precios en ARS (MercadoPago) y USD (Stripe).
+  precios en ARS (MercadoPago) y USD (Lemon Squeezy).
 - `x-forwarded-proto: https`: Auth.js arma las URLs de callback con https
   (`trustHost: true` en `apps/web/auth.config.ts`).
 
@@ -82,34 +82,51 @@ En el panel de MP → Webhooks: URL
 *Planes y suscripciones*. La clave secreta que muestra MP va en
 `MP_WEBHOOK_SECRET`.
 
-### Stripe (cobro internacional en USD, opcional)
+### Lemon Squeezy (cobro internacional en USD, opcional)
 
-Sin estas dos variables Stripe queda apagado y `/suscripcion` solo ofrece
-MercadoPago. No hace falta crear Products ni Prices: la api crea los products
-`laforja_basic` / `laforja_pro` sola y el monto sale de `/admin/precios`.
+Sin las cinco variables `LEMONSQUEEZY_*` queda apagado y `/suscripcion` solo
+ofrece MercadoPago. El monto que se cobra sale de `/admin/precios` (se manda
+como `custom_price`), no del precio cargado en LS.
 
-1. Dashboard de Stripe → **Developers → API keys** → *Secret key* (`sk_live_...`;
-   para probar, `sk_test_...` con el modo test prendido).
-2. **Developers → Webhooks → Add endpoint**: URL
-   `https://laforja.dev/webhooks/stripe` (o el dominio vigente de
-   `FRONTEND_URL`), eventos `checkout.session.completed`,
-   `customer.subscription.updated` y `customer.subscription.deleted`. Copiar el
-   *Signing secret* (`whsec_...`).
-3. En `.env.production`:
+1. **Store en USD**: Settings → Stores → la moneda del store tiene que ser USD.
+   El *Store ID* (número) está en la misma pantalla → `LEMONSQUEEZY_STORE_ID`.
+2. **Producto**: Products → New product, tipo **Subscription**, nombre
+   "La Forja". Dos variants, ambas con cobro **mensual**:
+   - *Oficial* (precio de referencia US$7)
+   - *Maestro* (precio de referencia US$20)
+
+   Publicarlo. El ID de cada variant aparece en Products → el producto →
+   *Variants* (o en el link de compra de cada variant) →
+   `LEMONSQUEEZY_VARIANT_BASIC` (Oficial) y `LEMONSQUEEZY_VARIANT_PRO` (Maestro).
+3. **API key**: Settings → API → *Create API key* → `LEMONSQUEEZY_API_KEY`
+   (se muestra una sola vez).
+4. **Webhook**: Settings → Webhooks → *Add endpoint*:
+   - URL: `https://laforja.dev/webhooks/lemonsqueezy` (o el dominio vigente de
+     `FRONTEND_URL`)
+   - Signing secret: un string aleatorio (`openssl rand -hex 32`) →
+     `LEMONSQUEEZY_WEBHOOK_SECRET`
+   - Eventos: `subscription_created`, `subscription_updated`,
+     `subscription_cancelled`, `subscription_resumed`, `subscription_expired`,
+     `subscription_paused`, `subscription_unpaused`
+5. En `.env.production`:
    ```env
-   STRIPE_SECRET_KEY=sk_live_...
-   STRIPE_WEBHOOK_SECRET=whsec_...
+   LEMONSQUEEZY_API_KEY=...
+   LEMONSQUEEZY_STORE_ID=...
+   LEMONSQUEEZY_WEBHOOK_SECRET=...
+   LEMONSQUEEZY_VARIANT_BASIC=...
+   LEMONSQUEEZY_VARIANT_PRO=...
    ```
-   `make env-push` y `make deploy` (o `make restart SERVICE=api` si el código ya
-   está desplegado).
+   `make env-push` y `make restart SERVICE=api`.
 
-Test vs live: las claves y el webhook son por modo. Si se prueba en test y
-después se pasa a live, hay que repetir los pasos 1 y 2 con el modo live.
+**Test mode**: LS tiene un modo test (toggle abajo a la izquierda) con sus
+propias API keys, webhooks y productos. Conviene hacer todo primero en test,
+pagar con la tarjeta de prueba `4242 4242 4242 4242`, y después repetir los
+pasos 2–5 en modo live (los IDs cambian).
 
 ### Migrar a `laforja.dev` (más adelante)
 
 Agregar los mismos public hostnames con `laforja.dev` en el mismo tunnel,
-actualizar `FRONTEND_URL`, el callback de Google y las URLs de los webhooks de MP y Stripe.
+actualizar `FRONTEND_URL`, el callback de Google y las URLs de los webhooks de MP y Lemon Squeezy.
 Redirect 301 desde el dominio viejo con una Redirect Rule de Cloudflare.
 
 ## Monitoreo de uptime

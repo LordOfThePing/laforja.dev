@@ -99,7 +99,7 @@ migrate: ## Corre las migraciones en el VPS
 seed: ## Corre el seed en el VPS (idempotente)
 	$(call RCOMPOSE,run --rm api bun run db:seed)
 
-reconcile: ## Reconcilia las suscripciones con MP y Stripe ahora: make reconcile [DRY=1] (DRY=1 solo muestra)
+reconcile: ## Reconcilia las suscripciones con MP y Lemon Squeezy ahora: make reconcile [DRY=1] (DRY=1 solo muestra)
 	$(call RCOMPOSE,exec -T api bun run reconcile $(if $(DRY),--dry-run))
 
 psql: ## Consola psql en el Postgres del VPS

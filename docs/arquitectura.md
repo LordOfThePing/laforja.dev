@@ -16,7 +16,7 @@ Persistencia: Postgres 16 con Drizzle ORM.
                        ▼
                Cloudflare (TLS) ══ tunnel ══> cloudflared ─┬─→ apps/web  (Astro SSR, :3000)   /api/auth/*, resto
                        ▲                                   │
-[Webhooks MP/Stripe]  ─┘                                   └─→ apps/api  (Hono, :4000)        /api/*, /webhooks/*
+[Webhooks MP/LS]      ─┘                                   └─→ apps/api  (Hono, :4000)        /api/*, /webhooks/*
                                                                    │
                                                                    └─→ Postgres (:5432)
 

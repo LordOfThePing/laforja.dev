@@ -33,7 +33,7 @@ export function updateFromPreapproval(pre: Preapproval): UserUpdate | null {
     const plan = planFromPreapproval(pre);
     const set: Partial<typeof users.$inferInsert> = {
       subscriptionStatus: 'active',
-      // Un usuario que venía de Stripe y se pasa a MP tiene que cancelar por MP de acá en más.
+      // Un usuario que venía de Lemon Squeezy y se pasa a MP tiene que cancelar por MP de acá en más.
       paymentProvider: 'mercadopago',
       subscriptionId: pre.id,
       currentPeriodEnd: periodEnd(pre),

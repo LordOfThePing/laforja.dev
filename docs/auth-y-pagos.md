@@ -53,20 +53,20 @@ así el cupo se resetea a la medianoche local del día 1, no a la de UTC.
 ### Precios y providers
 
 Cada plan tiene un precio en **ARS** (lo cobra MercadoPago, Argentina) y otro en
-**USD** (lo cobra Stripe, internacional). Los cuatro montos viven en la tabla
+**USD** (lo cobra Lemon Squeezy, internacional). Los cuatro montos viven en la tabla
 `plan_prices` (en centavos) y se editan en **/admin/precios**. Valores
 iniciales (migración `0011`): Oficial $6.999 ARS / US$7, Maestro $19.999 ARS /
 US$20.
 
 - Cambiar un precio afecta **solo las altas nuevas**: las suscripciones
-  existentes siguen cobrando el monto con el que se crearon (MP y Stripe fijan
-  el monto en la preapproval / subscription).
-- El plan nunca se deduce del monto: MP lo reconoce por `reason` y Stripe por
-  `metadata.plan` (ver abajo). Así cambiar precios no rompe webhook ni reconcile.
+  existentes siguen cobrando el monto con el que se crearon (MP fija el monto en
+  la preapproval y LS guarda el `custom_price` en la suscripción).
+- El plan nunca se deduce del monto: MP lo reconoce por `reason` y LS por la
+  variant (ver abajo). Así cambiar precios no rompe webhook ni reconcile.
 - La web pide `GET /api/prices` (público) para la home, `/suscripcion` y los
   términos.
-- `/suscripcion` tiene un toggle **Argentina / Internacional** (solo si Stripe
-  está configurado). La región sale de `?region=ar|intl`; si no viene, del
+- `/suscripcion` tiene un toggle **Argentina / Internacional** (solo si Lemon
+  Squeezy está configurado). La región sale de `?region=ar|intl`; si no viene, del
   header `CF-IPCountry` que agrega Cloudflare (fuera de AR → internacional).
 - `users.payment_provider` dice por dónde paga cada suscriptor, y define a quién
   se le pide la cancelación.
@@ -170,54 +170,65 @@ A mano, en el VPS: `make reconcile DRY=1` muestra qué cambiaría sin escribir;
 Cualquier error de la API de MP en un endpoint se devuelve como
 `502 {"error":"payment_provider_error"}`.
 
-## Stripe Checkout — suscripción internacional (USD)
+## Lemon Squeezy — suscripción internacional (USD)
 
-Opcional: se prende con `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`. Sin las
-dos, `provider: "stripe"` responde `503 provider_disabled`, `/webhooks/stripe`
-no se monta y la web no muestra el toggle. Igual que con MP, sin SDK
-(`apps/api/src/lib/stripe.ts`).
+Stripe no acepta cuentas de Argentina; Lemon Squeezy (LS) sí, y además es
+**merchant of record**: vende en nombre de La Forja, calcula y cobra los
+impuestos de cada país (IVA/VAT, sales tax) y paga a un banco argentino.
+
+Opcional: se prende con las cinco variables `LEMONSQUEEZY_*`. Sin alguna,
+`provider: "lemonsqueezy"` responde `503 provider_disabled`,
+`/webhooks/lemonsqueezy` no se monta y la web no muestra el toggle. Sin SDK
+(`apps/api/src/lib/lemonsqueezy.ts`, API JSON:API).
 
 ### Creación
 
 1. `/suscripcion` en modo Internacional → `POST /api/subscription/create` con
-   `{ "plan", "provider": "stripe" }`
-2. Si el usuario no tiene `stripe_customer_id`, se crea el customer y se guarda
-   (se reusa en altas siguientes)
-3. Se crea una **Checkout Session** `mode=subscription` con el precio **inline**
-   (`price_data`: monto USD de `plan_prices`, mensual) sobre un product fijo por
-   plan, `laforja_basic` / `laforja_pro`, que la api crea sola la primera vez.
-   No hay que crear Products ni Prices en el dashboard.
-4. `metadata.user_id` y `metadata.plan` van en la session y en la subscription:
-   con eso el webhook vincula al usuario y sabe el plan
-5. Responde `{ initPoint: <url de Checkout>, sessionId, plan, provider }`. Al
-   pagar, Stripe vuelve a `/dashboard/gracias?stripe_session=...`; si cancela, a
-   `/suscripcion`
+   `{ "plan", "provider": "lemonsqueezy" }`
+2. Backend → `POST /v1/checkouts` con:
+   - la **variant** del plan (`LEMONSQUEEZY_VARIANT_BASIC` / `_PRO`): un
+     producto de suscripción mensual con dos variants, creado a mano en LS
+   - `custom_price` = monto USD de `plan_prices` (centavos). LS lo usa para la
+     primera cuota **y todas las renovaciones**, así que el precio que figura en
+     la variant no importa. El store tiene que estar en USD
+   - `checkout_data.custom = { user_id, plan }`: vuelve en `meta.custom_data`
+     de cada webhook
+   - `redirect_url` = `/dashboard/gracias?provider=lemonsqueezy`
+3. Responde `{ initPoint: <url del checkout>, checkoutId, plan, provider }`
 
-### Webhook `POST /webhooks/stripe`
+### Webhook `POST /webhooks/lemonsqueezy`
 
-1. **Firma**: header `Stripe-Signature: t=<ts>,v1=<hmac>`; HMAC-SHA256 de
-   `<ts>.<raw body>` con `STRIPE_WEBHOOK_SECRET`, tolerancia de 5 min. Inválida → `401`
-2. **Idempotencia**: `provider_event_id` = `stripe:<evt_...>`
-3. Si Stripe falla al traer la subscription → `502` sin registrar el evento
+1. **Firma**: header `X-Signature` = HMAC-SHA256 (hex) del raw body con
+   `LEMONSQUEEZY_WEBHOOK_SECRET`. Inválida → `401`
+2. **Idempotencia**: LS no manda id de evento; `provider_event_id` =
+   `ls:<sha256 del body>` (los reintentos repiten el body)
+3. Para los `subscription_*` se vuelve a pedir la suscripción a LS
+   (`GET /v1/subscriptions/:id`), porque los webhooks pueden llegar
+   desordenados. Si LS falla → `502` sin registrar el evento
+4. Usuario: `meta.custom_data.user_id`. Plan: la variant de la suscripción
+   (`custom_data.plan` solo si la variant no matchea)
 
-| Evento | Efecto |
+| Estado en LS | Efecto |
 |---|---|
-| `checkout.session.completed` | Trae la subscription → `active`, `payment_provider = 'stripe'`, `stripe_subscription_id`, plan, `current_period_end` |
-| `customer.subscription.updated` | `active` / `trialing` → `active`; `cancel_at_period_end` → `cancelled` (con acceso hasta fin de período); `past_due` / `unpaid` / `incomplete*` / `paused` → `paused` |
-| `customer.subscription.deleted` | `cancelled` |
-| otros | se guardan y se ignoran |
+| `active` / `on_trial` | `active`, `payment_provider = 'lemonsqueezy'`, `ls_subscription_id`, `ls_customer_id`, plan, `current_period_end = renews_at` |
+| `cancelled` (canceló, período vigente) / `expired` | `cancelled`, `current_period_end = ends_at` |
+| `past_due` / `unpaid` / `paused` | `paused` |
 
-Igual que con MP, bajar/pausar solo toca al usuario si es su
-`stripe_subscription_id` vigente. `current_period_end` es el de Stripe, sin
-gracia (Stripe cobra y avisa en el momento).
+Eventos: `subscription_created`, `_updated`, `_cancelled`, `_resumed`,
+`_expired`, `_paused`, `_unpaused`. Los `subscription_payment_*` y `order_*` se
+guardan y se ignoran: cada cobro dispara además un `subscription_updated`.
+Bajar/pausar solo toca al usuario si es su `ls_subscription_id` vigente.
 
 ### Reconciliación y cancelación
 
-- `reconcileStripeSubscriptions` corre junto con la de MP: lista las
-  subscriptions `active` de Stripe y consulta una por una las de usuarios
-  locales `active` / `paused` con `payment_provider = 'stripe'` que no aparecieron.
-- Cancelar con `payment_provider = 'stripe'` → `cancel_at_period_end=true` en
-  Stripe: se mantiene el acceso hasta `current_period_end`, igual que MP.
+- `reconcileLemonSubscriptions` corre junto con la de MP: lista las
+  suscripciones `active` del store y las vincula por `ls_subscription_id` o,
+  si se perdió el primer webhook, por el **email** con el que se pagó (fuera
+  del webhook no hay `custom_data`). Después consulta una por una las de
+  usuarios `active` / `paused` con `payment_provider = 'lemonsqueezy'` que no
+  aparecieron.
+- Cancelar con `payment_provider = 'lemonsqueezy'` → `DELETE /v1/subscriptions/:id`:
+  LS la pasa a `cancelled` y el acceso sigue hasta `ends_at`, igual que MP.
 
 ## Endpoints de la API
 
@@ -234,11 +245,11 @@ gracia (Stripe cobra y avisa en el momento).
 | `POST` | `/api/courses/:slug/certificate` | Requiere auth. Emite el certificado si completó **todas** las lecciones (`201`); si ya lo tenía devuelve el mismo (`200`). `409 not_completed` con `completed` / `total`, o `409 name_required` si la cuenta no tiene nombre. Nombre y título se guardan como snapshot: el certificado no cambia aunque el curso sí |
 | `GET` | `/api/certificates/:id` | Público (es el link que se comparte): `recipientName`, `courseTitle`, `courseSlug`, `issuedAt`, `verifyUrl` |
 | `GET` | `/api/certificates/:id/pdf` | Público. A4 apaisado con Instrument Serif embebida (`apps/api/src/assets/fonts`, OFL). La web lo sirve en `/certificados/:id.pdf` |
-| `GET` | `/api/prices` | Público. `{ prices: { basic: { ARS, USD }, pro: { ARS, USD } }, providers: { mercadopago, stripe } }`, montos en centavos |
-| `POST` | `/api/subscription/create` | Requiere auth. `{ plan, provider? }`. MP: crea Preapproval, devuelve `{ initPoint, preapprovalId }`. Stripe: crea Checkout Session, devuelve `{ initPoint, sessionId }` |
+| `GET` | `/api/prices` | Público. `{ prices: { basic: { ARS, USD }, pro: { ARS, USD } }, providers: { mercadopago, lemonsqueezy } }`, montos en centavos |
+| `POST` | `/api/subscription/create` | Requiere auth. `{ plan, provider? }`. MP: crea Preapproval, devuelve `{ initPoint, preapprovalId }`. Lemon Squeezy: crea un checkout, devuelve `{ initPoint, checkoutId }` |
 | `POST` | `/api/subscription/cancel` | Requiere auth. Cancela en el provider del usuario, conserva el período pago |
 | `POST` | `/webhooks/mercadopago` | Webhook de MP (firma `x-signature`, idempotente) |
-| `POST` | `/webhooks/stripe` | Webhook de Stripe (firma `Stripe-Signature`, idempotente). Solo si Stripe está configurado |
+| `POST` | `/webhooks/lemonsqueezy` | Webhook de Lemon Squeezy (firma `X-Signature`, idempotente). Solo si LS está configurado |
 
 ### Admin (`/api/admin/*`)
 
@@ -261,11 +272,11 @@ Input inválido → `400 {"error":"invalid_input","field":...}`; slug repetido �
 
 - JWT expirable en 7 días, refresh en cada request
 - Webhook MP: validar firma HMAC (header `x-signature`) contra `MP_WEBHOOK_SECRET`
-- Webhook Stripe: validar firma HMAC (header `Stripe-Signature`) contra `STRIPE_WEBHOOK_SECRET`
+- Webhook Lemon Squeezy: validar firma HMAC (header `X-Signature`) contra `LEMONSQUEEZY_WEBHOOK_SECRET`
 - Idempotencia: el unique de `provider_event_id` impide procesar el mismo evento dos veces
 - Auth opcional en endpoints públicos: sin header es anónimo, pero un token presente e inválido da `401` (para que el cliente renueve la sesión)
 - `/api/tools/:slug/unlock` toma un lock sobre la fila del usuario (`SELECT … FOR UPDATE`) para que requests concurrentes no superen el cupo
 - Rate limit en memoria (ventana fija; alcanza con una sola instancia de api), responde `429 {"error":"rate_limited"}` + `Retry-After`:
   - `POST /api/tools/:slug/unlock`: 10/min **por usuario** (después de validar el token)
   - `PUT /api/courses/:slug/lessons/:lesson/progress`: 60/min **por usuario** (el reproductor lo manda periódicamente)
-  - `POST /webhooks/*` (MP y Stripe): 300/min **por IP**, antes de validar la firma. La IP sale de `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for`; es confiable porque la api solo escucha en `127.0.0.1` detrás del proxy
+  - `POST /webhooks/*` (MP y Lemon Squeezy): 300/min **por IP**, antes de validar la firma. La IP sale de `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for`; es confiable porque la api solo escucha en `127.0.0.1` detrás del proxy

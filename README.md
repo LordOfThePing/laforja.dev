@@ -9,7 +9,7 @@ Academia de herramientas y prompts para trabajar con agentes de IA. Videos de Yo
 
 ## Idea en una línea
 
-Una biblioteca curada de herramientas agénticas con tres niveles: **Aprendiz** (gratis, 1 desbloqueo por mes), **Oficial** (3 desbloqueos por mes) y **Maestro** (acceso ilimitado), con precios en ARS y USD editables desde `/admin/precios`. Pagos vía MercadoPago (Preapproval, Argentina) o Stripe (Checkout, internacional).
+Una biblioteca curada de herramientas agénticas con tres niveles: **Aprendiz** (gratis, 1 desbloqueo por mes), **Oficial** (3 desbloqueos por mes) y **Maestro** (acceso ilimitado), con precios en ARS y USD editables desde `/admin/precios`. Pagos vía MercadoPago (Preapproval, Argentina) o Lemon Squeezy (merchant of record, internacional).
 
 ## Estado
 
@@ -42,7 +42,7 @@ Una biblioteca curada de herramientas agénticas con tres niveles: **Aprendiz** 
 - **Backend**: Hono sobre Bun
 - **ORM / DB**: Drizzle + Postgres 16
 - **Auth**: Auth.js v5 (solo Google) + JWT
-- **Pagos**: MercadoPago Preapproval + Stripe Checkout, con webhooks y reconciliación
+- **Pagos**: MercadoPago Preapproval + Lemon Squeezy, con webhooks y reconciliación
 - **Deploy**: Docker Compose en VPS (Hetzner) detrás de Cloudflare Tunnel
 
 ## Cómo correr el frontend
@@ -89,7 +89,7 @@ Deploy al VPS: `make help` y [despliegue-vps.md](docs/despliegue-vps.md#deploy-c
 |---|---|
 | [arquitectura.md](docs/arquitectura.md) | Stack detallado, diagrama, decisiones |
 | [schema-datos.md](docs/schema-datos.md) | Modelo de datos (v1 + hooks para cursos futuros) |
-| [auth-y-pagos.md](docs/auth-y-pagos.md) | Flujo Google OAuth + MP Preapproval + Stripe Checkout + webhooks |
+| [auth-y-pagos.md](docs/auth-y-pagos.md) | Flujo Google OAuth + MP Preapproval + Lemon Squeezy + webhooks |
 | [despliegue-vps.md](docs/despliegue-vps.md) | Docker Compose, Cloudflare Tunnel, Makefile, deploy automático, backups |
 | [roadmap.md](docs/roadmap.md) | Fases v1 → v2 → v3 |
 | [diseño-brief.md](docs/diseño-brief.md) | Brief para `/design-shotgun` |
@@ -104,7 +104,7 @@ laforja.dev/
 │   │   ├── drizzle/        # migraciones generadas
 │   │   └── src/
 │   │       ├── db/         # schema, cliente, migrate, seed
-│   │       ├── lib/        # unlocks, MercadoPago, Stripe, precios, rate limit, admin
+│   │       ├── lib/        # unlocks, MercadoPago, Lemon Squeezy, precios, rate limit, admin
 │   │       └── routes/
 │   └── web/               # Astro + React (landing, dashboard, admin, auth)
 │       ├── src/
