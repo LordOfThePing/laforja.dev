@@ -1,8 +1,9 @@
 import { createDb } from '../db/client.ts';
 import { env } from '../env.ts';
+import { createLemonSqueezy } from '../lib/lemonsqueezy.ts';
+import { variantPlans } from '../lib/lemonsqueezy-sync.ts';
 import { createMercadoPago } from '../lib/mercadopago.ts';
-import { createStripe } from '../lib/stripe.ts';
-import { reconcileStripeSubscriptions, reconcileSubscriptions } from '../reconcile.ts';
+import { reconcileLemonSubscriptions, reconcileSubscriptions } from '../reconcile.ts';
 
 const dryRun = process.argv.includes('--dry-run');
 const verb = dryRun ? 'a corregir (dry run, no se escribió nada)' : 'corregidas';
@@ -13,10 +14,11 @@ try {
   for (const c of changes) {
     console.log(`- usuario ${c.userId} (${c.preapprovalId}):`, c.before, '→', c.after);
   }
-  if (env.stripeSecretKey) {
-    const stripe = await reconcileStripeSubscriptions(db, createStripe(env.stripeSecretKey), { dryRun });
-    console.log(`Stripe: ${stripe.checked} suscripciones revisadas, ${stripe.changes.length} ${verb}`);
-    for (const c of stripe.changes) {
+  if (env.lemon) {
+    const client = createLemonSqueezy({ apiKey: env.lemon.apiKey, storeId: env.lemon.storeId });
+    const ls = await reconcileLemonSubscriptions(db, client, variantPlans(env.lemon.variants), { dryRun });
+    console.log(`Lemon Squeezy: ${ls.checked} suscripciones revisadas, ${ls.changes.length} ${verb}`);
+    for (const c of ls.changes) {
       console.log(`- usuario ${c.userId} (${c.subscriptionId}):`, c.before, '→', c.after);
     }
   }

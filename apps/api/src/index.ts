@@ -3,18 +3,22 @@ import { createDb } from './db/client.ts';
 import { env } from './env.ts';
 import { createResendMailer } from './lib/mailer.ts';
 import { createMercadoPago } from './lib/mercadopago.ts';
-import { createStripe } from './lib/stripe.ts';
+import { createLemonSqueezy } from './lib/lemonsqueezy.ts';
+import { variantPlans } from './lib/lemonsqueezy-sync.ts';
 import { startReconciler } from './reconcile.ts';
 
 const { db } = createDb(env.databaseUrl);
 const mp = createMercadoPago(env.mpAccessToken);
 
-// Stripe queda apagado si falta alguna de sus dos variables: el frontend no muestra el toggle
-// internacional y el endpoint responde 503 si alguien lo pide igual.
-const stripeConfig =
-  env.stripeSecretKey && env.stripeWebhookSecret
-    ? { client: createStripe(env.stripeSecretKey), webhookSecret: env.stripeWebhookSecret }
-    : undefined;
+// Lemon Squeezy queda apagado si falta alguna de sus variables (env.lemon undefined): el frontend no
+// muestra el toggle internacional y el endpoint responde 503 si alguien lo pide igual.
+const lemon = env.lemon
+  ? {
+      client: createLemonSqueezy({ apiKey: env.lemon.apiKey, storeId: env.lemon.storeId }),
+      webhookSecret: env.lemon.webhookSecret,
+      variants: env.lemon.variants,
+    }
+  : undefined;
 
 const app = createApp({
   db,
@@ -23,7 +27,7 @@ const app = createApp({
   frontendUrl: env.frontendUrl,
   mp,
   mpWebhookSecret: env.mpWebhookSecret,
-  stripe: stripeConfig,
+  lemon,
   mailer: env.resendApiKey ? createResendMailer(env.resendApiKey, env.newsletterFrom) : null,
   backupStateDir: env.backupStateDir,
   mcpAdminToken: env.mcpAdminToken,
@@ -32,7 +36,7 @@ const app = createApp({
 if (env.reconcileIntervalHours > 0) {
   startReconciler(
     db,
-    { mp, stripe: stripeConfig?.client },
+    { mp, lemon: lemon ? { client: lemon.client, variantPlans: variantPlans(lemon.variants) } : undefined },
     env.reconcileIntervalHours * 60 * 60 * 1000,
   );
 }

@@ -5,12 +5,12 @@ import { users } from '../db/schema.ts';
 import { hasSubscriptionAccess } from '../lib/access.ts';
 import type { MercadoPago } from '../lib/mercadopago.ts';
 import { PROVIDER_CURRENCY, loadPrices } from '../lib/prices.ts';
-import type { Stripe } from '../lib/stripe.ts';
+import type { LemonSqueezy } from '../lib/lemonsqueezy.ts';
 
 // Plan Oficial (basic): 3 desbloqueos/mes. Plan Maestro (pro): acceso ilimitado.
 // Los montos viven en la tabla plan_prices (editable desde el panel admin, ver lib/prices.ts).
 export type Plan = 'basic' | 'pro';
-export type PaymentProvider = 'mercadopago' | 'stripe';
+export type PaymentProvider = 'mercadopago' | 'lemonsqueezy';
 
 export const PLAN_REASONS: Record<Plan, string> = {
   basic: 'La Forja — Suscripción Oficial',
@@ -38,13 +38,15 @@ function parsePlan(raw: unknown): Plan | null {
 
 function parseProvider(raw: unknown): PaymentProvider | null {
   if (raw === undefined || raw === null) return 'mercadopago';
-  return raw === 'mercadopago' || raw === 'stripe' ? raw : null;
+  return raw === 'mercadopago' || raw === 'lemonsqueezy' ? raw : null;
 }
 
-export type StripeConfig = {
-  client: Stripe;
-  successUrl: string;
-  cancelUrl: string;
+export type LemonConfig = {
+  client: LemonSqueezy;
+  // Variant de LS por plan (LEMONSQUEEZY_VARIANT_BASIC/PRO). El monto no sale de la variant sino de
+  // plan_prices, vía custom_price.
+  variants: Record<Plan, string>;
+  redirectUrl: string;
 };
 
 type Options = {
@@ -52,11 +54,11 @@ type Options = {
   // URL absoluta donde MP redirige al usuario al terminar el alta (viene resuelta desde app.ts).
   backUrl: string;
   mp: MercadoPago;
-  // Sin stripe = Stripe apagado: pedir `provider:'stripe'` responde 503 provider_disabled.
-  stripe?: StripeConfig;
+  // Sin lemon = Lemon Squeezy apagado: pedir `provider:'lemonsqueezy'` responde 503 provider_disabled.
+  lemon?: LemonConfig;
 };
 
-export function subscriptionRoutes({ auth, backUrl, mp, stripe }: Options) {
+export function subscriptionRoutes({ auth, backUrl, mp, lemon }: Options) {
   const { db } = auth;
   const app = new Hono<AuthEnv>();
   app.use(requireAuth(auth));
@@ -73,32 +75,18 @@ export function subscriptionRoutes({ auth, backUrl, mp, stripe }: Options) {
     const provider = parseProvider(body?.provider);
     if (!provider) return c.json({ error: 'invalid_provider' }, 400);
 
-    if (provider === 'stripe') {
-      if (!stripe) return c.json({ error: 'provider_disabled' }, 503);
-
-      // Reusar customer entre altas: evita que Stripe cree uno nuevo por cada intento y mantiene
-      // el historial de pagos unificado.
-      let customerId = user.stripeCustomerId;
-      if (!customerId) {
-        const customer = await stripe.client.createCustomer(user.email, user.id);
-        customerId = customer.id;
-        await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, user.id));
-      }
-
+    if (provider === 'lemonsqueezy') {
+      if (!lemon) return c.json({ error: 'provider_disabled' }, 503);
       const prices = await loadPrices(db);
-      const session = await stripe.client.createCheckoutSession({
-        plan,
-        productName: PLAN_REASONS[plan],
-        amount: prices[plan][PROVIDER_CURRENCY.stripe],
-        currency: PROVIDER_CURRENCY.stripe,
-        customerId,
-        customerEmail: user.email,
+      const checkout = await lemon.client.createCheckout({
+        variantId: lemon.variants[plan],
+        customPrice: prices[plan][PROVIDER_CURRENCY.lemonsqueezy],
+        email: user.email,
         userId: user.id,
-        successUrl: stripe.successUrl,
-        cancelUrl: stripe.cancelUrl,
+        plan,
+        redirectUrl: lemon.redirectUrl,
       });
-
-      return c.json({ initPoint: session.url, sessionId: session.id, plan, provider });
+      return c.json({ initPoint: checkout.url, checkoutId: checkout.id, plan, provider });
     }
 
     const prices = await loadPrices(db);
@@ -124,10 +112,10 @@ export function subscriptionRoutes({ auth, backUrl, mp, stripe }: Options) {
     const active = user.subscriptionStatus === 'active' || user.subscriptionStatus === 'paused';
     if (!active) return c.json({ error: 'no_active_subscription' }, 409);
 
-    if (user.paymentProvider === 'stripe') {
-      if (!stripe) return c.json({ error: 'provider_disabled' }, 503);
-      if (!user.stripeSubscriptionId) return c.json({ error: 'no_active_subscription' }, 409);
-      await stripe.client.cancelSubscription(user.stripeSubscriptionId);
+    if (user.paymentProvider === 'lemonsqueezy') {
+      if (!lemon) return c.json({ error: 'provider_disabled' }, 503);
+      if (!user.lsSubscriptionId) return c.json({ error: 'no_active_subscription' }, 409);
+      await lemon.client.cancelSubscription(user.lsSubscriptionId);
     } else {
       if (!user.subscriptionId) return c.json({ error: 'no_active_subscription' }, 409);
       await mp.cancelPreapproval(user.subscriptionId);

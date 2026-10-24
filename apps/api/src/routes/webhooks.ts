@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { Db } from '../db/client.ts';
@@ -5,21 +6,19 @@ import { subscriptionEvents, users } from '../db/schema.ts';
 import type { MercadoPago } from '../lib/mercadopago.ts';
 import { verifyMpSignature } from '../lib/mp-signature.ts';
 import { type UserUpdate, periodEnd, updateFromPreapproval, userIdFromReference } from '../lib/preapproval.ts';
+import { type LemonSqueezy, verifyLemonSignature } from '../lib/lemonsqueezy.ts';
+import { type VariantPlans, parseCustomData, updateFromSubscription } from '../lib/lemonsqueezy-sync.ts';
 import { type RateLimitRule, clientIp, rateLimit } from '../lib/rate-limit.ts';
-import type { Stripe, StripeEvent, StripeSubscription } from '../lib/stripe.ts';
-import { verifyStripeSignature } from '../lib/stripe.ts';
-import { type UserUpdate as StripeUserUpdate, updateFromSubscription, userIdFromSubscription } from '../lib/stripe-sync.ts';
-
-type StripeResolved = { update: StripeUserUpdate | null; userId: string | null };
 
 type Options = {
   db: Db;
   mp: MercadoPago;
   webhookSecret: string;
   limit: RateLimitRule;
-  stripe?: {
-    client: Stripe;
+  lemon?: {
+    client: LemonSqueezy;
     webhookSecret: string;
+    variantPlans: VariantPlans;
   };
 };
 
@@ -54,30 +53,25 @@ async function resolveUpdate(
   return { update: null, userId: null };
 }
 
-// Resuelve el update a aplicar a `users` según el evento de Stripe. checkout.session.completed
-// trae la session en data.object: hay que ir a buscar la subscription para tener current_period_end
-// y la metadata. subscription.updated/deleted ya traen la subscription entera en data.object.
-async function resolveStripeUpdate(stripe: Stripe, event: StripeEvent): Promise<StripeResolved> {
+// Todos los subscription_* traen la suscripción en data, pero se vuelve a pedir a LS: los webhooks
+// pueden llegar desordenados y así se aplica siempre el estado vigente. Los de pagos
+// (subscription_payment_*) se ignoran: cada cobro dispara además un subscription_updated.
+const LEMON_SUBSCRIPTION_EVENTS = new Set([
+  'subscription_created',
+  'subscription_updated',
+  'subscription_cancelled',
+  'subscription_resumed',
+  'subscription_expired',
+  'subscription_paused',
+  'subscription_unpaused',
+]);
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as {
-      subscription?: string | null;
-      mode?: string;
-    };
-    if (session.mode !== 'subscription' || !session.subscription) return { update: null, userId: null };
-    const sub = await stripe.getSubscription(session.subscription);
-    return { update: updateFromSubscription(sub), userId: userIdFromSubscription(sub) };
-  }
+type LemonEvent = {
+  meta?: { event_name?: string; custom_data?: unknown };
+  data?: { type?: string; id?: string | number };
+};
 
-  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
-    const sub = event.data.object as unknown as StripeSubscription;
-    return { update: updateFromSubscription(sub), userId: userIdFromSubscription(sub) };
-  }
-
-  return { update: null, userId: null };
-}
-
-export function webhookRoutes({ db, mp, webhookSecret, limit, stripe }: Options) {
+export function webhookRoutes({ db, mp, webhookSecret, limit, lemon }: Options) {
   const app = new Hono();
   // Antes de validar la firma: frena el spam antes de gastar HMAC y consultas a MP.
   app.use(rateLimit(limit, clientIp));
@@ -132,26 +126,28 @@ export function webhookRoutes({ db, mp, webhookSecret, limit, stripe }: Options)
     return c.json({ status });
   });
 
-  if (stripe) {
-    app.post('/stripe', async (c) => {
-      // Stripe firma el raw body: hay que leerlo antes de parsear.
+  if (lemon) {
+    app.post('/lemonsqueezy', async (c) => {
+      // LS firma el raw body: hay que leerlo antes de parsear.
       const rawBody = await c.req.text();
-      const valid = await verifyStripeSignature({
-        secret: stripe.webhookSecret,
-        header: c.req.header('stripe-signature'),
+      const valid = verifyLemonSignature({
+        secret: lemon.webhookSecret,
+        header: c.req.header('x-signature'),
         payload: rawBody,
       });
       if (!valid) return c.json({ error: 'invalid_signature' }, 401);
 
-      let event: StripeEvent;
+      let event: LemonEvent;
       try {
-        event = JSON.parse(rawBody) as StripeEvent;
+        event = JSON.parse(rawBody) as LemonEvent;
       } catch {
         return c.json({ error: 'invalid_payload' }, 400);
       }
-      if (!event.id || !event.type) return c.json({ error: 'invalid_payload' }, 400);
+      const eventName = event.meta?.event_name;
+      if (!eventName) return c.json({ error: 'invalid_payload' }, 400);
 
-      const providerEventId = `stripe:${event.id}`;
+      // LS no manda un id de evento; los reintentos repiten el body tal cual, así que su hash sirve.
+      const providerEventId = `ls:${createHash('sha256').update(rawBody).digest('hex')}`;
 
       const [seen] = await db
         .select({ id: subscriptionEvents.id })
@@ -160,9 +156,18 @@ export function webhookRoutes({ db, mp, webhookSecret, limit, stripe }: Options)
         .limit(1);
       if (seen) return c.json({ status: 'duplicate' });
 
-      // Igual que MP: resolver fuera de la transacción. Si Stripe falla al traer la subscription
-      // respondemos 500 y el reintento de Stripe lo reprocesa.
-      const { update, userId } = await resolveStripeUpdate(stripe.client, event);
+      const { userId, plan } = parseCustomData(event.meta?.custom_data);
+      const subscriptionId = event.data?.type === 'subscriptions' && event.data.id !== undefined ? String(event.data.id) : null;
+      // Igual que MP: consultar fuera de la transacción. Si LS falla respondemos 502 sin registrar el
+      // evento y el reintento de LS lo reprocesa.
+      const update =
+        LEMON_SUBSCRIPTION_EVENTS.has(eventName) && subscriptionId
+          ? updateFromSubscription(await lemon.client.getSubscription(subscriptionId), {
+              userId,
+              plan,
+              variantPlans: lemon.variantPlans,
+            })
+          : null;
 
       const status = await db.transaction(async (tx) => {
         const [owner] = userId
@@ -170,7 +175,7 @@ export function webhookRoutes({ db, mp, webhookSecret, limit, stripe }: Options)
           : [];
         const inserted = await tx
           .insert(subscriptionEvents)
-          .values({ providerEventId, eventType: event.type, userId: owner?.id ?? null, payload: event })
+          .values({ providerEventId, eventType: eventName, userId: owner?.id ?? null, payload: event })
           .onConflictDoNothing()
           .returning({ id: subscriptionEvents.id });
         if (inserted.length === 0) return 'duplicate';

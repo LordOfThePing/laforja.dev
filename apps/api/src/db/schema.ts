@@ -25,9 +25,9 @@ export const subscriptionStatus = pgEnum('subscription_status', [
 // 'basic' = plan Oficial (3 desbloqueos/mes); 'pro' = plan Maestro (acceso total).
 export const subscriptionPlan = pgEnum('subscription_plan', ['basic', 'pro']);
 
-// MercadoPago cobra en ARS (Argentina); Stripe cobra en USD (internacional).
+// MercadoPago cobra en ARS (Argentina); Lemon Squeezy cobra en USD (internacional, merchant of record).
 // null en users = nunca se suscribió.
-export const paymentProvider = pgEnum('payment_provider', ['mercadopago', 'stripe']);
+export const paymentProvider = pgEnum('payment_provider', ['mercadopago', 'lemonsqueezy']);
 
 export const toolTier = pgEnum('tool_tier', ['free', 'premium']);
 
@@ -44,11 +44,11 @@ export const users = pgTable('users', {
   subscriptionStatus: subscriptionStatus('subscription_status').notNull().default('none'),
   subscriptionPlan: subscriptionPlan('subscription_plan'),
   // subscription_id guarda el id de la preapproval de MP cuando paymentProvider = 'mercadopago'.
-  // Para Stripe la referencia es stripeSubscriptionId; stripeCustomerId se reusa entre altas.
+  // Para Lemon Squeezy la referencia es lsSubscriptionId.
   subscriptionId: text('subscription_id'),
   paymentProvider: paymentProvider('payment_provider'),
-  stripeCustomerId: text('stripe_customer_id'),
-  stripeSubscriptionId: text('stripe_subscription_id'),
+  lsCustomerId: text('ls_customer_id'),
+  lsSubscriptionId: text('ls_subscription_id'),
   currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
 });
 
@@ -98,8 +98,8 @@ export const unlocks = pgTable(
 export const subscriptionEvents = pgTable('subscription_events', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-  // Id del evento prefijado por provider: `mp:<id>` o `stripe:<evt_...>`.
-  // El unique garantiza idempotencia aunque MP o Stripe reintenten el webhook.
+  // Id del evento prefijado por provider: `mp:<id>` o `ls:<sha256 del body>`.
+  // El unique garantiza idempotencia aunque MP o Lemon Squeezy reintenten el webhook.
   providerEventId: text('provider_event_id').notNull().unique(),
   eventType: text('event_type').notNull(),
   payload: jsonb('payload').notNull(),
@@ -107,7 +107,7 @@ export const subscriptionEvents = pgTable('subscription_events', {
 });
 
 // Precio vigente por plan y moneda, editable desde el panel admin. ARS lo cobra MercadoPago y USD
-// Stripe. Cambiarlo afecta solo las altas nuevas: las suscripciones existentes siguen con el monto
+// Lemon Squeezy. Cambiarlo afecta solo las altas nuevas: las suscripciones existentes siguen con el monto
 // con el que se crearon. `amount` va en centavos para no arrastrar decimales de punto flotante.
 export const planPrices = pgTable(
   'plan_prices',

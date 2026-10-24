@@ -10,7 +10,7 @@ export type PriceTable = Record<Plan, Record<Currency, number>>;
 
 export const PROVIDER_CURRENCY: Record<PaymentProvider, Currency> = {
   mercadopago: 'ARS',
-  stripe: 'USD',
+  lemonsqueezy: 'USD',
 };
 
 const PLANS: readonly Plan[] = ['basic', 'pro'];

@@ -6,8 +6,9 @@ import type { Db } from './db/client.ts';
 import { type Mailer, MailerError } from './lib/mailer.ts';
 import { type MercadoPago, MercadoPagoError } from './lib/mercadopago.ts';
 import type { RateLimitRule } from './lib/rate-limit.ts';
-import type { Stripe } from './lib/stripe.ts';
-import { StripeError } from './lib/stripe.ts';
+import { type LemonSqueezy, LemonSqueezyError } from './lib/lemonsqueezy.ts';
+import { variantPlans } from './lib/lemonsqueezy-sync.ts';
+import type { Plan } from './routes/subscription.ts';
 import type { AuthConfig } from './auth.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { certificatesRoutes } from './routes/certificates.ts';
@@ -28,11 +29,12 @@ type AppOptions = {
   frontendUrl: string;
   mp: MercadoPago;
   mpWebhookSecret: string;
-  // Stripe queda apagado si no se pasa (ver index.ts): el endpoint responde 503 provider_disabled
-  // y el webhook /webhooks/stripe no se monta.
-  stripe?: {
-    client: Stripe;
+  // Lemon Squeezy queda apagado si no se pasa (ver index.ts): el endpoint responde 503
+  // provider_disabled y el webhook /webhooks/lemonsqueezy no se monta.
+  lemon?: {
+    client: LemonSqueezy;
     webhookSecret: string;
+    variants: Record<Plan, string>;
   };
   // null = newsletter apagada (sin RESEND_API_KEY): los endpoints responden newsletter_disabled.
   mailer?: Mailer | null;
@@ -71,7 +73,7 @@ export function createApp({
   frontendUrl,
   mp,
   mpWebhookSecret,
-  stripe,
+  lemon,
   mailer = null,
   rateLimits,
   backupStateDir,
@@ -102,18 +104,18 @@ export function createApp({
   app.route('/api/courses', coursesRoutes(auth, limits.progress));
   app.route('/api', certificatesRoutes(auth, frontendUrl));
   app.route('/api/me', meRoutes(auth));
-  app.route('/api/prices', pricesRoutes(db, { stripeEnabled: stripe !== undefined }));
+  app.route('/api/prices', pricesRoutes(db, { lemonEnabled: lemon !== undefined }));
   app.route(
     '/api/subscription',
     subscriptionRoutes({
       auth,
       backUrl: `${frontendUrl}/dashboard/gracias`,
       mp,
-      stripe: stripe
+      lemon: lemon
         ? {
-            client: stripe.client,
-            successUrl: `${frontendUrl}/dashboard/gracias?stripe_session={CHECKOUT_SESSION_ID}`,
-            cancelUrl: `${frontendUrl}/suscripcion`,
+            client: lemon.client,
+            variants: lemon.variants,
+            redirectUrl: `${frontendUrl}/dashboard/gracias?provider=lemonsqueezy`,
           }
         : undefined,
     }),
@@ -123,14 +125,22 @@ export function createApp({
   if (mcpAdminToken) app.route('/mcp', mcpRoutes(db, mcpAdminToken));
   app.route(
     '/webhooks',
-    webhookRoutes({ db, mp, webhookSecret: mpWebhookSecret, limit: limits.webhook, stripe }),
+    webhookRoutes({
+      db,
+      mp,
+      webhookSecret: mpWebhookSecret,
+      limit: limits.webhook,
+      lemon: lemon
+        ? { client: lemon.client, webhookSecret: lemon.webhookSecret, variantPlans: variantPlans(lemon.variants) }
+        : undefined,
+    }),
   );
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
   app.onError((err, c) => {
     console.error(err);
     if (err instanceof MercadoPagoError) return c.json({ error: 'payment_provider_error' }, 502);
-    if (err instanceof StripeError) return c.json({ error: 'payment_provider_error' }, 502);
+    if (err instanceof LemonSqueezyError) return c.json({ error: 'payment_provider_error' }, 502);
     if (err instanceof MailerError) return c.json({ error: 'mailer_error' }, 502);
     return c.json({ error: 'internal_error' }, 500);
   });

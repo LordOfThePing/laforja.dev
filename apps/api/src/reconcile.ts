@@ -1,10 +1,10 @@
-import { and, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from './db/client.ts';
 import { subscriptionEvents, users } from './db/schema.ts';
 import { type MercadoPago, MercadoPagoError, type Preapproval } from './lib/mercadopago.ts';
 import { updateFromPreapproval, userIdFromReference } from './lib/preapproval.ts';
-import { type Stripe, StripeError, type StripeSubscription } from './lib/stripe.ts';
-import { updateFromSubscription, userIdFromSubscription } from './lib/stripe-sync.ts';
+import { type LemonSqueezy, LemonSqueezyError, type LemonSubscription } from './lib/lemonsqueezy.ts';
+import { type VariantPlans, updateFromSubscription } from './lib/lemonsqueezy-sync.ts';
 
 const PAGE_SIZE = 50;
 
@@ -113,92 +113,114 @@ export async function reconcileSubscriptions(
   return { checked: latestByUser.size, changes };
 }
 
-async function allActiveStripe(stripe: Stripe): Promise<StripeSubscription[]> {
-  const found: StripeSubscription[] = [];
-  let startingAfter: string | undefined;
-  // Stripe limita a 100 por página; `has_more` indica si hay que seguir.
-  for (;;) {
-    const page = await stripe.listActiveSubscriptions({ startingAfter, limit: 100 });
-    found.push(...page.data);
-    if (!page.has_more || page.data.length === 0) return found;
-    startingAfter = page.data[page.data.length - 1]?.id;
-    if (!startingAfter) return found;
+async function allActiveLemon(lemon: LemonSqueezy): Promise<LemonSubscription[]> {
+  const found: LemonSubscription[] = [];
+  for (let page = 1; ; page += 1) {
+    const res = await lemon.listActiveSubscriptions({ page, size: 100 });
+    found.push(...res.data);
+    if (page >= res.lastPage || res.data.length === 0) return found;
   }
 }
 
-export type StripeReconcileChange = {
+type LemonState = Pick<
+  typeof users.$inferSelect,
+  'subscriptionStatus' | 'subscriptionPlan' | 'lsSubscriptionId' | 'currentPeriodEnd'
+>;
+
+export type LemonReconcileChange = {
   userId: string;
   subscriptionId: string;
-  before: UserState;
-  after: UserState;
+  before: LemonState;
+  after: LemonState;
 };
 
-/**
- * Red de seguridad para Stripe. Mismo patrón que MP:
- * - Lista subscriptions `active` de Stripe y aplica el estado real.
- * - Usuarios locales con `payment_provider = 'stripe'` y status active/paused cuya subscription
- *   no apareció → se consulta una por una (así se ven las que Stripe pasó a canceled/past_due).
- */
-export async function reconcileStripeSubscriptions(
-  db: Db,
-  stripe: Stripe,
-  { dryRun = false }: { dryRun?: boolean } = {},
-): Promise<{ checked: number; changes: StripeReconcileChange[] }> {
-  const bySubId = new Map<string, StripeSubscription>();
+function sameLemonState(a: LemonState, b: LemonState): boolean {
+  return (
+    a.subscriptionStatus === b.subscriptionStatus &&
+    a.subscriptionPlan === b.subscriptionPlan &&
+    a.lsSubscriptionId === b.lsSubscriptionId &&
+    (a.currentPeriodEnd?.getTime() ?? null) === (b.currentPeriodEnd?.getTime() ?? null)
+  );
+}
 
-  for (const sub of await allActiveStripe(stripe)) {
-    if (!userIdFromSubscription(sub)) continue;
-    bySubId.set(sub.id, sub);
+/**
+ * Red de seguridad para Lemon Squeezy, mismo patrón que MP:
+ * - Lista las suscripciones `active` del store. Fuera del webhook no hay custom_data, así que el
+ *   usuario se busca por ls_subscription_id y, si todavía no estaba vinculada (se perdió el primer
+ *   webhook), por el email con el que pagó.
+ * - Usuarios con `payment_provider = 'lemonsqueezy'` active/paused cuya suscripción no apareció →
+ *   se consulta una por una (así se ven las que LS canceló, venció o dejó en past_due).
+ */
+export async function reconcileLemonSubscriptions(
+  db: Db,
+  lemon: LemonSqueezy,
+  variantPlans: VariantPlans,
+  { dryRun = false }: { dryRun?: boolean } = {},
+): Promise<{ checked: number; changes: LemonReconcileChange[] }> {
+  const userBySub = new Map<string, string>();
+  const subs = new Map<string, LemonSubscription>();
+
+  for (const sub of await allActiveLemon(lemon)) {
+    const [linked] = await db.select({ id: users.id }).from(users).where(eq(users.lsSubscriptionId, sub.id));
+    const [byEmail] =
+      linked || !sub.userEmail
+        ? []
+        : await db.select({ id: users.id }).from(users).where(eq(sql`lower(${users.email})`, sub.userEmail.toLowerCase()));
+    const owner = linked ?? byEmail;
+    if (!owner) continue;
+    userBySub.set(sub.id, owner.id);
+    subs.set(sub.id, sub);
   }
 
   const tracked = await db
-    .select({ id: users.id, stripeSubscriptionId: users.stripeSubscriptionId })
+    .select({ id: users.id, lsSubscriptionId: users.lsSubscriptionId })
     .from(users)
     .where(
       and(
-        eq(users.paymentProvider, 'stripe'),
-        isNotNull(users.stripeSubscriptionId),
+        eq(users.paymentProvider, 'lemonsqueezy'),
+        isNotNull(users.lsSubscriptionId),
         inArray(users.subscriptionStatus, ['active', 'paused']),
       ),
     );
   for (const user of tracked) {
-    if (!user.stripeSubscriptionId || bySubId.has(user.stripeSubscriptionId)) continue;
+    if (!user.lsSubscriptionId || subs.has(user.lsSubscriptionId)) continue;
     try {
-      const sub = await stripe.getSubscription(user.stripeSubscriptionId);
-      bySubId.set(sub.id, sub);
+      subs.set(user.lsSubscriptionId, await lemon.getSubscription(user.lsSubscriptionId));
+      userBySub.set(user.lsSubscriptionId, user.id);
     } catch (err) {
-      if (!(err instanceof StripeError && err.status === 404)) throw err;
-      console.warn(`reconcile stripe: no se encuentra ${user.stripeSubscriptionId} del usuario ${user.id}`);
+      if (!(err instanceof LemonSqueezyError && err.status === 404)) throw err;
+      console.warn(`reconcile lemonsqueezy: no se encuentra ${user.lsSubscriptionId} del usuario ${user.id}`);
     }
   }
 
   const runId = new Date().toISOString();
-  const changes: StripeReconcileChange[] = [];
-  for (const sub of bySubId.values()) {
-    const update = updateFromSubscription(sub);
-    if (!update) continue;
-    const userId = userIdFromSubscription(sub);
+  const changes: LemonReconcileChange[] = [];
+  for (const sub of subs.values()) {
+    const userId = userBySub.get(sub.id);
     if (!userId) continue;
+    const update = updateFromSubscription(sub, { userId, plan: null, variantPlans });
+    if (!update) continue;
 
     const change = await db.transaction(async (tx) => {
       const [before] = await tx
         .select({
           subscriptionStatus: users.subscriptionStatus,
-          subscriptionId: users.subscriptionId,
+          subscriptionPlan: users.subscriptionPlan,
+          lsSubscriptionId: users.lsSubscriptionId,
           currentPeriodEnd: users.currentPeriodEnd,
         })
         .from(users)
         .where(update.where);
       if (!before) return null;
-      const after: UserState = { ...before, ...update.set } as UserState;
-      if (sameState(before, after)) return null;
+      const after = { ...before, ...update.set } as LemonState;
+      if (sameLemonState(before, after)) return null;
       if (!dryRun) {
         await tx.update(users).set(update.set).where(update.where);
         await tx.insert(subscriptionEvents).values({
-          providerEventId: `reconcile:stripe:${sub.id}:${runId}`,
+          providerEventId: `reconcile:ls:${sub.id}:${runId}`,
           eventType: 'reconciliation',
           userId,
-          payload: { subscription: { id: sub.id, status: sub.status, current_period_end: sub.current_period_end } },
+          payload: { subscription: { id: sub.id, status: sub.status, renews_at: sub.renewsAt, ends_at: sub.endsAt }, before, after },
         });
       }
       return { userId, subscriptionId: sub.id, before, after };
@@ -206,12 +228,12 @@ export async function reconcileStripeSubscriptions(
     if (change) changes.push(change);
   }
 
-  return { checked: bySubId.size, changes };
+  return { checked: subs.size, changes };
 }
 
 type ReconcilerDeps = {
   mp: MercadoPago;
-  stripe?: Stripe;
+  lemon?: { client: LemonSqueezy; variantPlans: VariantPlans };
 };
 
 export function startReconciler(db: Db, deps: ReconcilerDeps, intervalMs: number, firstRunDelayMs = 60_000) {
@@ -225,11 +247,11 @@ export function startReconciler(db: Db, deps: ReconcilerDeps, intervalMs: number
       for (const c of mpResult.changes) {
         console.log(`reconcile mp: usuario ${c.userId} (${c.preapprovalId}): ${c.before.subscriptionStatus} → ${c.after.subscriptionStatus}`);
       }
-      if (deps.stripe) {
-        const stripeResult = await reconcileStripeSubscriptions(db, deps.stripe);
-        console.log(`reconcile stripe: ${stripeResult.checked} revisadas, ${stripeResult.changes.length} corregidas`);
-        for (const c of stripeResult.changes) {
-          console.log(`reconcile stripe: usuario ${c.userId} (${c.subscriptionId}): ${c.before.subscriptionStatus} → ${c.after.subscriptionStatus}`);
+      if (deps.lemon) {
+        const lsResult = await reconcileLemonSubscriptions(db, deps.lemon.client, deps.lemon.variantPlans);
+        console.log(`reconcile lemonsqueezy: ${lsResult.checked} revisadas, ${lsResult.changes.length} corregidas`);
+        for (const c of lsResult.changes) {
+          console.log(`reconcile lemonsqueezy: usuario ${c.userId} (${c.subscriptionId}): ${c.before.subscriptionStatus} → ${c.after.subscriptionStatus}`);
         }
       }
     } catch (err) {

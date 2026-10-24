@@ -2,19 +2,19 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import type { createApp } from './app.ts';
 import { planFromPreapproval } from './routes/subscription.ts';
 import type { FakeMercadoPago } from './test/fake-mp.ts';
-import type { FakeStripe } from './test/fake-stripe.ts';
+import type { FakeLemonSqueezy } from './test/fake-lemonsqueezy.ts';
 import { createTestApp, makeToken } from './test/setup.ts';
 
 let app: ReturnType<typeof createApp>;
 let mp: FakeMercadoPago;
-let stripe: FakeStripe;
+let lemon: FakeLemonSqueezy;
 let adminToken: string;
 let userToken: string;
 
 beforeAll(async () => {
-  const created = await createTestApp(undefined, undefined, undefined, { stripe: true });
+  const created = await createTestApp(undefined, undefined, undefined, { lemon: true });
   ({ app, mp } = created);
-  stripe = created.stripe!;
+  lemon = created.lemon!;
   adminToken = await makeToken({ sub: 'google-admin-precios', email: 'admin@example.com' });
   userToken = await makeToken({ sub: 'google-comun-precios', email: 'comun-precios@example.com' });
 });
@@ -32,7 +32,7 @@ describe('GET /api/prices', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       prices: { basic: { ARS: 699900, USD: 700 }, pro: { ARS: 1999900, USD: 2000 } },
-      providers: { mercadopago: true, stripe: true },
+      providers: { mercadopago: true, lemonsqueezy: true },
     });
   });
 });
@@ -73,8 +73,8 @@ describe('/api/admin/prices', () => {
     expect((await req('POST', '/api/subscription/create', buyer, { plan: 'pro' })).status).toBe(200);
     expect(mp.created.at(-1)).toMatchObject({ reason: 'La Forja — Suscripción Maestro', amount: 24999.5 });
 
-    expect((await req('POST', '/api/subscription/create', buyer, { plan: 'pro', provider: 'stripe' })).status).toBe(200);
-    expect(stripe.checkouts.at(-1)).toMatchObject({ plan: 'pro', amount: 2499, currency: 'USD' });
+    expect((await req('POST', '/api/subscription/create', buyer, { plan: 'pro', provider: 'lemonsqueezy' })).status).toBe(200);
+    expect(lemon.checkouts.at(-1)).toMatchObject({ plan: 'pro', variantId: '1002', customPrice: 2499 });
   });
 });
 

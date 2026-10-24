@@ -25,7 +25,7 @@ type MeResponse = {
   subscription: {
     status: string;
     plan: 'basic' | 'pro' | null;
-    provider: 'mercadopago' | 'stripe' | null;
+    provider: 'mercadopago' | 'lemonsqueezy' | null;
     currentPeriodEnd: string | null;
     hasAccess: boolean;
   };
