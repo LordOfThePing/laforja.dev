@@ -37,8 +37,8 @@ export default defineConfig({
         'frame-src https://www.youtube-nocookie.com',
         "object-src 'none'",
         "base-uri 'self'",
-        // Chrome aplica form-action también a los redirects: /suscripcion responde 303 al checkout de MP o de Stripe.
-        "form-action 'self' https://*.mercadopago.com.ar https://*.mercadopago.com https://checkout.stripe.com",
+        // Chrome aplica form-action también a los redirects: /suscripcion responde 303 al checkout de MP o de Lemon Squeezy (<tienda>.lemonsqueezy.com).
+        "form-action 'self' https://*.mercadopago.com.ar https://*.mercadopago.com https://*.lemonsqueezy.com",
       ],
     },
   },

@@ -62,8 +62,8 @@ if (subscription.status === 'active') {
       : 'Acceso ilimitado. Se renueva sola cada mes.';
   }
 } else if (subscription.status === 'paused') {
-  statusDetail = subscription.provider === 'stripe'
-    ? 'Stripe no pudo cobrar la cuota. Revisá que tu tarjeta esté vigente: Stripe reintenta el cobro durante unos días.'
+  statusDetail = subscription.provider === 'lemonsqueezy'
+    ? 'No pudimos cobrar la cuota con tu tarjeta. Lemon Squeezy reintenta durante unos días; actualizá el medio de pago desde el link del mail que te mandó.'
     : 'MercadoPago no pudo cobrar la cuota. Revisá el medio de pago en tu cuenta de MercadoPago.';
 } else if (subscription.status === 'cancelled') {
   statusDetail = subscription.hasAccess && periodEnd
@@ -91,7 +91,7 @@ if (subscription.status === 'active') {
     )}
     {notice === 'payment_provider_error' && (
       <p class="dash__notice" role="alert">
-        {subscription.provider === 'stripe' ? 'Stripe' : 'MercadoPago'} no respondió. Probá de nuevo en unos minutos.
+        {subscription.provider === 'lemonsqueezy' ? 'Lemon Squeezy' : 'MercadoPago'} no respondió. Probá de nuevo en unos minutos.
       </p>
     )}
 

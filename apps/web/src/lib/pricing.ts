@@ -12,19 +12,19 @@ export function formatPrice(amount: number, currency: Currency): string {
   return `${PREFIX[currency]}${format.format(amount / 100)}`;
 }
 
-// ?region= manda; si no, el país que agrega Cloudflare (CF-IPCountry). Sin Stripe es siempre AR.
+// ?region= manda; si no, el país que agrega Cloudflare (CF-IPCountry). Sin Lemon Squeezy es siempre AR.
 export function resolveRegion(request: Request, url: URL, prices: Prices | null): Region {
-  if (!prices?.providers.stripe) return 'ar';
+  if (!prices?.providers.lemonsqueezy) return 'ar';
   const param = url.searchParams.get('region');
   if (param === 'ar' || param === 'intl') return param;
   const country = request.headers.get('cf-ipcountry');
   return country && country !== 'AR' && country !== 'XX' ? 'intl' : 'ar';
 }
 
-export const REGION_PROVIDER: Record<Region, Provider> = { ar: 'mercadopago', intl: 'stripe' };
+export const REGION_PROVIDER: Record<Region, Provider> = { ar: 'mercadopago', intl: 'lemonsqueezy' };
 
 export function regionCurrency(region: Region): Currency {
   return PROVIDER_CURRENCY[REGION_PROVIDER[region]];
 }
 
-export const PROVIDER_LABEL: Record<Provider, string> = { mercadopago: 'MercadoPago', stripe: 'Stripe' };
+export const PROVIDER_LABEL: Record<Provider, string> = { mercadopago: 'MercadoPago', lemonsqueezy: 'Lemon Squeezy' };

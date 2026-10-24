@@ -20,7 +20,7 @@ try {
 // MP redirige acá apenas se paga, pero la suscripción se activa cuando llega el webhook
 // (auth-y-pagos.md). Mientras tanto la página se refresca sola para no mostrar "pendiente" de más.
 const active = me?.subscription.status === 'active' && me.subscription.hasAccess;
-const providerName = Astro.url.searchParams.has('stripe_session') ? 'Stripe' : 'MercadoPago';
+const providerName = Astro.url.searchParams.get('provider') === 'lemonsqueezy' ? 'Lemon Squeezy' : 'MercadoPago';
 ---
 
 <Base title="Gracias — La Forja">

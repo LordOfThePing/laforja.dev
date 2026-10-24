@@ -10,13 +10,13 @@ const pricing = await getPrices();
 const priceText = (plan: Plan) =>
   pricing
     ? `${formatPrice(pricing.prices[plan].ARS, 'ARS')} ARS por mes` +
-      (pricing.providers.stripe ? ` (o ${formatPrice(pricing.prices[plan].USD, 'USD')} USD por mes si pagás desde fuera de Argentina)` : '')
+      (pricing.providers.lemonsqueezy ? ` (o ${formatPrice(pricing.prices[plan].USD, 'USD')} USD por mes si pagás desde fuera de Argentina)` : '')
     : 'el precio publicado en /suscripcion';
 ---
 
 <Legal
   title="Términos y condiciones"
-  description="Condiciones de uso de La Forja: cuenta, cupo gratuito, suscripción con MercadoPago o Stripe, cancelación y arrepentimiento."
+  description="Condiciones de uso de La Forja: cuenta, cupo gratuito, suscripción con MercadoPago o Lemon Squeezy, cancelación y arrepentimiento."
   updated={LEGAL_UPDATED}
 >
   <h2>1. Quiénes somos</h2>
@@ -63,9 +63,11 @@ const priceText = (plan: Plan) =>
     </li>
     <li>
       El cobro es recurrente y automático a través de <strong>MercadoPago</strong> (en pesos, desde
-      Argentina) o de <strong>Stripe</strong> (en dólares, con tarjeta desde cualquier país).
-      Nosotros no vemos ni guardamos los datos de tu tarjeta: los procesa el proveedor que elijas
-      bajo sus propias condiciones.
+      Argentina) o de <strong>Lemon Squeezy</strong> (en dólares, con tarjeta desde cualquier
+      país). Si pagás en dólares, Lemon Squeezy actúa como revendedor (<em>merchant of
+      record</em>): el cargo aparece a su nombre y ellos calculan y cobran los impuestos que
+      correspondan en tu país. Nosotros no vemos ni guardamos los datos de tu tarjeta: los procesa
+      el proveedor que elijas bajo sus propias condiciones.
     </li>
     <li>
       Si un cobro es rechazado, el acceso ilimitado se suspende hasta que se regularice el pago.

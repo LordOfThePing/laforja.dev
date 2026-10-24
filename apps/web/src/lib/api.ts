@@ -27,10 +27,10 @@ export type ToolDetail =
 export type Quota = { monthKey: string; limit: number; used: number; remaining: number };
 
 export type Plan = 'basic' | 'pro';
-export type Provider = 'mercadopago' | 'stripe';
+export type Provider = 'mercadopago' | 'lemonsqueezy';
 export type Currency = 'ARS' | 'USD';
 
-export const PROVIDER_CURRENCY: Record<Provider, Currency> = { mercadopago: 'ARS', stripe: 'USD' };
+export const PROVIDER_CURRENCY: Record<Provider, Currency> = { mercadopago: 'ARS', lemonsqueezy: 'USD' };
 
 // Montos en centavos. Se editan en el panel admin → Precios.
 export type Prices = {

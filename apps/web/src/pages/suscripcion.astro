@@ -20,8 +20,8 @@ if (Astro.request.method === 'POST') {
   const raw = form.get('plan');
   const plan: Plan | null = raw === 'basic' || raw === 'pro' ? raw : null;
   const rawProvider = form.get('provider');
-  const provider: Provider = rawProvider === 'stripe' ? 'stripe' : 'mercadopago';
-  region = provider === 'stripe' ? 'intl' : 'ar';
+  const provider: Provider = rawProvider === 'lemonsqueezy' ? 'lemonsqueezy' : 'mercadopago';
+  region = provider === 'lemonsqueezy' ? 'intl' : 'ar';
   if (plan) {
     const result = await createSubscription(user, plan, provider);
     if (result.ok) return Astro.redirect(result.initPoint, 303);
@@ -54,7 +54,7 @@ const planLabel: Record<Plan, string> = { basic: 'Oficial', pro: 'Maestro' };
 const provider = REGION_PROVIDER[region];
 const currency = regionCurrency(region);
 const price = (plan: Plan) => (pricing ? formatPrice(pricing.prices[plan][currency], currency) : null);
-const showRegions = pricing?.providers.stripe === true;
+const showRegions = pricing?.providers.lemonsqueezy === true;
 ---
 
 <Base title="Suscripción — La Forja">
@@ -158,7 +158,7 @@ const showRegions = pricing?.providers.stripe === true;
 
     <p class="sub__fine mono">
       Pago recurrente con {PROVIDER_LABEL[provider]} a nombre de {payerEmail}.
-      {provider === 'stripe' && ' Aceptamos tarjetas de cualquier país.'}
+      {provider === 'lemonsqueezy' && ' Aceptamos tarjetas de cualquier país.'}
     </p>
   </main>
   <Footer />
